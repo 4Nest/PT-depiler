@@ -1,105 +1,55 @@
-/**
- *  引入 shadow DOM 的隔离样式
- *  Vuetify 的基础样式与组件样式都在 /pt-depiler.css 中，由下方 <link> 引入（不要再内联一份，见下）
- */
 import appCss from "./app.css?inline";
 
 import { createApp } from "vue";
 
 import App from "./App.vue";
-import { updatePageType } from "./utils.ts";
+import { updatePageType, type IPtdData } from "./utils.ts";
+import { PORTAL_TARGET_KEY } from "~/lib/utils";
 import { piniaInstance as pinia } from "@/options/plugins/pinia.ts";
 import { i18nInstance as i18n } from "@/options/plugins/i18n.ts";
-import { vuetifyInstance as vuetify } from "@/options/plugins/vuetify.ts";
 
-export function mountApp(document: Document, data: any = {}) {
-  // 检查站点原来有没有 vuetify 的样式，如果有，则缓存其内容以便于我们的Vuetify挂载后恢复其内容
-  const siteVuetifyThemePer = document.querySelector("#vuetify-theme-stylesheet");
-  const hasSiteVuetifyThemePre = siteVuetifyThemePer !== null && siteVuetifyThemePer instanceof HTMLLinkElement;
-  const siteVuetifyThemePerContent = hasSiteVuetifyThemePre ? siteVuetifyThemePer.textContent || "" : "";
-
-  // 创建一个全局的 div 并挂载到 body 中，作为 shadow DOM 的挂载点
+export function mountApp(document: Document, data: IPtdData = {}) {
   const contentRoot = document.createElement("div");
+  contentRoot.id = "ptd-content-script-host";
   const shadowRoot = contentRoot.attachShadow({ mode: "closed" });
 
-  // 将 css 的样式添加到 shadow DOM 中
-  //
-  // 这里只内联 app.css（shadow DOM 的 `all: initial` 隔离 + common.scss，编译后约 1KB）：
-  // 它是唯一「pt-depiler.css 里没有」的部分。**不要**再把 styles/vuetify/styles.scss 内联进来 ——
-  // 那份 Vuetify 基础样式（本仓实测 196,288 字符 ≈ 192 KB）已经完整包含在 pt-depiler.css 中
-  // （上面是 pt-depiler.css 的子串），内联一份等于让同一份 CSS 既进 cs-app.js 又在同一个 shadow root
-  // 里被应用两次；content-script 每次挂载都要多解析/应用这 ~192 KB。
-  // （`:root` → `:host` 的重写对当前 app.css 是空操作，保留是为了以后 common.scss 里若出现 `:root` 时仍然正确。）
+  // 1. 内联 Shadow DOM 隔离基座样式
   const baseStyleElement = document.createElement("style");
   baseStyleElement.id = "ptd-content-script-style-base";
   baseStyleElement.textContent = appCss.replaceAll(":root", ":host");
   shadowRoot.appendChild(baseStyleElement);
 
-  // 使用 FontFace API方法 添加 mdi 的样式
-  new FontFace(
-    "Material Design Icons For PTD",
-    `url("${chrome.runtime.getURL("/lib/mdi/webfont.woff2")}") format("woff2")`,
-    {
-      weight: "normal",
-      style: "normal",
-      stretch: "normal",
-    },
-  )
-    .load()
-    .then((font) => {
-      document.fonts.add(font); // 将mdi字体添加到Document中
-      const mdiCssElement = document.createElement("link");
-      mdiCssElement.id = "ptd-content-script-style-mdi";
-      mdiCssElement.rel = "stylesheet";
-      mdiCssElement.href = chrome.runtime.getURL("lib/mdi/icons.css");
-      shadowRoot.appendChild(mdiCssElement);
-    });
-
-  // 将构造过程中产生的样式 pt-depiler.css 添加到 shadow DOM 中
-  // （cssCodeSplit=false 后全量样式合并为该单一文件——动态 import 不会自动加载
-  //   css 分片，页面上下文需按固定地址显式引入）
+  // 2. 引入完整 Tailwind CSS v4 + shadcn-vue 令牌样式表
   const buildStyleElement = document.createElement("link");
   buildStyleElement.id = "ptd-content-script-style-build";
   buildStyleElement.rel = "stylesheet";
   buildStyleElement.href = chrome.runtime.getURL("pt-depiler.css");
   shadowRoot.appendChild(buildStyleElement);
 
-  // 在 shadow DOM 中创建一个 html 作为所有元素的容器
+  // 3. 在 Shadow Root 内建立根容器 + 应用挂载点 + 专属浮层 Portal 容器
+  const rootContainer = document.createElement("div");
+  rootContainer.id = "ptd-content-script-root";
+  shadowRoot.appendChild(rootContainer);
+
   const appMountElement = document.createElement("div");
   appMountElement.id = "ptd-content-script-app";
-  shadowRoot.appendChild(appMountElement);
+  rootContainer.appendChild(appMountElement);
 
-  // 插入到页面中
+  const portalElement = document.createElement("div");
+  portalElement.id = "ptd-content-script-portal";
+  rootContainer.appendChild(portalElement);
+
   document.body.append(contentRoot);
 
-  // 挂载 Vue 应用
-  const app = createApp(App).use(pinia).use(i18n).use(vuetify);
-  app.provide("ptd_data", data); // 提供数据给 Vue 应用
+  // 4. 挂载 Vue 应用并注入 Portal 目标与主题控制目标
+  const app = createApp(App).use(pinia).use(i18n);
+  app.provide("ptd_data", data);
+  app.provide("ptd_portal", portalElement);
+  app.provide("ptd_theme_targets", [contentRoot, rootContainer, portalElement]);
+  app.provide(PORTAL_TARGET_KEY, portalElement);
   app.mount(appMountElement);
 
-  // 此时 vuetify 已挂载了我们的主题样式，需要移动到shadow Dom中以免影响网站样式
-  const vuetifyTheme = document.querySelector("#vuetify-theme-stylesheet");
-  if (vuetifyTheme) {
-    const styleContent = vuetifyTheme.textContent || "";
-    const vuetifyThemeStylesheet = document.createElement("style");
-    vuetifyThemeStylesheet.id = "ptd-content-script-style-vuetify-theme-stylesheet"; // 设置 id 以便于后续查找
-    vuetifyThemeStylesheet.textContent = styleContent.replaceAll(":root", ":host");
-    shadowRoot.appendChild(vuetifyThemeStylesheet); // 克隆并添加 Vuetify 的主题样式到 shadow DOM 中
-
-    if (hasSiteVuetifyThemePre) {
-      vuetifyTheme.textContent = siteVuetifyThemePerContent; // 如果有预先存在的 vuetify 主题样式，则将其内容替换为站点的主题样式
-    } else {
-      vuetifyTheme.remove(); // 移除页面中的 vuetify 主题样式
-    }
-  }
-
-  // 防止某些网站动态修改 body，从而移除我们的 contentRoot，因此使用 MutationObserver 监听 body 的变化
-  // 一旦发现 contentRoot 被移除，则重新挂载应用
-  //
-  // 顺带在这里比对地址：SPA 站（Vue / React）在同一份文档里换路由时不会重新注入 content script，
-  // 侧边栏会一直挂着上一个页面的按钮组（例如从列表页进详情页还显示「高级列表」）。content script 与页面
-  // 分属两个 JS 世界，改不了页面的 history.pushState，只能靠 location.href 的变化察觉路由切换，
-  // 这里借已有的 DOM 变动回调顺带比较一次，不额外起定时器。
+  // 5. 监听 SPA 路由切换与宿主 body 重建
   let lastHref = document.location.href;
   const mutationObserver = new MutationObserver(() => {
     if (document.location.href !== lastHref) {
@@ -117,5 +67,5 @@ export function mountApp(document: Document, data: any = {}) {
 
   mutationObserver.observe(document, { childList: true, subtree: true });
 
-  return { contentRoot, shadowRoot, appMountElement, app };
+  return { contentRoot, shadowRoot, rootContainer, appMountElement, portalElement, app };
 }

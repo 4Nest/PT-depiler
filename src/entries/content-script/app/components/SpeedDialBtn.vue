@@ -1,40 +1,48 @@
 <script setup lang="ts">
-import { useAttrs, type TransitionProps } from "vue";
+import type { Component } from "vue";
+import { Loader2 } from "lucide-vue-next";
+import { cn } from "~/lib/utils";
 
 const {
   title,
   icon,
-  color = "primary",
+  emphasis = "default",
+  loading = false,
+  disabled = false,
 } = defineProps<{
   title: string;
-  icon: string;
-  color?: string;
-  transition?: TransitionProps;
+  icon: Component;
+  emphasis?: "primary" | "default" | "secondary";
+  loading?: boolean;
+  disabled?: boolean;
 }>();
 
-const attrs = useAttrs();
+const emit = defineEmits<{
+  (e: "click", event: MouseEvent): void;
+}>();
 </script>
 
 <template>
-  <v-btn
-    v-bind="attrs"
-    :color="color"
-    :prepend-icon="icon"
+  <button
+    type="button"
     :title="title"
-    class="ptd-capsule-btn justify-start font-weight-medium"
-    density="comfortable"
-    rounded="lg"
-    size="small"
-    variant="tonal"
+    :disabled="disabled || loading"
+    :class="
+      cn(
+        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-45',
+        emphasis === 'primary'
+          ? 'bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90'
+          : 'text-popover-foreground hover:bg-accent hover:text-accent-foreground',
+      )
+    "
+    @click="(e) => emit('click', e)"
   >
-    <span class="text-truncate">{{ title }}</span>
-  </v-btn>
+    <Loader2 v-if="loading" class="size-4 shrink-0 animate-spin" />
+    <component
+      :is="icon"
+      v-else
+      :class="cn('size-4 shrink-0', emphasis === 'primary' ? 'text-primary-foreground' : 'text-muted-foreground')"
+    />
+    <span class="truncate">{{ title }}</span>
+  </button>
 </template>
-
-<style scoped lang="scss">
-.ptd-capsule-btn {
-  width: 100%;
-  min-width: 152px;
-  letter-spacing: 0;
-}
-</style>

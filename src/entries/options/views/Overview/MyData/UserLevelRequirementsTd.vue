@@ -3,22 +3,21 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { computedAsync } from "@vueuse/core";
 import { isEmpty } from "es-toolkit/compat";
-import { useDisplay } from "vuetify";
+import { Award, CheckCircle2, Crown, ShieldCheck, XCircle } from "lucide-vue-next";
 import { getNextLevelUnMet, guessUserLevelGroupType, type IUserInfo, type TLevelGroupType } from "@ptd/site";
 
+import { Badge, Popover, PopoverContent, PopoverTrigger } from "~/components/ui";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
 
 import UserLevelsComponent from "./UserLevelsComponent.vue";
-import UserNextLevelUnMet from "@/options/views/Overview/MyData/UserNextLevelUnMet.vue";
+import UserNextLevelUnMet from "./UserNextLevelUnMet.vue";
 
 const { userInfo, limitLevelNameTdWidth } = defineProps<{
   userInfo: IUserInfo;
-  // 由父表格统一计算后传入；行组件（每个站点一行）不再各自创建相同的 computed
   limitLevelNameTdWidth: boolean;
 }>();
 
-const display = useDisplay();
 const { t } = useI18n();
 const configStore = useConfigStore();
 const metadataStore = useMetadataStore();
@@ -45,13 +44,11 @@ const levelName = computed(() => {
 
 const nextLevelUnMet = computed(() => getNextLevelUnMet(userInfo, userLevelRequirements.value!));
 
-const userLevelGroupType = computed(() => {
-  // 首先尝试从 matchedLevelRequirements 中找到对应的等级组
+const userLevelGroupType = computed<TLevelGroupType>(() => {
   if (matchedLevelRequirements.value?.groupType) {
     return matchedLevelRequirements.value.groupType;
   }
 
-  // 如果还是没有，则考虑从用户等级名中猜测
   return guessUserLevelGroupType(userInfo.levelName ?? "user");
 });
 
@@ -59,168 +56,173 @@ const isDonorAccountKept = computed(() => {
   return userInfo.isDonor === true && userInfoMetadata.value?.donorConfig?.isAccountKept === true;
 });
 
-const currentUserLevelColor = computed(() => {
+const levelTextClass = computed(() => {
   switch (userLevelGroupType.value) {
     case "vip":
-      return "green";
+      return "text-success";
     case "manager":
-      return "indigo";
-    case "user": {
-      if (matchedLevelRequirements.value?.isKept || isDonorAccountKept.value) return "light-blue"; // 保号用户
-      return "";
-    }
+      return "text-primary";
+    case "user":
+      if (matchedLevelRequirements.value?.isKept || isDonorAccountKept.value) {
+        return "text-info";
+      }
+      return "text-foreground";
     default:
-      return "";
+      return "text-foreground";
   }
 });
 
-const userLevelGroupIconMap: Record<TLevelGroupType, string> = {
-  user: "mdi-account-hard-hat",
-  vip: "mdi-check-decagram",
-  manager: "mdi-account-cog",
-};
-
 const userLevelGroupIcon = computed(() => {
-  return userLevelGroupIconMap[userLevelGroupType.value] || userLevelGroupIconMap.user;
+  switch (userLevelGroupType.value) {
+    case "vip":
+      return Crown;
+    case "manager":
+      return ShieldCheck;
+    default:
+      return Award;
+  }
 });
+
+const visibleLevelRequirements = computed(() => {
+  if (!userLevelRequirements.value) return [];
+  return userLevelRequirements.value.filter((userLevel) =>
+    configStore.myDataTableControl.onlyShowUserLevelRequirement
+      ? (userLevel.groupType !== "vip" && userLevel.groupType !== "manager") || userLevelGroupType.value !== "user"
+      : true,
+  );
+});
+
+const showPopover = computed(
+  () =>
+    configStore.myDataTableControl.showLevelRequirement &&
+    userLevelRequirements.value &&
+    userLevelRequirements.value.length > 0,
+);
 </script>
 
 <template>
-  <span v-if="userInfo.levelName" class="text-no-wrap">
-    <!--
-      不要移除 close-delay：浮层与激活元素之间隔着 offset（默认 10px）的间隙，
-      指针由等级名移向浮层时必然先触发一次 mouseleave。Vuetify 的 closeDelay 默认为 0，会立刻关闭浮层，
-      且已关闭的浮层内容会被置为 inert（不再响应指针事件），使得浮层几乎无法悬停查看（#1580）。
-      这里留出 300ms 关闭延迟，指针进入浮层后即可取消关闭。
-    -->
-    <v-tooltip
-      v-if="
-        configStore.myDataTableControl.showLevelRequirement && userLevelRequirements && userLevelRequirements.length > 0
-      "
-      content-class="bg-white pa-0"
-      interactive
-      location="end bottom"
-      :close-delay="300"
-      :open-on-click="display.mobile.value"
-    >
-      <template v-slot:activator="{ props }">
-        <!--
-          截断类必须加在激活元素本身：若只裁剪外层容器，激活元素的 getBoundingClientRect()
-          仍按完整文字宽度计算，浮层会被定位到隐藏文字的末端（远离单元格）。
-        -->
-        <span v-bind="props" :class="{ 'd-block text-truncate': limitLevelNameTdWidth }">
-          <v-icon :icon="userLevelGroupIcon" size="small" :color="currentUserLevelColor" class="mr-1" />
-          <span :class="`text-${currentUserLevelColor}`">{{ levelName }}</span>
-          <v-icon
-            v-if="
-              configStore.myDataTableControl.showNextLevelInTable &&
-              userLevelGroupType === 'user' &&
-              isEmpty(nextLevelUnMet)
-            "
-            icon="mdi-check"
-            color="green"
-            size="small"
-            class="ml-1"
-          />
-          <br />
-          <template
+  <div v-if="userInfo.levelName" class="inline-flex flex-col items-start">
+    <Popover v-if="showPopover">
+      <PopoverTrigger as-child>
+        <button
+          type="button"
+          :class="[
+            'group/lvl inline-flex flex-col items-start text-left focus:outline-none',
+            limitLevelNameTdWidth ? 'max-w-[32vw]' : '',
+          ]"
+        >
+          <span
+            :class="[
+              'inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap transition-colors group-hover/lvl:underline decoration-dotted underline-offset-4',
+              levelTextClass,
+              limitLevelNameTdWidth ? 'max-w-full truncate' : '',
+            ]"
+          >
+            <component :is="userLevelGroupIcon" class="size-3.5 shrink-0" />
+            <span class="truncate">{{ levelName }}</span>
+            <CheckCircle2
+              v-if="
+                configStore.myDataTableControl.showNextLevelInTable &&
+                userLevelGroupType === 'user' &&
+                isEmpty(nextLevelUnMet)
+              "
+              class="size-3.5 shrink-0 text-success"
+            />
+          </span>
+
+          <div
             v-if="
               configStore.myDataTableControl.showNextLevelInTable &&
               userLevelGroupType === 'user' &&
               !isEmpty(nextLevelUnMet)
             "
+            class="mt-0.5 text-muted-foreground"
           >
             <UserNextLevelUnMet
               :next-level-un-met="nextLevelUnMet"
               :show-next-level-name="false"
               :user-info="userInfo"
-              icon-class="mr-1"
             />
-          </template>
-        </span>
-      </template>
+          </div>
+        </button>
+      </PopoverTrigger>
 
-      <template v-slot>
-        <v-card class="border-sm overflow-y-auto" max-height="500" max-width="800">
-          <v-card-text class="pa-2">
-            <v-list class="pa-0 level_requirement_list" density="compact">
-              <!-- 计算剩余升级情况 -->
-              <template
-                v-if="
-                  configStore.myDataTableControl.showNextLevelInDialog &&
-                  userLevelGroupType === 'user' &&
-                  !isEmpty(nextLevelUnMet)
-                "
-              >
-                <v-list-item border class="list-item-half-spacer px-1 py-0">
-                  <UserNextLevelUnMet :next-level-un-met="nextLevelUnMet" :user-info="userInfo" />
-                </v-list-item>
-              </template>
+      <PopoverContent align="start" class="w-[520px] max-w-[92vw] p-0">
+        <div class="flex items-center justify-between border-b border-border px-3.5 py-2.5">
+          <div class="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <component :is="userLevelGroupIcon" :class="['size-4', levelTextClass]" />
+            <span>{{ t("MyData.UserLevelRequirementsTd.levelList") }}</span>
+          </div>
+          <Badge variant="secondary" class="text-[11px]">{{ levelName }}</Badge>
+        </div>
 
-              <v-list-subheader v-if="userLevelRequirements.length > 0">{{
-                t("MyData.UserLevelRequirementsTd.levelList")
-              }}</v-list-subheader>
+        <div class="max-h-[420px] space-y-2 overflow-y-auto p-3">
+          <div
+            v-if="
+              configStore.myDataTableControl.showNextLevelInDialog &&
+              userLevelGroupType === 'user' &&
+              !isEmpty(nextLevelUnMet)
+            "
+            class="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2"
+          >
+            <UserNextLevelUnMet :next-level-un-met="nextLevelUnMet" :user-info="userInfo" />
+          </div>
 
-              <!-- 展示站点用户等级 -->
-              <template v-for="userLevel in userLevelRequirements" :key="userLevel.id">
-                <template
-                  v-if="
-                    configStore.myDataTableControl.onlyShowUserLevelRequirement
-                      ? (userLevel.groupType !== 'vip' && userLevel.groupType !== 'manager') ||
-                        userLevelGroupType !== 'user'
-                      : true
-                  "
+          <div class="divide-y divide-border/70 rounded-lg border border-border">
+            <div
+              v-for="userLevel in visibleLevelRequirements"
+              :key="userLevel.id"
+              :class="[
+                'flex items-start gap-2.5 px-3 py-2 text-xs transition-colors',
+                userLevel.id === userInfo.levelId ? 'bg-primary/[0.06]' : 'hover:bg-muted/40',
+              ]"
+            >
+              <CheckCircle2
+                v-if="userLevel.id <= (userInfo.levelId ?? -1)"
+                class="mt-0.5 size-3.5 shrink-0 text-success"
+              />
+              <XCircle v-else class="mt-0.5 size-3.5 shrink-0 text-muted-foreground/50" />
+
+              <div class="min-w-0 flex-1 space-y-1">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span
+                    :class="['font-medium', userLevel.id === userInfo.levelId ? 'text-primary' : 'text-foreground']"
+                  >
+                    {{ userLevel.name }}
+                  </span>
+                  <UserLevelsComponent
+                    :user-info="userInfo"
+                    :level-requirement="userLevel"
+                    :use-join-time-as-ref="true"
+                  />
+                </div>
+                <p
+                  v-if="userLevel.privilege"
+                  class="truncate text-[11px] text-muted-foreground"
+                  :title="userLevel.privilege"
                 >
-                  <v-list-item class="list-item-half-spacer px-1 py-0">
-                    <template #prepend>
-                      <v-icon
-                        :color="userLevel.id <= (userInfo.levelId ?? -1) ? 'green' : 'red'"
-                        :icon="userLevel.id <= (userInfo.levelId ?? -1) ? 'mdi-check' : 'mdi-block-helper'"
-                        size="small"
-                      />
-                    </template>
+                  {{ userLevel.privilege }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
 
-                    <div>
-                      <span>{{ userLevel.name }}:&nbsp;</span>
-                      <!-- 展示用户等级要求时， interval 向 date 的转换应该基于 joinTime 计算 -->
-                      <UserLevelsComponent
-                        :user-info="userInfo"
-                        :level-requirement="userLevel"
-                        :useJoinTimeAsRef="true"
-                      />
-                    </div>
-
-                    <div class="text-truncate" :title="userLevel.privilege">
-                      {{ userLevel.privilege }}
-                    </div>
-                  </v-list-item>
-                  <v-divider class="ma-1"></v-divider>
-                </template>
-              </template>
-            </v-list>
-          </v-card-text>
-        </v-card>
-      </template>
-    </v-tooltip>
-    <!-- 未渲染等级浮层（如关闭了等级要求展示）时，被截断的等级名通过原生 title 提供完整内容 -->
     <span
       v-else
-      :class="{ 'd-block text-truncate': limitLevelNameTdWidth }"
+      :class="[
+        'inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap',
+        levelTextClass,
+        limitLevelNameTdWidth ? 'max-w-[32vw] truncate' : '',
+      ]"
       :title="limitLevelNameTdWidth ? levelName : undefined"
     >
-      <v-icon :icon="userLevelGroupIcon" size="small"></v-icon>
-      {{ levelName }}
+      <component :is="userLevelGroupIcon" class="size-3.5 shrink-0" />
+      <span class="truncate">{{ levelName }}</span>
     </span>
-  </span>
+  </div>
 
-  <!-- 信息还没获取 -->
-  <template v-else>-</template>
+  <span v-else class="text-xs text-muted-foreground">-</span>
 </template>
-
-<style scoped lang="scss">
-.level_requirement_list {
-  hr:last-child {
-    display: none;
-  }
-}
-</style>

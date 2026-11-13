@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { useDisplay } from "vuetify/framework";
+import { CheckCircle2, Download, HardDrive } from "lucide-vue-next";
 
 import { getTorrentVolumeFactors } from "@ptd/site";
+import { cn } from "~/lib/utils";
 
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
@@ -23,15 +24,15 @@ const { selectedTorrents } = defineProps<{
 const { t } = useI18n();
 const configStore = useConfigStore();
 const runtimeStore = useRuntimeStore();
-const display = useDisplay();
 
 const { advanceFilterDictRef, advanceItemPropsRef, tableFilterRef, updateTableFilterValueFn } = tableCustomFilter;
 
-// 直接双向同步 advanceFilterDictRef.site.required，保证重置/高级筛选时 UI 永远一致
+// 双向同步 advanceFilterDictRef.site.required（支持单选切换、再次点击取消、Ctrl/Cmd 多选）
 const selectedSites = computed<string[]>({
   get: () => advanceFilterDictRef.value.site.required ?? [],
-  set: (val: string[]) => {
-    advanceFilterDictRef.value.site.required = [...val];
+  set: (val: string | string[]) => {
+    const arr = Array.isArray(val) ? val : val ? [val] : [];
+    advanceFilterDictRef.value.site.required = [...arr];
     advanceFilterDictRef.value.site.exclude = [];
     updateTableFilterValueFn();
   },
@@ -46,6 +47,16 @@ const siteResultCountMap = computed(() => {
     }
   }
   return counts;
+});
+
+// 直接从当前搜索结果与筛选项合并派生站点列表，按命中结果数降序排列，主力大站自动排在第一屏
+const sortedSiteItems = computed<string[]>(() => {
+  const counts = siteResultCountMap.value;
+  const merged = new Set<string>([...counts.keys(), ...(advanceItemPropsRef.value.site ?? [])]);
+  return [...merged].sort((a, b) => {
+    const diff = (counts.get(b) ?? 0) - (counts.get(a) ?? 0);
+    return diff !== 0 ? diff : a.localeCompare(b);
+  });
 });
 
 const showBillableSize = computed(() => configStore.searchEntifyControl.promotionDisplay !== "none");
@@ -67,7 +78,7 @@ const selectedTorrentsInfo = computed(() => {
 
 const shouldShowNoticeBar = computed(
   () =>
-    (configStore.searchEntity.quickSiteFilter && advanceItemPropsRef.value.site.length > 0) ||
+    (configStore.searchEntity.quickSiteFilter && sortedSiteItems.value.length > 0) ||
     selectedTorrents.length > 0 ||
     Boolean(tableFilterRef.value),
 );
@@ -76,53 +87,63 @@ const shouldShowNoticeBar = computed(
 <template>
   <div
     v-if="shouldShowNoticeBar"
-    class="bg-surface-variant rounded-lg px-3 py-2 mb-3 d-flex flex-wrap align-center justify-space-between ga-2"
+    class="flex flex-wrap items-start justify-between gap-2.5 border-b border-border/80 bg-muted/15 px-4 py-2"
   >
-    <!-- 站点筛选器（含各站命中条数） -->
-    <div class="flex-grow-1" style="min-width: 0">
+    <!-- 站点筛选器（按命中条数降序 + 固定全部胶囊 + 无滚动条丝滑横滚 + 一键展开多行平铺） -->
+    <div v-if="configStore.searchEntity.quickSiteFilter && sortedSiteItems.length > 0" class="min-w-0 flex-1">
       <FilterChips
-        v-if="configStore.searchEntity.quickSiteFilter && advanceItemPropsRef.site.length > 0"
         v-model="selectedSites"
         :all-label="t('SearchEntity.siteFilter.all')"
-        :items="advanceItemPropsRef.site"
-        mandatory
+        :all-count="runtimeStore.search.searchResult.length"
+        :items="sortedSiteItems"
+        :expand-label="t('SearchEntity.siteFilter.expand', [sortedSiteItems.length])"
+        :collapse-label="t('SearchEntity.siteFilter.collapse')"
+        :hint-text="t('SearchEntity.siteFilter.multiSelectHint')"
       >
-        <template #chip="{ item }">
-          <SiteFavicon :site-id="item" :size="14" class="mr-1" />
-          <SiteName :site-id="item" tag="span" />
-          <span class="ml-1 text-caption text-medium-emphasis ptd-num">
-            ({{ siteResultCountMap.get(item) ?? 0 }})
+        <template #chip="{ item, selected }">
+          <SiteFavicon :site-id="item" :size="14" class="shrink-0 rounded-xs" />
+          <SiteName :site-id="item" tag="span" class="font-medium" />
+          <span
+            :class="
+              cn(
+                'rounded-full px-1.5 py-0.2 text-[10px] leading-4 tabular-nums transition-colors',
+                selected ? 'bg-primary text-primary-foreground font-semibold' : 'bg-muted text-muted-foreground',
+              )
+            "
+          >
+            {{ siteResultCountMap.get(item) ?? 0 }}
           </span>
         </template>
       </FilterChips>
     </div>
 
     <!-- 已选种子统计徽章 -->
-    <div class="d-flex align-center flex-wrap ga-2 ptd-num">
-      <v-chip class="chip_limit_width" color="primary" size="small" variant="tonal">
-        <v-icon icon="mdi-checkbox-marked-circle" start />
-        {{
-          display.smAndDown.value
-            ? selectedTorrentsInfo.count
-            : t("SearchEntity.index.selectedTorrents", [selectedTorrentsInfo.count])
-        }}
-        <v-divider class="mx-2" vertical />
-        <v-icon icon="mdi-harddisk" start />
-        {{ formatSize(selectedTorrentsInfo.totalSize) }}
-        <template v-if="showBillableSize && selectedTorrentsInfo.billableSize !== selectedTorrentsInfo.totalSize">
-          <v-divider class="mx-2" vertical />
-          <v-icon icon="mdi-download" start />
-          <span :title="t('SearchEntity.index.billableSizeHint')">
-            {{ t("SearchEntity.index.billableSize") }}: {{ formatSize(selectedTorrentsInfo.billableSize) }}
-          </span>
-        </template>
-      </v-chip>
+    <div
+      v-if="selectedTorrentsInfo.count > 0"
+      class="inline-flex h-7 shrink-0 flex-wrap items-center gap-2 rounded-lg border border-primary/25 bg-primary/8 px-2.5 text-xs font-medium text-primary tabular-nums"
+    >
+      <span class="inline-flex items-center gap-1">
+        <CheckCircle2 class="size-3.5" />
+        <span class="sm:hidden">{{ selectedTorrentsInfo.count }}</span>
+        <span class="hidden sm:inline">{{
+          t("SearchEntity.index.selectedTorrents", [selectedTorrentsInfo.count])
+        }}</span>
+      </span>
+
+      <span class="h-3 w-px bg-primary/25" />
+
+      <span class="inline-flex items-center gap-1">
+        <HardDrive class="size-3.5" />
+        <span>{{ formatSize(selectedTorrentsInfo.totalSize) }}</span>
+      </span>
+
+      <template v-if="showBillableSize && selectedTorrentsInfo.billableSize !== selectedTorrentsInfo.totalSize">
+        <span class="h-3 w-px bg-primary/25" />
+        <span class="inline-flex items-center gap-1" :title="t('SearchEntity.index.billableSizeHint')">
+          <Download class="size-3.5" />
+          <span>{{ t("SearchEntity.index.billableSize") }}: {{ formatSize(selectedTorrentsInfo.billableSize) }}</span>
+        </span>
+      </template>
     </div>
   </div>
 </template>
-
-<style lang="scss" scoped>
-.chip_limit_width {
-  min-width: fit-content;
-}
-</style>

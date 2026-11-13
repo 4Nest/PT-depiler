@@ -9,4 +9,4 @@ import { setupReplaceUnsafeHeader } from "~/extends/axios/replaceUnsafeHeader.ts
 
 // 下载器专用 axios 实例：套上 replaceUnsafeHeader，
 // 使「绕过 CSRF 保护」等能力可通过 DNR 移除浏览器自动添加的受限请求头
-export const axios = setupReplaceUnsafeHeader(axiosRaw.create());
+export const axios = setupReplaceUnsafeHeader(axiosRaw.create({ withCredentials: true }));

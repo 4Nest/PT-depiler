@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import { EResultParseStatus } from "@ptd/site";
+import { AlertCircle, CheckCircle2, HelpCircle, KeyRound, Loader2, SearchX, UserX } from "lucide-vue-next";
+import { Badge } from "~/components/ui";
 
 const { status } = defineProps<{
   status: EResultParseStatus;
@@ -10,37 +12,43 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <span v-if="status === EResultParseStatus.unknownError" class="text-red">
-    {{ t("resultParseStatus.unknownError") }}
-  </span>
-  <span v-else-if="status === EResultParseStatus.waiting" class="text-indigo">
+  <Badge v-if="status === EResultParseStatus.waiting" variant="info">
+    <Loader2 class="size-3 animate-spin" />
     {{ t("resultParseStatus.waiting") }}
-  </span>
-  <span v-else-if="status === EResultParseStatus.working" class="text-indigo">
+  </Badge>
+  <Badge v-else-if="status === EResultParseStatus.working" variant="info">
+    <Loader2 class="size-3 animate-spin" />
     {{ t("resultParseStatus.working") }}
-  </span>
-  <span v-else-if="status === EResultParseStatus.success" class="text-green">
+  </Badge>
+  <Badge v-else-if="status === EResultParseStatus.success" variant="success">
+    <CheckCircle2 class="size-3" />
     {{ t("resultParseStatus.success") }}
-  </span>
-  <span v-else-if="status === EResultParseStatus.parseError" class="text-red">
+  </Badge>
+  <Badge v-else-if="status === EResultParseStatus.parseError" variant="destructive">
+    <AlertCircle class="size-3" />
     {{ t("resultParseStatus.parseError") }}
-  </span>
-  <span v-else-if="status === EResultParseStatus.passParse" class="text-yellow-darken-2">
+  </Badge>
+  <Badge v-else-if="status === EResultParseStatus.passParse" variant="secondary">
     {{ t("resultParseStatus.passParse") }}
-  </span>
-  <span v-else-if="status === EResultParseStatus.CFBlocked" :title="t('resultParseStatus.CFBlockedNotes')">
+  </Badge>
+  <Badge v-else-if="status === EResultParseStatus.CFBlocked" variant="warning">
+    <AlertCircle class="size-3" />
     {{ t("resultParseStatus.CFBlocked") }}
-  </span>
-  <span v-else-if="status === EResultParseStatus.needLogin" class="text-red">
+  </Badge>
+  <Badge v-else-if="status === EResultParseStatus.needLogin" variant="destructive">
+    <KeyRound class="size-3" />
     {{ t("resultParseStatus.needLogin") }}
-  </span>
-  <span v-else-if="status === EResultParseStatus.noUserInput" class="text-red">
-    {{ t("resultParseStatus.noUserInput") }}
-  </span>
-  <span v-else-if="status === EResultParseStatus.noResults" class="text-red">
+  </Badge>
+  <Badge v-else-if="status === EResultParseStatus.noResults" variant="outline">
+    <SearchX class="size-3" />
     {{ t("resultParseStatus.noResults") }}
-  </span>
-  <span v-else class="text-blue-grey">{{ t("resultParseStatus.unknown") }}</span>
+  </Badge>
+  <Badge v-else-if="status === EResultParseStatus.noUserInput" variant="warning">
+    <UserX class="size-3" />
+    {{ t("resultParseStatus.noUserInput") }}
+  </Badge>
+  <Badge v-else variant="secondary">
+    <HelpCircle class="size-3" />
+    {{ t("resultParseStatus.unknownError") }}
+  </Badge>
 </template>
-
-<style scoped lang="scss"></style>

@@ -1,11 +1,25 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { nanoid } from "nanoid";
 import { useI18n } from "vue-i18n";
 import { isJSON } from "es-toolkit";
+import { CheckCircle2, Code2 } from "lucide-vue-next";
 import type { TSiteID } from "@ptd/site";
 
 import type { ISearchSolution } from "@/shared/types/storages/metadata.ts";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Textarea,
+} from "~/components/ui";
+import SiteName from "@/options/components/SiteName.vue";
 
 import {
   generateSiteSearchSolution,
@@ -15,9 +29,7 @@ import {
   type TSelectCategory,
 } from "./utils.ts";
 
-import SiteName from "@/options/components/SiteName.vue";
-
-const showDialog = defineModel<boolean>();
+const showDialog = defineModel<boolean>({ default: false });
 
 const { siteId, selectCategory, saveGeneratedSolution } = defineProps<{
   siteId: TSiteID;
@@ -27,19 +39,22 @@ const { siteId, selectCategory, saveGeneratedSolution } = defineProps<{
 
 const { t } = useI18n();
 
-const formValid = ref<boolean>(false);
 const searchSolution = ref<ISearchSolution>({} as ISearchSolution);
 const searchSolutionEntryRequestConfig = ref<string>("");
 
+const isNameValid = computed(() => Boolean(searchSolution.value.name?.trim()));
+const isJsonValid = computed(
+  () => Boolean(searchSolutionEntryRequestConfig.value.trim()) && isJSON(searchSolutionEntryRequestConfig.value),
+);
+const formValid = computed(() => isNameValid.value && isJsonValid.value);
+
 async function onEnter() {
-  // 首先按照默认值生成一次基本情况
   searchSolution.value = await generateSiteSearchSolution(siteId, selectCategory);
 
   if (searchSolution.value.id === "default") {
-    searchSolution.value.id = nanoid(); // 如果是默认id，则生成一个新的id
-    searchSolution.value.name = ""; // 清空name
+    searchSolution.value.id = nanoid();
+    searchSolution.value.name = "";
   } else {
-    // 为这个 searchSolution 生成默认 name
     const siteMetaCategory = await getSiteMetaCategory(siteId);
 
     searchSolution.value.name = Object.entries(searchSolution.value.selectedCategories!)
@@ -50,11 +65,9 @@ async function onEnter() {
       })
       .join(";");
 
-    // 脱钩 selectedCategories，因为 name 已经包含了这些信息
     delete searchSolution.value.selectedCategories;
   }
 
-  // 生成 requestConfig 的 JSON 字符串
   searchSolutionEntryRequestConfig.value = JSON.stringify(
     searchSolution.value.searchEntries?.[searchSolution.value.id]?.requestConfig ?? { params: {}, data: {} },
     null,
@@ -65,11 +78,10 @@ async function onEnter() {
 function doSubmit() {
   if (!formValid.value) return;
 
-  // 解析 requestConfig
   try {
     const requestConfig = JSON.parse(searchSolutionEntryRequestConfig.value);
     if (searchSolution.value.searchEntries && searchSolution.value.id) {
-      searchSolution.value.searchEntries[searchSolution.value.id] ??= {}; // 防止 default 情况下无法赋值
+      searchSolution.value.searchEntries[searchSolution.value.id] ??= {};
       searchSolution.value.searchEntries[searchSolution.value.id].requestConfig = requestConfig;
     }
   } catch (e) {
@@ -77,66 +89,63 @@ function doSubmit() {
     return;
   }
 
-  // 回调父组件
   saveGeneratedSolution(searchSolution.value);
-
-  // 关闭对话框
   showDialog.value = false;
 }
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" max-width="800" @after-enter="onEnter">
-    <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="primary">
-          <v-toolbar-title>
-            {{ t("SetSearchSolution.CustomSolutionDialog.title") }}
-            [ <SiteName :site-id="siteId" tag="span" class="" /> ]
-          </v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
-      </v-card-title>
-      <v-card-text>
-        <v-form v-model="formValid" fast-fail validate-on="eager input">
-          <v-text-field
+  <Dialog v-model="showDialog" @after-open="onEnter">
+    <DialogContent class="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>
+          <Code2 class="size-4 text-primary" />
+          <span>{{ t("SetSearchSolution.CustomSolutionDialog.title") }}</span>
+        </DialogTitle>
+        <DialogDescription class="flex items-center gap-1.5">
+          <SiteName :site-id="siteId" tag="span" class="font-medium text-foreground" />
+        </DialogDescription>
+      </DialogHeader>
+
+      <div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+        <div class="space-y-1.5">
+          <Label for="custom-solution-name">{{ t("SetSearchSolution.CustomSolutionDialog.solutionName") }}</Label>
+          <Input
+            id="custom-solution-name"
             v-model="searchSolution.name"
-            :rules="['required']"
-            :label="t('SetSearchSolution.CustomSolutionDialog.solutionName')"
+            :placeholder="t('SetSearchSolution.CustomSolutionDialog.solutionName')"
           />
+          <p v-if="!isNameValid" class="text-xs text-destructive">
+            {{ t("SetSearchSolution.CustomSolutionDialog.solutionName") }}不能为空
+          </p>
+        </div>
 
-          <v-textarea
-            :label="t('SetSearchSolution.CustomSolutionDialog.requestConfig')"
+        <div class="space-y-1.5">
+          <Label for="custom-solution-json">{{ t("SetSearchSolution.CustomSolutionDialog.requestConfig") }}</Label>
+          <Textarea
+            id="custom-solution-json"
             v-model="searchSolutionEntryRequestConfig"
-            :hint="t('SetSearchSolution.CustomSolutionDialog.requestConfigHint')"
-            :rules="[
-              'required',
-              (v) => isJSON(v) || t('SetSearchSolution.CustomSolutionDialog.requestConfigJsonError'),
-            ]"
-            persistent-hint
-            auto-grow
+            :rows="10"
+            class="font-mono text-xs leading-relaxed"
           />
-        </v-form>
-      </v-card-text>
-      <v-card-actions>
-        <v-spacer />
-        <v-btn color="error" prepend-icon="mdi-close-circle" variant="text" @click="showDialog = false">
-          {{ t("common.dialog.cancel") }}
-        </v-btn>
-        <v-btn
-          :disabled="!formValid"
-          color="success"
-          prepend-icon="mdi-check-circle-outline"
-          variant="text"
-          @click="doSubmit"
-        >
-          {{ t("common.dialog.ok") }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
-</template>
+          <p v-if="!isJsonValid" class="text-xs text-destructive">
+            {{ t("SetSearchSolution.CustomSolutionDialog.requestConfigJsonError") }}
+          </p>
+          <p v-else class="text-xs text-muted-foreground">
+            {{ t("SetSearchSolution.CustomSolutionDialog.requestConfigHint") }}
+          </p>
+        </div>
+      </div>
 
-<style scoped lang="scss"></style>
+      <DialogFooter>
+        <Button variant="outline" @click="showDialog = false">
+          {{ t("common.dialog.cancel") }}
+        </Button>
+        <Button :disabled="!formValid" @click="doSubmit">
+          <CheckCircle2 class="size-4" />
+          {{ t("common.dialog.ok") }}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+</template>

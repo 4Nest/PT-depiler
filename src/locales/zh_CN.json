@@ -92,6 +92,8 @@
       "normalizeLevelName": "使用站点定义的等级名称",
       "onlyShowUserLevelRequirement": "只显示等级要求中的升级队列",
       "setting": "设置",
+      "privacyBlur": "隐私打码",
+      "privacyBlurred": "隐私已打码",
       "showBonusNeededInterval": "等级要求中展示积分预估时间",
       "showHnR": "显示 H&R",
       "showIntervalAsDate": "等级要求时间显示为日期格式",
@@ -263,7 +265,10 @@
       "emptyResult": "未找到匹配的种子，请尝试更换关键词或检查站点搜索状态"
     },
     "siteFilter": {
-      "all": "全部站点"
+      "all": "全部站点",
+      "expand": "展开 ({0})",
+      "collapse": "收起",
+      "multiSelectHint": "单击切换单站（再次单击取消），按住 Ctrl/Cmd 单击可多选站点"
     }
   },
   "SearchResultSnapshot": {
@@ -302,6 +307,9 @@
   "SetBackup": {
     "AddDialog": {
       "title": "添加备份服务器"
+    },
+    "EditDialog": {
+      "title": "编辑备份服务器"
     },
     "Editor": {
       "backupConfig": "备份配置",

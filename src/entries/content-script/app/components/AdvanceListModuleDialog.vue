@@ -1,25 +1,39 @@
 <script setup lang="ts">
 import { ref, computed, inject } from "vue";
 import { useI18n } from "vue-i18n";
-import { useWindowSize } from "@vueuse/core";
-import { ETorrentStatus, ITorrent } from "@ptd/site";
-import type { DataTableHeader } from "vuetify";
+import { ETorrentStatus, type ITorrent } from "@ptd/site";
+import {
+  ArrowUpCircle,
+  CloudDownload,
+  Copy,
+  Download,
+  DownloadCloud,
+  ListChecks,
+  Loader2,
+  Save,
+} from "lucide-vue-next";
 
 import { formatDate, formatSize } from "@/options/utils.ts";
 import { sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
+import {
+  Button,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  type DataTableColumn,
+} from "~/components/ui";
 
 import type { IRemoteDownloadDialogData } from "../types.ts";
-
-import NavButton from "@/options/components/NavButton.vue";
 import TorrentTitleTd from "@/options/components/TorrentTitleTd.vue";
 
 const { t } = useI18n();
-
-const showDialog = defineModel<boolean>();
-
-const { height: windowHeight } = useWindowSize();
+const showDialog = defineModel<boolean>({ default: false });
 
 const { torrentItems } = defineProps<{
   torrentItems: ITorrent[];
@@ -28,18 +42,15 @@ const { torrentItems } = defineProps<{
 const runtimeStore = useRuntimeStore();
 const metadataStore = useMetadataStore();
 
-const tableHeaders = computed(
-  () =>
-    [
-      { title: t("SearchEntity.index.table.category"), key: "category", align: "center", maxWidth: 60 },
-      { title: t("SearchEntity.index.table.title"), key: "title", align: "start", maxWidth: 400 },
-      { title: t("SearchEntity.index.table.size"), key: "size", align: "end", minWidth: 60 },
-      { title: t("SearchEntity.index.table.seeders"), key: "seeders", align: "end", minWidth: 40 },
-      { title: t("SearchEntity.index.table.leechers"), key: "leechers", align: "end", minWidth: 40 },
-      { title: t("SearchEntity.index.table.completed"), key: "completed", align: "end", minWidth: 40 },
-      { title: t("SearchEntity.index.table.time"), key: "time", align: "center", minWidth: 80 },
-    ] as DataTableHeader[],
-);
+const tableColumns = computed<DataTableColumn<ITorrent>[]>(() => [
+  { title: t("SearchEntity.index.table.category"), key: "category", align: "center", width: 80 },
+  { title: t("SearchEntity.index.table.title"), key: "title", align: "start", minWidth: 320 },
+  { title: t("SearchEntity.index.table.size"), key: "size", align: "end", width: 96 },
+  { title: t("SearchEntity.index.table.seeders"), key: "seeders", align: "end", width: 72 },
+  { title: t("SearchEntity.index.table.leechers"), key: "leechers", align: "end", width: 72 },
+  { title: t("SearchEntity.index.table.completed"), key: "completed", align: "end", width: 72 },
+  { title: t("SearchEntity.index.table.time"), key: "time", align: "center", width: 150 },
+]);
 
 const selectedTorrentIds = ref<ITorrent["id"][]>([]);
 const selectedTorrents = computed(() => torrentItems.filter((x) => selectedTorrentIds.value.includes(x.id)));
@@ -52,10 +63,13 @@ const selectedTorrentsSize = computed(() =>
 const localDownloadMultiStatus = ref<boolean>(false);
 async function handleLocalDownloadMulti() {
   localDownloadMultiStatus.value = true;
-  for (const torrent of selectedTorrents.value) {
-    await sendMessage("downloadTorrent", { torrent, downloaderId: "local" });
+  try {
+    for (const torrent of selectedTorrents.value) {
+      await sendMessage("downloadTorrent", { torrent, downloaderId: "local" });
+    }
+  } finally {
+    localDownloadMultiStatus.value = false;
   }
-  localDownloadMultiStatus.value = false;
 }
 
 const linkCopyMultiStatus = ref<boolean>(false);
@@ -71,7 +85,7 @@ async function handleLinkCopyMulti() {
 
     await navigator.clipboard.writeText(downloadUrls.join("\n").trim());
     runtimeStore.showSnackbar(t("contentScript.copyLinkSuccess"), { color: "success" });
-  } catch (e) {
+  } catch {
     runtimeStore.showSnackbar(t("contentScript.copyLinkFailed"), { color: "error" });
   } finally {
     linkCopyMultiStatus.value = false;
@@ -105,111 +119,140 @@ function enterDialog() {
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" max-width="1200" scrollable @after-enter="enterDialog">
-    <v-card>
-      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
-        <span class="text-subtitle-1 font-weight-bold">
-          {{ t("contentScript.AdvanceListModuleDialog.title", [torrentItems.length]) }}
+  <Dialog v-model="showDialog" @after-open="enterDialog">
+    <DialogContent class="h-[86vh] max-w-6xl">
+      <DialogHeader>
+        <DialogTitle>
+          <ListChecks class="size-4 text-primary" />
+          <span>{{ t("contentScript.AdvanceListModuleDialog.title", [torrentItems.length]) }}</span>
+        </DialogTitle>
+        <DialogDescription v-if="hasSelectedTorrent" class="tabular-nums">
+          {{
+            t("contentScript.AdvanceListModuleDialog.selectedInfo", [
+              selectedTorrentsCount,
+              formatSize(selectedTorrentsSize),
+            ])
+          }}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-2.5">
+          <div class="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" size="sm" @click="handleSelectSeeders">
+              <ArrowUpCircle class="size-3.5" />
+              {{ t("contentScript.AdvanceListModuleDialog.selectSeeders") }}
+            </Button>
+            <Button variant="secondary" size="sm" @click="handleSelectNotSeeding">
+              <DownloadCloud class="size-3.5" />
+              {{ t("contentScript.AdvanceListModuleDialog.selectNotSeeding") }}
+            </Button>
+          </div>
+          <span v-show="hasSelectedTorrent" class="text-xs font-medium text-muted-foreground tabular-nums">
+            {{
+              t("contentScript.AdvanceListModuleDialog.selectedInfo", [
+                selectedTorrentsCount,
+                formatSize(selectedTorrentsSize),
+              ])
+            }}
+          </span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto">
+          <DataTable
+            v-model:selected="selectedTorrentIds"
+            :columns="tableColumns"
+            :items="torrentItems"
+            :items-per-page="-1"
+            hide-pagination
+            row-key="id"
+            selectable
+          >
+            <template #cell-title="{ item }">
+              <TorrentTitleTd :item="item" />
+            </template>
+
+            <template #cell-size="{ item }">
+              <span class="whitespace-nowrap text-xs font-medium text-foreground tabular-nums">
+                {{ formatSize(item.size ?? 0) }}
+              </span>
+            </template>
+
+            <template #cell-seeders="{ item }">
+              <span
+                class="text-xs font-medium tabular-nums"
+                :class="(item.seeders ?? 0) > 0 ? 'text-success' : 'text-muted-foreground'"
+              >
+                {{ item.seeders ?? 0 }}
+              </span>
+            </template>
+
+            <template #cell-leechers="{ item }">
+              <span class="text-xs text-muted-foreground tabular-nums">{{ item.leechers ?? 0 }}</span>
+            </template>
+
+            <template #cell-completed="{ item }">
+              <span class="text-xs text-muted-foreground tabular-nums">{{ item.completed ?? 0 }}</span>
+            </template>
+
+            <template #cell-time="{ item }">
+              <span class="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                {{ item.time ? formatDate(item.time) : "-" }}
+              </span>
+            </template>
+          </DataTable>
+        </div>
+      </div>
+
+      <DialogFooter class="flex-wrap sm:justify-between">
+        <span v-show="hasSelectedTorrent" class="text-xs text-muted-foreground tabular-nums">
+          {{
+            t("contentScript.AdvanceListModuleDialog.selectedInfo", [
+              selectedTorrentsCount,
+              formatSize(selectedTorrentsSize),
+            ])
+          }}
         </span>
-        <v-btn
-          icon="mdi-close"
-          size="small"
-          variant="text"
-          :title="t('common.dialog.close')"
-          @click="showDialog = false"
-        />
-      </v-card-title>
-      <v-card-text class="overflow-y-hidden">
-        <NavButton
-          icon="mdi-inbox-arrow-up"
-          :text="t('contentScript.AdvanceListModuleDialog.selectSeeders')"
-          color="light-blue"
-          @click="handleSelectSeeders"
-        />
-        <NavButton
-          icon="mdi-download-off"
-          :text="t('contentScript.AdvanceListModuleDialog.selectNotSeeding')"
-          color="light-blue"
-          @click="handleSelectNotSeeding"
-        />
-        <v-data-table-virtual
-          v-model="selectedTorrentIds"
-          :headers="tableHeaders"
-          :height="windowHeight - 256"
-          :items="torrentItems"
-          class="search-entity-table table-stripe table-header-no-wrap table-no-ext-padding"
-          fixed-header
-          hover
-          item-value="id"
-          show-select
-        >
-          <template #item.title="{ item }">
-            <TorrentTitleTd :item="item" :show-social="false" />
-          </template>
 
-          <!-- 种子大小 -->
-          <template #item.size="{ item }">
-            <span class="t_size text-no-wrap">{{ formatSize(item.size ?? 0) }}</span>
-          </template>
+        <div class="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            :disabled="!hasSelectedTorrent || localDownloadMultiStatus"
+            @click="handleLocalDownloadMulti"
+          >
+            <Loader2 v-if="localDownloadMultiStatus" class="size-3.5 animate-spin" />
+            <Save v-else class="size-3.5" />
+            {{ t("downloaderLabel.localDownload") }}
+          </Button>
 
-          <template #item.time="{ item }">
-            <span class="t_time text-no-wrap">
-              {{ item.time ? formatDate(item.time) : "-" }}
-            </span>
-          </template>
-        </v-data-table-virtual>
-      </v-card-text>
-      <v-divider />
-      <v-card-actions class="pa-4 ga-2">
-        <v-spacer />
-        <span v-show="hasSelectedTorrent" class="text-body-2 text-medium-emphasis mr-2">{{
-          t("contentScript.AdvanceListModuleDialog.selectedInfo", [
-            selectedTorrentsCount,
-            formatSize(selectedTorrentsSize),
-          ])
-        }}</span>
+          <Button
+            variant="secondary"
+            size="sm"
+            :disabled="!hasSelectedTorrent || linkCopyMultiStatus"
+            @click="handleLinkCopyMulti"
+          >
+            <Loader2 v-if="linkCopyMultiStatus" class="size-3.5 animate-spin" />
+            <Copy v-else class="size-3.5" />
+            {{ t("contentScript.copyLink") }}
+          </Button>
 
-        <NavButton
-          :disabled="!hasSelectedTorrent"
-          :loading="localDownloadMultiStatus"
-          color="secondary"
-          icon="mdi-content-save-all"
-          :text="t('downloaderLabel.localDownload')"
-          @click="handleLocalDownloadMulti"
-        />
+          <Button variant="outline" size="sm" :disabled="!hasSelectedTorrent" @click="handleRemoteDownloadMulti()">
+            <CloudDownload class="size-3.5" />
+            {{ t("contentScript.pushTo") }}
+          </Button>
 
-        <NavButton
-          :disabled="!hasSelectedTorrent"
-          :loading="linkCopyMultiStatus"
-          color="secondary"
-          icon="mdi-content-copy"
-          :text="t('contentScript.copyLink')"
-          @click="handleLinkCopyMulti"
-        />
-
-        <NavButton
-          :disabled="!hasSelectedTorrent"
-          key="remote_download_multi"
-          color="primary"
-          variant="flat"
-          icon="mdi-cloud-download"
-          :text="t('contentScript.pushTo')"
-          @click="() => handleRemoteDownloadMulti()"
-        />
-
-        <NavButton
-          v-if="metadataStore.defaultDownloader?.id"
-          key="remote_download_multi_default"
-          :disabled="!hasSelectedTorrent"
-          color="success"
-          variant="flat"
-          icon="mdi-download"
-          :text="t('contentScript.pushToDefault')"
-          @click="() => handleRemoteDownloadMulti(true)"
-        />
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+          <Button
+            v-if="metadataStore.defaultDownloader?.id"
+            size="sm"
+            :disabled="!hasSelectedTorrent"
+            @click="handleRemoteDownloadMulti(true)"
+          >
+            <Download class="size-3.5" />
+            {{ t("contentScript.pushToDefault") }}
+          </Button>
+        </div>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped lang="scss"></style>

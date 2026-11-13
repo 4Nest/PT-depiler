@@ -1,59 +1,91 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
+import { ArrowDown, ArrowUp, Code2, Download, Eye, EyeOff, History, Trash2 } from "lucide-vue-next";
 import { EResultParseStatus, type IUserInfo, type TSiteID } from "@ptd/site";
-import type { DataTableHeader } from "vuetify";
 
+import {
+  Badge,
+  Button,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Tooltip,
+  type DataTableColumn,
+  type DataTableSortItem,
+} from "~/components/ui";
 import { sendMessage } from "@/messages.ts";
-import { downloadBlob, formatSize, formatDate } from "@/options/utils.ts";
-import { useTableColumnFit } from "@/options/directives/useTableColumnFit.ts";
+import { useConfigStore } from "@/options/stores/config.ts";
+import { downloadBlob, formatDate, formatSize } from "@/options/utils.ts";
 import { formatRatio } from "./utils/format.ts";
 import { loadSiteHistoryData } from "./utils/lastUserData.ts";
 
 import BonusFormatSpan from "./BonusFormatSpan.vue";
 import SiteName from "@/options/components/SiteName.vue";
-import NavButton from "@/options/components/NavButton.vue";
 
-const showDialog = defineModel<boolean>();
+const showDialog = defineModel<boolean>({ default: false });
 const { siteId } = defineProps<{
   siteId: TSiteID | null;
 }>();
 const { t } = useI18n();
+const configStore = useConfigStore();
+const isPrivacyBlurred = computed(() => Boolean(configStore.myDataTableControl.privacyBlur));
+function togglePrivacyBlur() {
+  configStore.myDataTableControl.privacyBlur = !configStore.myDataTableControl.privacyBlur;
+  configStore.$save();
+}
 
 const currentDate = formatDate(+new Date(), "yyyy-MM-dd");
 const jsonData = ref<any>({});
+const isLoading = ref(false);
 
 interface IShowUserInfo extends IUserInfo {
   date: string;
 }
 
 const siteHistoryData = shallowRef<IShowUserInfo[]>([]);
-const tableHeader = computed(
-  () =>
-    [
-      { title: t("common.date"), key: "date", align: "center" },
-      { title: t("common.username"), key: "name", align: "center", sortable: false },
-      { title: t("MyData.table.levelName"), key: "levelName", align: "start", sortable: false },
-      { title: t("MyData.table.userData"), key: "uploaded", align: "end", sortable: false },
-      { title: t("levelRequirement.ratio"), key: "ratio", align: "end", sortable: false },
-      { title: t("levelRequirement.seeding"), key: "seeding", align: "end", sortable: false },
-      { title: t("levelRequirement.seedingSize"), key: "seedingSize", align: "end", sortable: false },
-      { title: t("levelRequirement.bonus"), key: "bonus", align: "end", sortable: false },
-      { title: t("common.action"), key: "action", align: "center", width: 90, sortable: false },
-    ] as DataTableHeader[],
-);
+const sortBy = ref<DataTableSortItem[]>([{ key: "date", order: "desc" }]);
+const itemsPerPage = ref<number>(10);
 const tableSelected = ref<string[]>([]);
 
-function deleteSiteUserInfo(date: string[]) {
+const tableColumns = computed<DataTableColumn<IShowUserInfo>[]>(() => [
+  { title: t("common.date"), key: "date", align: "center" },
+  { title: t("common.username"), key: "name", align: "center", sortable: false },
+  { title: t("MyData.table.levelName"), key: "levelName", align: "start", sortable: false },
+  { title: t("MyData.table.userData"), key: "uploaded", align: "end", sortable: false },
+  { title: t("levelRequirement.ratio"), key: "ratio", align: "end", sortable: false },
+  { title: t("levelRequirement.seeding"), key: "seeding", align: "end", sortable: false },
+  { title: t("levelRequirement.seedingSize"), key: "seedingSize", align: "end", sortable: false },
+  { title: t("levelRequirement.bonus"), key: "bonus", align: "end", sortable: false },
+  { title: t("common.action"), key: "action", align: "center", width: 92, sortable: false },
+]);
+
+function isRowSelectable(row: IShowUserInfo) {
+  return row.date !== currentDate;
+}
+
+async function fetchHistoryData() {
+  if (!siteId) return;
+  isLoading.value = true;
+  try {
+    siteHistoryData.value = await loadSiteHistoryData(siteId);
+    tableSelected.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+function deleteSiteUserInfo(dates: string[]) {
+  if (!siteId) return;
   if (confirm(t("MyData.HistoryDataView.deleteConfirm"))) {
     sendMessage("removeSiteUserInfo", {
-      siteId: siteId!,
-      date: date.filter((d) => d != currentDate), // 不允许移除当天的数据
+      siteId,
+      date: dates.filter((d) => d !== currentDate), // 不允许移除当天的数据
     }).then(() => {
-      loadSiteHistoryData(siteId!).then((data) => {
-        siteHistoryData.value = data;
-        tableSelected.value = [];
-      });
+      void fetchHistoryData();
     });
   }
 }
@@ -71,167 +103,216 @@ function exportSiteHistoryData() {
   }
 
   const exportedSolutionBlob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-  void downloadBlob(exportedSolutionBlob, `site-history-data-${siteId}.json`); // FIXME filename
+  void downloadBlob(exportedSolutionBlob, `site-history-data-${siteId}.json`);
 }
-
-function afterEnter() {
-  if (siteId) {
-    loadSiteHistoryData(siteId!).then((data) => {
-      siteHistoryData.value = data;
-      tableSelected.value = [];
-    });
-  }
-}
-
-const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useTableColumnFit(tableHeader);
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" width="1200" @after-enter="afterEnter" @after-leave="() => (siteHistoryData = [])">
-    <v-card>
-      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
-        <span class="text-subtitle-1 font-weight-bold">
-          {{ t("MyData.HistoryDataView.title") }} · <SiteName :site-id="siteId!" tag="span" />
-        </span>
-        <v-btn
-          icon="mdi-close"
-          size="small"
-          variant="text"
-          :title="t('common.dialog.close')"
-          @click="showDialog = false"
-        />
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <v-data-table
-          ref="fitTableRef"
-          :class="fitTableClass"
-          v-model="tableSelected"
-          :headers="fittedHeaders"
-          :items="siteHistoryData"
-          :sort-by="[{ key: 'date', order: 'desc' }]"
-          class="table-stripe"
-          hover
-          item-selectable="_selectable"
-          item-value="date"
-          items-per-page="10"
-          show-select
+  <Dialog v-model="showDialog" @after-open="fetchHistoryData" @after-close="() => (siteHistoryData = [])">
+    <DialogContent class="max-w-5xl">
+      <DialogHeader class="flex-row items-center justify-between gap-3 pr-8">
+        <DialogTitle class="flex items-center gap-2">
+          <History class="size-4 text-primary" />
+          <span>{{ t("MyData.HistoryDataView.title") }}</span>
+          <Badge
+            v-if="siteId"
+            variant="secondary"
+            :class="['ml-1 transition-[filter] duration-150', isPrivacyBlurred && 'ptd-privacy-blur']"
+          >
+            <SiteName :site-id="siteId" tag="span" />
+          </Badge>
+        </DialogTitle>
+        <DialogDescription class="sr-only">{{ t("MyData.HistoryDataView.title") }}</DialogDescription>
+        <Button
+          variant="outline"
+          size="xs"
+          :class="isPrivacyBlurred ? 'border-primary/45 bg-primary/12 text-primary' : ''"
+          @click="togglePrivacyBlur"
         >
-          <!-- -->
-          <template #item.date="{ item }">
-            <span class="text-no-wrap">{{ item.date }}</span>
+          <EyeOff v-if="isPrivacyBlurred" class="size-3.5" />
+          <Eye v-else class="size-3.5" />
+          <span>{{ isPrivacyBlurred ? t("MyData.index.privacyBlurred") : t("MyData.index.privacyBlur") }}</span>
+        </Button>
+      </DialogHeader>
+
+      <div class="flex-1 overflow-y-auto">
+        <DataTable
+          v-model:selected="tableSelected"
+          v-model:sort-by="sortBy"
+          v-model:items-per-page="itemsPerPage"
+          :columns="tableColumns"
+          :items="siteHistoryData"
+          row-key="date"
+          selectable
+          :is-row-selectable="isRowSelectable"
+          :loading="isLoading"
+        >
+          <template #cell-date="{ item }">
+            <span
+              :class="[
+                'inline-block whitespace-nowrap font-mono text-xs tabular-nums text-foreground transition-[filter] duration-150',
+                isPrivacyBlurred && 'ptd-privacy-blur',
+              ]"
+            >
+              {{ item.date }}
+            </span>
           </template>
 
-          <!-- 用户名，用户ID -->
-          <template #item.name="{ item }">
-            <span :title="item.id as string" class="text-no-wrap">{{ item.name ?? "-" }}</span>
+          <template #cell-name="{ item }">
+            <span
+              :title="isPrivacyBlurred ? undefined : String(item.id ?? '')"
+              :class="[
+                'inline-block whitespace-nowrap text-xs text-foreground transition-[filter] duration-150',
+                isPrivacyBlurred && 'ptd-privacy-blur',
+              ]"
+            >
+              {{ item.name ?? "-" }}
+            </span>
           </template>
 
-          <!-- 等级 -->
-          <template #item.levelName="{ item }">
-            <span class="text-no-wrap">{{ item.levelName ?? "-" }}</span>
+          <template #cell-levelName="{ item }">
+            <span
+              :class="[
+                'inline-block whitespace-nowrap text-xs text-foreground transition-[filter] duration-150',
+                isPrivacyBlurred && 'ptd-privacy-blur',
+              ]"
+            >
+              {{ item.levelName ?? "-" }}
+            </span>
           </template>
 
-          <!-- 上传、下载 -->
-          <template #item.uploaded="{ item }">
-            <!-- Vuetify 4 的 v-container 自带 16px 内衬、v-row 默认 24px flex gap（相邻两个 v-row 还会再叠一条等宽的 margin-top），
-                 故与 MyData/Index.vue 一致用 py-0 pr-0 + gap="0" 还原紧凑两行；v-icon 的 small 属性在 v4 已移除，需显式写 size="small" -->
-            <div class="d-flex flex-column align-end ptd-num">
-              <div class="d-flex align-center ga-1 text-success font-weight-medium text-no-wrap">
+          <template #cell-uploaded="{ item }">
+            <div
+              :class="[
+                'flex flex-col items-end tabular-nums transition-[filter] duration-150',
+                isPrivacyBlurred && 'ptd-privacy-blur',
+              ]"
+            >
+              <span class="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-success">
                 <span>{{ typeof item.uploaded !== "undefined" ? formatSize(item.uploaded) : "-" }}</span>
-                <v-icon icon="mdi-arrow-up" size="14" />
-              </div>
-              <div class="d-flex align-center ga-1 text-medium-emphasis text-caption text-no-wrap">
+                <ArrowUp class="size-3.5 shrink-0" />
+              </span>
+              <span class="inline-flex items-center gap-1 whitespace-nowrap text-[11px] text-muted-foreground">
                 <span>{{ typeof item.downloaded !== "undefined" ? formatSize(item.downloaded) : "-" }}</span>
-                <v-icon icon="mdi-arrow-down" size="13" />
-              </div>
+                <ArrowDown class="size-3 shrink-0" />
+              </span>
             </div>
           </template>
 
-          <!-- 分享率 -->
-          <template #item.ratio="{ item }">
-            <span class="text-no-wrap">{{ formatRatio(item) }}</span>
+          <template #cell-ratio="{ item }">
+            <span
+              :class="[
+                'inline-block whitespace-nowrap text-xs tabular-nums transition-[filter] duration-150',
+                typeof item.ratio === 'number' && item.ratio >= 0 && item.ratio < 1
+                  ? 'font-semibold text-destructive'
+                  : 'text-foreground',
+                isPrivacyBlurred && 'ptd-privacy-blur',
+              ]"
+            >
+              {{ formatRatio(item) }}
+            </span>
           </template>
 
-          <!-- 发布数 -->
-          <template #item.uploads="{ item }">
-            <span class="text-no-wrap">{{ item.uploads ?? "-" }}</span>
+          <template #cell-seeding="{ item }">
+            <span
+              :class="[
+                'inline-block whitespace-nowrap text-xs tabular-nums transition-[filter] duration-150',
+                isPrivacyBlurred && 'ptd-privacy-blur',
+              ]"
+            >
+              {{ item.seeding ?? "-" }}
+            </span>
           </template>
 
-          <!-- 做种数 -->
-          <template #item.seeding="{ item }">
-            <span class="text-no-wrap">{{ item.seeding ?? "-" }}</span>
-          </template>
-
-          <!-- 做种量 -->
-          <template #item.seedingSize="{ item }">
-            <span class="text-no-wrap">
+          <template #cell-seedingSize="{ item }">
+            <span
+              :class="[
+                'inline-block whitespace-nowrap text-xs tabular-nums transition-[filter] duration-150',
+                isPrivacyBlurred && 'ptd-privacy-blur',
+              ]"
+            >
               {{ typeof item.seedingSize !== "undefined" ? formatSize(item.seedingSize) : "-" }}
             </span>
           </template>
 
-          <!-- 魔力/积分 -->
-          <template #item.bonus="{ item }">
-            <!-- bonus/seedingBonus 允许是站点直接给出的非数字串（如 "N/A"，见 karagarga / seedpool 等定义），
-                 formatNumber 会把它们渲染成 NaN，故与 MyData/Index.vue 一致改用 BonusFormatSpan 承载 -->
-            <v-container class="py-0 pr-0">
-              <v-row gap="0" class="align-center justify-end">
-                <BonusFormatSpan v-if="item.bonus" :num="item.bonus" />
-                <span v-else class="text-no-wrap">-</span>
-              </v-row>
-              <v-row gap="0" class="align-center justify-end">
-                <BonusFormatSpan v-if="item.seedingBonus" :num="item.seedingBonus" />
-                <span v-else class="text-no-wrap">-</span>
-              </v-row>
-            </v-container>
+          <template #cell-bonus="{ item }">
+            <div
+              :class="[
+                'flex flex-col items-end text-xs tabular-nums transition-[filter] duration-150',
+                isPrivacyBlurred && 'ptd-privacy-blur',
+              ]"
+            >
+              <BonusFormatSpan v-if="item.bonus !== undefined && item.bonus !== ''" :num="item.bonus" />
+              <span v-else class="text-muted-foreground">-</span>
+              <BonusFormatSpan
+                v-if="item.seedingBonus !== undefined && item.seedingBonus !== ''"
+                :num="item.seedingBonus"
+                class="text-[11px] text-muted-foreground"
+              />
+            </div>
           </template>
 
-          <!-- 操作 -->
-          <template #item.action="{ item }">
-            <v-btn-group variant="text">
-              <!-- 查看原始记录 -->
-              <v-btn
-                :title="t('MyData.HistoryDataView.action.viewRaw')"
-                icon="mdi-eye"
-                size="small"
-                @click="() => viewStoreData(item)"
-              ></v-btn>
-
-              <!-- 删除 -->
-              <v-btn
-                :disabled="item.status == EResultParseStatus.success && item.date == currentDate"
-                :title="t('common.remove')"
-                color="error"
-                icon="mdi-delete"
-                size="small"
-                @click="() => deleteSiteUserInfo([item.date])"
-              ></v-btn>
-            </v-btn-group>
+          <template #cell-action="{ item }">
+            <div class="inline-flex items-center justify-center gap-1">
+              <Tooltip :content="t('MyData.HistoryDataView.action.viewRaw')">
+                <Button variant="ghost" size="icon-xs" @click="viewStoreData(item)">
+                  <Eye class="size-3.5" />
+                </Button>
+              </Tooltip>
+              <Tooltip :content="t('common.remove')">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  :disabled="item.status == EResultParseStatus.success && item.date == currentDate"
+                  @click="deleteSiteUserInfo([item.date])"
+                >
+                  <Trash2 class="size-3.5" />
+                </Button>
+              </Tooltip>
+            </div>
           </template>
 
-          <template #footer.prepend>
-            <NavButton
-              :disabled="tableSelected.length <= 0"
-              color="error"
-              icon="mdi-delete"
-              :text="t('common.remove')"
-              @click="deleteSiteUserInfo(tableSelected)"
-            />
-            <NavButton color="info" icon="mdi-export" :text="t('common.export')" @click="exportSiteHistoryData" />
-            <v-spacer />
+          <template #footer-prepend>
+            <div class="flex items-center gap-2">
+              <Button
+                variant="destructive"
+                size="xs"
+                :disabled="tableSelected.length <= 0"
+                @click="deleteSiteUserInfo(tableSelected)"
+              >
+                <Trash2 />
+                {{ t("common.remove") }}
+              </Button>
+              <Button variant="outline" size="xs" @click="exportSiteHistoryData">
+                <Download />
+                {{ t("common.export") }}
+              </Button>
+            </div>
           </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
+        </DataTable>
+      </div>
+    </DialogContent>
+  </Dialog>
 
-    <v-dialog v-model="showStoreDataDialog" width="800">
-      <v-card>
-        <v-card-text>
-          <pre> {{ JSON.stringify(jsonData, null, 2) }}</pre>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
-  </v-dialog>
+  <Dialog v-model="showStoreDataDialog">
+    <DialogContent class="max-w-3xl">
+      <DialogHeader class="pr-8">
+        <DialogTitle class="flex items-center gap-2">
+          <Code2 class="size-4 text-primary" />
+          <span>{{ t("MyData.HistoryDataView.action.viewRaw") }}</span>
+          <Badge v-if="jsonData?.date" variant="outline" class="font-mono text-[11px]">{{ jsonData.date }}</Badge>
+        </DialogTitle>
+        <DialogDescription class="sr-only">{{ t("MyData.HistoryDataView.action.viewRaw") }}</DialogDescription>
+      </DialogHeader>
+      <div class="flex-1 overflow-y-auto px-5 py-4">
+        <pre
+          :class="[
+            'max-h-[62vh] overflow-auto rounded-lg border border-border bg-muted/40 p-4 font-mono text-xs leading-relaxed text-foreground transition-[filter] duration-150',
+            isPrivacyBlurred && 'ptd-privacy-blur',
+          ]"
+          >{{ JSON.stringify(jsonData, null, 2) }}</pre>
+      </div>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped lang="scss"></style>

@@ -1,48 +1,76 @@
 <script setup lang="ts">
-import { onMounted, shallowRef } from "vue";
+import { onMounted, shallowRef, watch } from "vue";
 import { NO_IMAGE, type TSiteID } from "@ptd/site";
-
+import { Globe } from "lucide-vue-next";
+import { cn } from "~/lib/utils";
 import { getSiteFavicon } from "./utils.ts";
 
-const {
-  siteId,
-  size = 32,
-  flushOnPre = false,
-  flushOnNoImage = false,
-  flushOnClick = false,
-} = defineProps<{
-  siteId: TSiteID;
-  size?: number;
-  flushOnPre?: boolean;
-  flushOnNoImage?: boolean;
-  flushOnClick?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    siteId: TSiteID;
+    size?: number;
+    flushOnPre?: boolean;
+    flushOnNoImage?: boolean;
+    flushOnClick?: boolean;
+    class?: string;
+  }>(),
+  {
+    size: 20,
+    flushOnPre: false,
+    flushOnNoImage: false,
+    flushOnClick: false,
+  },
+);
 
 const siteFavicon = shallowRef<string>(NO_IMAGE);
+const hasError = shallowRef(false);
 
-onMounted(async () => {
-  let favicon = await getSiteFavicon(siteId, flushOnPre);
-  if (favicon === NO_IMAGE && flushOnNoImage) {
-    favicon = await getSiteFavicon(siteId, true); // 强制刷新
+async function loadFavicon(force = false) {
+  hasError.value = false;
+  let favicon = await getSiteFavicon(props.siteId, force || props.flushOnPre);
+  if (favicon === NO_IMAGE && props.flushOnNoImage && !force) {
+    favicon = await getSiteFavicon(props.siteId, true);
   }
-
   siteFavicon.value = favicon;
-});
-
-function doFlush() {
-  if (!flushOnClick) return;
-  getSiteFavicon(siteId, true).then((favicon) => {
-    siteFavicon.value = favicon;
-  });
 }
 
-const binds = {
-  click: flushOnClick ? doFlush : undefined,
-};
+onMounted(() => {
+  loadFavicon();
+});
+
+watch(
+  () => props.siteId,
+  () => loadFavicon(),
+);
+
+function handleClick() {
+  if (!props.flushOnClick) return;
+  loadFavicon(true);
+}
 </script>
 
 <template>
-  <v-img :height="size" :src="siteFavicon" :width="size" aspect-ratio="1/1" v-on="binds" />
+  <span
+    :style="{ width: `${props.size}px`, height: `${props.size}px` }"
+    :class="
+      cn(
+        'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-sm select-none',
+        props.flushOnClick && 'cursor-pointer transition-transform hover:scale-105',
+        props.class,
+      )
+    "
+    @click="handleClick"
+  >
+    <img
+      v-if="siteFavicon && siteFavicon !== NO_IMAGE && !hasError"
+      :src="siteFavicon"
+      :alt="props.siteId"
+      :width="props.size"
+      :height="props.size"
+      class="size-full object-contain"
+      loading="lazy"
+      @error="hasError = true"
+    />
+    <Globe v-else class="size-3.5 text-muted-foreground/70" />
+  </span>
 </template>
-
-<style scoped lang="scss"></style>

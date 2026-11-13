@@ -330,7 +330,7 @@ export default class QBittorrent extends AbstractBittorrentClient<TorrentClientC
   private syncData: rawSyncMaindata = { rid: 0 };
   private lastSyncTimestamp: number = 0;
   private webApiVersion: string | null = null;
-
+  private autoBypassCSRF: boolean = false;
   constructor(options: Partial<TorrentClientConfig> = {}) {
     super({ ...clientConfig, ...options });
   }
@@ -341,7 +341,7 @@ export default class QBittorrent extends AbstractBittorrentClient<TorrentClientC
 
   // 是否启用「绕过 CSRF 保护」：请求时通过 DNR 移除 Origin 头
   private get bypassCSRF(): boolean {
-    return this.config.feature?.BypassCSRF === true;
+    return this.autoBypassCSRF || this.config.feature?.BypassCSRF === true;
   }
 
   async ping(): Promise<boolean> {
@@ -404,49 +404,85 @@ export default class QBittorrent extends AbstractBittorrentClient<TorrentClientC
 
   // qbt 默认Session时长 3600s，一次登录应该足够进行所有操作
   async login(): Promise<AxiosResponse> {
-    const form = new FormData();
-    form.append("username", this.config.username);
-    form.append("password", this.config.password);
+    const buildForm = () => {
+      const form = new FormData();
+      form.append("username", this.config.username);
+      form.append("password", this.config.password);
+      return form;
+    };
 
-    return await axios.post(urlJoin(this.config.address, "/api/v2", "/auth/login"), form, {
-      timeout: this.config.timeout,
-      withCredentials: true,
-      ...(this.bypassCSRF ? { headers: { origin: "" } } : {}),
-    });
+    const loginUrl = urlJoin(this.config.address, "/api/v2", "/auth/login");
+    try {
+      const res = await axios.post(loginUrl, buildForm(), {
+        timeout: this.config.timeout,
+        withCredentials: true,
+        ...(this.bypassCSRF ? { headers: { origin: "" } } : {}),
+      });
+      if ((res.status === 401 || res.status === 403 || res.data === "Fails.") && !this.bypassCSRF) {
+        const retryRes = await axios.post(loginUrl, buildForm(), {
+          timeout: this.config.timeout,
+          withCredentials: true,
+          headers: { origin: "" },
+        });
+        if (retryRes.data === "Ok." || retryRes.status === 204) {
+          this.autoBypassCSRF = true;
+          return retryRes;
+        }
+      }
+      return res;
+    } catch (err: any) {
+      const status = err?.response?.status ?? 0;
+      if (!this.bypassCSRF && (status === 401 || status === 403 || !status)) {
+        const retryRes = await axios.post(loginUrl, buildForm(), {
+          timeout: this.config.timeout,
+          withCredentials: true,
+          headers: { origin: "" },
+        });
+        this.autoBypassCSRF = true;
+        return retryRes;
+      }
+      throw err;
+    }
   }
 
-  private async request<T>(path: string, config: AxiosRequestConfig = {}): Promise<AxiosResponse<T>> {
+  private async request<T>(path: string, config: AxiosRequestConfig = {}, isRetry = false): Promise<AxiosResponse<T>> {
     if (this.isLogin === null && !this.isApiKeyAuth) {
       await this.ping();
     }
 
-    if (config.method?.toLowerCase() === "post") {
-      config.headers = {
-        ...(config.headers ?? {}),
-        "content-type": "application/x-www-form-urlencoded",
-      };
+    const headers: Record<string, any> = { ...(config.headers ?? {}) };
+    if (config.method?.toLowerCase() === "post" && !(config.data instanceof FormData)) {
+      headers["content-type"] ??= "application/x-www-form-urlencoded";
     }
 
     if (this.isApiKeyAuth) {
-      config.headers = {
-        ...(config.headers ?? {}),
-        Authorization: `Bearer ${this.config.password}`,
-      };
+      headers.Authorization = `Bearer ${this.config.password}`;
     }
 
     if (this.bypassCSRF) {
-      config.headers = {
-        ...(config.headers ?? {}),
-        origin: "", // 空字符串哨兵：replaceUnsafeHeader 拦截器会将其转为移除 Origin 头
-      };
+      headers.origin = ""; // 空字符串哨兵：replaceUnsafeHeader 拦截器会将其转为移除 Origin 头
     }
 
-    return await axios.request<T>({
-      baseURL: this.config.address,
-      url: urlJoin("/api/v2", path),
-      timeout: this.config.timeout,
-      ...config,
-    });
+    try {
+      return await axios.request<T>({
+        baseURL: this.config.address,
+        url: urlJoin("/api/v2", path),
+        timeout: this.config.timeout,
+        withCredentials: true,
+        ...config,
+        headers,
+      });
+    } catch (err: any) {
+      const status = err?.response?.status ?? 0;
+      if (!isRetry && (status === 401 || status === 403)) {
+        this.autoBypassCSRF = true;
+        if (!this.isApiKeyAuth) {
+          await this.ping();
+        }
+        return await this.request<T>(path, config, true);
+      }
+      throw err;
+    }
   }
 
   private async getSyncData(fullSync: boolean = false) {

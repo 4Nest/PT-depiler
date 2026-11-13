@@ -5,6 +5,22 @@ import { isEmpty } from "es-toolkit/compat";
 
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Separator,
+  Switch,
+  Textarea,
+} from "~/components/ui";
 
 const { t } = useI18n();
 const configStore = useConfigStore();
@@ -35,125 +51,136 @@ const promotionDisplayOptions = computed(() => [
 </script>
 
 <template>
-  <v-row>
-    <v-col md="10" lg="8">
-      <v-label>{{ t("SetBase.searchEntity.siteSearchConfig") }}</v-label>
-      <v-number-input
-        v-model="configStore.searchEntity.queueConcurrency"
-        :label="t('SetBase.searchEntity.siteQueueConcurrency')"
-        :max="25"
-        :min="1"
-        controlVariant="default"
-        hide-details
-      />
-
-      <v-row density="compact">
-        <v-col cols="12" md="2" class="d-flex align-center justify-center">
-          <v-label>{{ t("SetBase.searchEntity.searchPlanLabel") }}</v-label>
-        </v-col>
-        <v-col>
-          <v-switch
-            v-model="configStore.searchEntity.allowSingleSiteSearch"
-            :disabled="isEmpty(metadataStore.sites)"
-            :label="t('SetBase.searchEntity.allowSingleSiteSearch')"
-            color="success"
-            hide-details
+  <div class="space-y-5">
+    <!-- 站点搜索配置 -->
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ t("SetBase.searchEntity.siteSearchConfig") }}</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <Label for="search-concurrency">{{ t("SetBase.searchEntity.siteQueueConcurrency") }}</Label>
+          <Input
+            id="search-concurrency"
+            v-model.number="configStore.searchEntity.queueConcurrency"
+            type="number"
+            :min="1"
+            :max="25"
+            class="w-full tabular-nums sm:w-32"
           />
+        </div>
 
-          <v-switch
-            v-model="configStore.searchEntity.treatTTQueryAsImdbSearch"
-            :label="t('SetBase.searchEntity.treatTTQueryAsImdbSearch')"
-            color="success"
-            hide-details
+        <Separator />
+
+        <div class="space-y-3">
+          <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {{ t("SetBase.searchEntity.searchPlanLabel") }}
+          </div>
+          <label
+            class="flex cursor-pointer items-center justify-between gap-4"
+            :class="{ 'cursor-not-allowed opacity-55': isEmpty(metadataStore.sites) }"
           >
-            <template #append>
-              <v-tooltip location="bottom" max-width="400">
-                <template v-slot:activator="{ props }">
-                  <v-icon color="info" icon="mdi-help-circle" v-bind="props" />
-                </template>
-                {{ t("SetBase.searchEntity.imdbTip") }}
-              </v-tooltip>
-            </template>
-          </v-switch>
+            <span class="text-sm font-medium text-foreground">{{
+              t("SetBase.searchEntity.allowSingleSiteSearch")
+            }}</span>
+            <Switch v-model="configStore.searchEntity.allowSingleSiteSearch" :disabled="isEmpty(metadataStore.sites)" />
+          </label>
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-0.5">
+              <div class="text-sm font-medium text-foreground">
+                {{ t("SetBase.searchEntity.treatTTQueryAsImdbSearch") }}
+              </div>
+              <p class="text-xs text-muted-foreground">{{ t("SetBase.searchEntity.imdbTip") }}</p>
+            </div>
+            <Switch v-model="configStore.searchEntity.treatTTQueryAsImdbSearch" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
 
-          <v-divider />
-        </v-col>
-      </v-row>
+    <!-- 结果筛选 -->
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ t("SetBase.searchEntity.filterLabel") }}</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <label class="flex cursor-pointer items-center justify-between gap-4">
+          <span class="text-sm font-medium text-foreground">{{ t("SetBase.searchEntity.saveLastSearchFilter") }}</span>
+          <Switch v-model="configStore.searchEntity.saveLastFilter" @update:model-value="(v) => clearLastFilter(v)" />
+        </label>
 
-      <v-row density="compact">
-        <v-col cols="12" md="2" class="d-flex align-center justify-center">
-          <v-label>{{ t("SetBase.searchEntity.filterLabel") }}</v-label>
-        </v-col>
-        <v-col>
-          <v-switch
-            v-model="configStore.searchEntity.saveLastFilter"
-            :label="t('SetBase.searchEntity.saveLastSearchFilter')"
-            color="success"
-            hide-details
-            @update:model-value="(v) => clearLastFilter(v as boolean)"
-          />
+        <Separator />
 
-          <v-switch
-            v-model="configStore.searchEntity.forceImdbIdMatchFilter"
-            :label="t('SetBase.searchEntity.forceImdbIdMatchFilter')"
-            color="success"
-            hide-details
-          />
+        <label class="flex cursor-pointer items-center justify-between gap-4">
+          <span class="text-sm font-medium text-foreground">{{
+            t("SetBase.searchEntity.forceImdbIdMatchFilter")
+          }}</span>
+          <Switch v-model="configStore.searchEntity.forceImdbIdMatchFilter" />
+        </label>
 
-          <v-switch
-            v-model="configStore.searchEntity.quickSiteFilter"
-            :label="t('SetBase.searchEntity.quickSiteFilter')"
-            color="success"
-            hide-details
-          />
+        <Separator />
 
-          <v-divider />
-        </v-col>
-      </v-row>
+        <label class="flex cursor-pointer items-center justify-between gap-4">
+          <span class="text-sm font-medium text-foreground">{{ t("SetBase.searchEntity.quickSiteFilter") }}</span>
+          <Switch v-model="configStore.searchEntity.quickSiteFilter" />
+        </label>
+      </CardContent>
+    </Card>
 
-      <v-row density="compact">
-        <v-col cols="12" md="2" class="d-flex align-center justify-center">
-          <v-label>{{ t("SetBase.searchEntity.tagLabel") }}</v-label>
-        </v-col>
-        <v-col>
-          <v-select
-            v-model="configStore.searchEntifyControl.promotionDisplay"
-            :items="promotionDisplayOptions"
-            :label="t('SetBase.searchEntity.promotionDisplay')"
-            :messages="t('SetBase.searchEntity.promotionDisplayMessage')"
-            class="mb-2"
-            density="compact"
-          />
+    <!-- 标签与优惠展示 -->
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ t("SetBase.searchEntity.tagLabel") }}</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="space-y-1.5">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span class="text-sm font-medium text-foreground">{{ t("SetBase.searchEntity.promotionDisplay") }}</span>
+            <Select v-model="configStore.searchEntifyControl.promotionDisplay">
+              <SelectTrigger class="w-full sm:w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="opt in promotionDisplayOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.title }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <p class="text-xs text-muted-foreground">{{ t("SetBase.searchEntity.promotionDisplayMessage") }}</p>
+        </div>
 
-          <v-switch
-            v-model="configStore.searchEntity.autoDetectOfficialGroupFromTitle"
-            :label="t('SetBase.searchEntity.autoDetectOfficialGroupFromTitle')"
-            color="success"
-            hide-details
-          />
+        <Separator />
 
-          <v-number-input
-            v-model="configStore.searchEntifyControl.maxTagCountBeforeGroup"
-            :label="t('SetBase.searchEntity.maxTagCountBeforeGroup')"
+        <label class="flex cursor-pointer items-center justify-between gap-4">
+          <span class="text-sm font-medium text-foreground">{{
+            t("SetBase.searchEntity.autoDetectOfficialGroupFromTitle")
+          }}</span>
+          <Switch v-model="configStore.searchEntity.autoDetectOfficialGroupFromTitle" />
+        </label>
+
+        <Separator />
+
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <Label for="max-tag-count">{{ t("SetBase.searchEntity.maxTagCountBeforeGroup") }}</Label>
+          <Input
+            id="max-tag-count"
+            v-model.number="configStore.searchEntifyControl.maxTagCountBeforeGroup"
+            type="number"
             :min="0"
             :max="50"
-            controlVariant="default"
-            hide-details
+            class="w-full tabular-nums sm:w-32"
           />
+        </div>
 
-          <v-textarea
-            v-model="hiddenTagNamesText"
-            :label="t('SetBase.searchEntity.hiddenTagNames')"
-            :messages="t('SetBase.searchEntity.hiddenTagNamesMessage')"
-            class="mt-2"
-            auto-grow
-            clearable
-            rows="5"
-          />
-        </v-col>
-      </v-row>
-    </v-col>
-  </v-row>
+        <Separator />
+
+        <div class="space-y-1.5">
+          <Label for="hidden-tag-names">{{ t("SetBase.searchEntity.hiddenTagNames") }}</Label>
+          <Textarea id="hidden-tag-names" v-model="hiddenTagNamesText" :rows="5" class="font-mono text-xs" />
+          <p class="text-xs text-muted-foreground">{{ t("SetBase.searchEntity.hiddenTagNamesMessage") }}</p>
+        </div>
+      </CardContent>
+    </Card>
+  </div>
 </template>
-
-<style scoped lang="scss"></style>

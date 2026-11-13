@@ -1,13 +1,29 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { isEmpty } from "es-toolkit/compat";
+import { HelpCircle } from "lucide-vue-next";
 
 import { supportTheme } from "@/shared/types.ts";
 import { definedLangMetaData } from "@/options/plugins/i18n.ts";
-
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
-import { isEmpty } from "es-toolkit/compat";
+import {
+  Alert,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Separator,
+  Switch,
+  Tooltip,
+} from "~/components/ui";
 
 const { t } = useI18n();
 const configStore = useConfigStore();
@@ -28,7 +44,6 @@ function initContentScriptExceptionSites() {
 }
 
 function beforeSave() {
-  // 对从低版本升级上来的用户，在启用例外站点时，补全缺失选项
   if (
     configStore.contentScript.enabled &&
     configStore.contentScript.allowExceptionSites &&
@@ -44,212 +59,193 @@ defineExpose({
 </script>
 
 <template>
-  <v-row>
-    <v-col md="10" lg="8">
-      <!-- 插件语言设置 -->
-      <v-select v-model="configStore.lang" :label="t('SetBase.ui.changeLanguage')" :items="definedLangMetaData" />
+  <div class="space-y-5">
+    <!-- 外观与常规交互 -->
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ t("SetBase.tab.ui") }}</CardTitle>
+        <CardDescription>{{ t("SetBase.ui.displayMode.index") }}</CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <span class="text-sm font-medium text-foreground">{{ t("SetBase.ui.changeLanguage") }}</span>
+          <Select v-model="configStore.lang">
+            <SelectTrigger class="w-full sm:w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="lang in definedLangMetaData" :key="lang.value" :value="lang.value">
+                {{ lang.title }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      <!-- 明亮模式设置 -->
-      <v-select v-model="configStore.theme" :label="t('SetBase.ui.displayMode.index')" :items="supportTheme">
-        <template #selection="{ item }">
-          {{ t("SetBase.ui.displayMode." + item) }}
-        </template>
+        <Separator />
 
-        <template #item="{ item, props }">
-          <v-list-item v-bind="props" :title="t('SetBase.ui.displayMode.' + item)" />
-        </template>
-      </v-select>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <span class="text-sm font-medium text-foreground">{{ t("SetBase.ui.displayMode.index") }}</span>
+          <Select v-model="configStore.theme">
+            <SelectTrigger class="w-full sm:w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="mode in supportTheme" :key="mode" :value="mode">
+                {{ t("SetBase.ui.displayMode." + mode) }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      <v-switch
-        v-model="configStore.showReleaseNoteOnVersionChange"
-        color="success"
-        hide-details
-        :label="t('SetBase.ui.showReleaseNote')"
-      />
+        <Separator />
 
-      <v-switch
-        v-model="configStore.autoToggleNavBarOnDisplayChange"
-        color="success"
-        hide-details
-        :label="t('SetBase.ui.autoToggleNavBarOnDisplayChange')"
-      >
-        <template #append>
-          <v-tooltip max-width="400" location="bottom">
-            <template v-slot:activator="{ props }">
-              <v-icon color="info" icon="mdi-help-circle" v-bind="props" />
-            </template>
-            {{ t("SetBase.ui.autoToggleNavBarOnDisplayChangeNote") }}
-          </v-tooltip>
-        </template>
-      </v-switch>
+        <label class="flex cursor-pointer items-center justify-between gap-4">
+          <span class="text-sm font-medium text-foreground">{{ t("SetBase.ui.showReleaseNote") }}</span>
+          <Switch v-model="configStore.showReleaseNoteOnVersionChange" />
+        </label>
 
-      <v-divider />
-    </v-col>
-  </v-row>
+        <Separator />
 
-  <v-row>
-    <v-col md="10" lg="8">
-      <div class="d-flex align-center">
-        <v-label>{{ t("SetBase.ui.dataTable") }}</v-label>
-      </div>
+        <div class="flex items-center justify-between gap-4">
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-1.5 text-sm font-medium text-foreground">
+              <span>{{ t("SetBase.ui.autoToggleNavBarOnDisplayChange") }}</span>
+              <Tooltip :content="t('SetBase.ui.autoToggleNavBarOnDisplayChangeNote')" side="top">
+                <HelpCircle class="size-3.5 text-muted-foreground" />
+              </Tooltip>
+            </div>
+            <p class="text-xs text-muted-foreground">{{ t("SetBase.ui.autoToggleNavBarOnDisplayChangeNote") }}</p>
+          </div>
+          <Switch v-model="configStore.autoToggleNavBarOnDisplayChange" />
+        </div>
+      </CardContent>
+    </Card>
 
-      <v-switch
-        v-model="configStore.saveTableBehavior"
-        color="success"
-        hide-details
-        :label="t('SetBase.ui.saveTableBehavior')"
-      />
+    <!-- 数据表格设置 -->
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ t("SetBase.ui.dataTable") }}</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <label class="flex cursor-pointer items-center justify-between gap-4">
+          <span class="text-sm font-medium text-foreground">{{ t("SetBase.ui.saveTableBehavior") }}</span>
+          <Switch v-model="configStore.saveTableBehavior" />
+        </label>
 
-      <v-switch
-        v-model="configStore.enableTableMultiSort"
-        color="success"
-        hide-details
-        :label="t('SetBase.ui.enableTableMultiSort')"
-      >
-        <template #append>
-          <v-tooltip max-width="400" location="bottom">
-            <template v-slot:activator="{ props }">
-              <v-icon color="info" icon="mdi-help-circle" v-bind="props" />
-            </template>
-            {{ t("SetBase.ui.tableMultiSortNote") }}
-          </v-tooltip>
-        </template>
-      </v-switch>
+        <Separator />
 
-      <v-select
-        v-model="configStore.tableActionColumnPosition"
-        :items="tableActionColumnPositionItems"
-        :label="t('SetBase.ui.tableActionColumnPosition')"
-      />
+        <div class="flex items-start justify-between gap-4">
+          <div class="space-y-0.5">
+            <div class="text-sm font-medium text-foreground">{{ t("SetBase.ui.enableTableMultiSort") }}</div>
+            <p class="text-xs text-muted-foreground">{{ t("SetBase.ui.tableMultiSortNote") }}</p>
+          </div>
+          <Switch v-model="configStore.enableTableMultiSort" />
+        </div>
 
-      <v-switch
-        v-model="configStore.tableActionColumnFixed"
-        color="success"
-        hide-details
-        :label="t('SetBase.ui.tableActionColumnFixed')"
-      >
-        <template #append>
-          <v-tooltip max-width="400" location="bottom">
-            <template v-slot:activator="{ props }">
-              <v-icon color="info" icon="mdi-help-circle" v-bind="props" />
-            </template>
-            {{ t("SetBase.ui.tableActionColumnFixedNote") }}
-          </v-tooltip>
-        </template>
-      </v-switch>
+        <Separator />
 
-      <v-switch
-        v-model="configStore.tableColumnFit"
-        color="success"
-        hide-details
-        :label="t('SetBase.ui.tableColumnFit')"
-      >
-        <template #append>
-          <v-tooltip max-width="400" location="bottom">
-            <template v-slot:activator="{ props }">
-              <v-icon color="info" icon="mdi-help-circle" v-bind="props" />
-            </template>
-            {{ t("SetBase.ui.tableColumnFitNote") }}
-          </v-tooltip>
-        </template>
-      </v-switch>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <span class="text-sm font-medium text-foreground">{{ t("SetBase.ui.tableActionColumnPosition") }}</span>
+          <Select v-model="configStore.tableActionColumnPosition">
+            <SelectTrigger class="w-full sm:w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="pos in tableActionColumnPositionItems" :key="pos.value" :value="pos.value">
+                {{ pos.title }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      <v-divider />
-    </v-col>
-  </v-row>
+        <Separator />
 
-  <v-row>
-    <v-col md="10" lg="8">
-      <div class="d-flex align-center">
-        <v-label>{{ t("SetBase.ui.contentScript") }}</v-label>
-        <v-spacer />
-        <v-switch
-          v-model="configStore.contentScript.enabled"
-          color="success"
-          hide-details
-          :label="t('common.enable')"
-        />
-      </div>
+        <div class="flex items-start justify-between gap-4">
+          <div class="space-y-0.5">
+            <div class="text-sm font-medium text-foreground">{{ t("SetBase.ui.tableActionColumnFixed") }}</div>
+            <p class="text-xs text-muted-foreground">{{ t("SetBase.ui.tableActionColumnFixedNote") }}</p>
+          </div>
+          <Switch v-model="configStore.tableActionColumnFixed" />
+        </div>
 
-      <template v-if="configStore.contentScript.enabled">
-        <v-alert type="warning" variant="tonal"> {{ t("SetBase.ui.contentScriptWarning") }} </v-alert>
+        <Separator />
 
-        <v-row density="compact">
-          <v-col cols="12" md="2" class="d-flex align-center justify-center">
-            <v-label>{{ t("SetBase.ui.basicSettings") }}</v-label>
-          </v-col>
-          <v-col>
-            <v-switch
-              v-model="configStore.contentScript.allowExceptionSites"
-              color="success"
-              hide-details
-              :label="t('SetBase.ui.allowExceptionSites')"
-            />
+        <div class="flex items-start justify-between gap-4">
+          <div class="space-y-0.5">
+            <div class="text-sm font-medium text-foreground">{{ t("SetBase.ui.tableColumnFit") }}</div>
+            <p class="text-xs text-muted-foreground">{{ t("SetBase.ui.tableColumnFitNote") }}</p>
+          </div>
+          <Switch v-model="configStore.tableColumnFit" />
+        </div>
+      </CardContent>
+    </Card>
 
-            <v-divider />
-          </v-col>
-        </v-row>
+    <!-- 内容脚本与站点侧边栏 -->
+    <Card>
+      <CardHeader class="flex-row items-center justify-between gap-4 space-y-0">
+        <div class="space-y-1">
+          <CardTitle>{{ t("SetBase.ui.contentScript") }}</CardTitle>
+          <CardDescription>{{ t("SetBase.ui.contentScriptWarning") }}</CardDescription>
+        </div>
+        <Switch v-model="configStore.contentScript.enabled" />
+      </CardHeader>
 
-        <v-row density="compact">
-          <v-col cols="12" md="2" class="d-flex align-center justify-center">
-            <v-label>{{ t("SetBase.ui.sidebarStyle") }}</v-label>
-          </v-col>
-          <v-col>
-            <v-switch
-              v-model="configStore.contentScript.applyTheme"
-              color="success"
-              hide-details
-              :label="`${t('SetBase.ui.respondDisplayMode')}` + t('SetBase.ui.displayMode.index')"
-            />
+      <CardContent v-if="configStore.contentScript.enabled" class="space-y-4">
+        <Alert variant="warning">
+          {{ t("SetBase.ui.contentScriptWarning") }}
+        </Alert>
 
-            <v-switch
-              v-model="configStore.contentScript.defaultOpenSpeedDial"
-              color="success"
-              hide-details
-              :label="t('SetBase.ui.expandByDefault')"
-            />
-            <v-switch
-              v-model="configStore.contentScript.fadeEnterStyle"
-              color="success"
-              hide-details
-              :label="t('SetBase.ui.enableFadeEffect')"
-            />
-            <v-divider />
-          </v-col>
-        </v-row>
+        <div class="space-y-3">
+          <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {{ t("SetBase.ui.basicSettings") }}
+          </div>
+          <label class="flex cursor-pointer items-center justify-between gap-4">
+            <span class="text-sm font-medium text-foreground">{{ t("SetBase.ui.allowExceptionSites") }}</span>
+            <Switch v-model="configStore.contentScript.allowExceptionSites" />
+          </label>
+        </div>
 
-        <v-row density="compact">
-          <v-col cols="12" md="2" class="d-flex align-center justify-center">
-            <v-label>{{ t("SetBase.ui.sidebarFunctions") }}</v-label>
-          </v-col>
-          <v-col>
-            <v-switch
-              v-model="configStore.contentScript.doubleConfirmAction"
-              color="success"
-              hide-details
-              :label="t('SetBase.ui.confirmTwoStep')"
-            />
+        <Separator />
 
-            <v-switch
-              v-model="configStore.contentScript.dragLinkOnSpeedDial"
-              color="success"
-              hide-details
-              :label="t('SetBase.ui.allowDragLink')"
-            >
-              <template #append>
-                <v-tooltip max-width="400" location="bottom">
-                  <template v-slot:activator="{ props }">
-                    <v-icon color="info" icon="mdi-help-circle" v-bind="props" />
-                  </template>
-                  {{ t("SetBase.ui.dragNote") }}
-                </v-tooltip>
-              </template>
-            </v-switch>
-          </v-col>
-        </v-row>
-      </template>
-    </v-col>
-  </v-row>
+        <div class="space-y-3">
+          <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {{ t("SetBase.ui.sidebarStyle") }}
+          </div>
+          <label class="flex cursor-pointer items-center justify-between gap-4">
+            <span class="text-sm font-medium text-foreground">
+              {{ t("SetBase.ui.respondDisplayMode") }}{{ t("SetBase.ui.displayMode.index") }}
+            </span>
+            <Switch v-model="configStore.contentScript.applyTheme" />
+          </label>
+          <label class="flex cursor-pointer items-center justify-between gap-4">
+            <span class="text-sm font-medium text-foreground">{{ t("SetBase.ui.expandByDefault") }}</span>
+            <Switch v-model="configStore.contentScript.defaultOpenSpeedDial" />
+          </label>
+          <label class="flex cursor-pointer items-center justify-between gap-4">
+            <span class="text-sm font-medium text-foreground">{{ t("SetBase.ui.enableFadeEffect") }}</span>
+            <Switch v-model="configStore.contentScript.fadeEnterStyle" />
+          </label>
+        </div>
+
+        <Separator />
+
+        <div class="space-y-3">
+          <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {{ t("SetBase.ui.sidebarFunctions") }}
+          </div>
+          <label class="flex cursor-pointer items-center justify-between gap-4">
+            <span class="text-sm font-medium text-foreground">{{ t("SetBase.ui.confirmTwoStep") }}</span>
+            <Switch v-model="configStore.contentScript.doubleConfirmAction" />
+          </label>
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-0.5">
+              <div class="text-sm font-medium text-foreground">{{ t("SetBase.ui.allowDragLink") }}</div>
+              <p class="text-xs text-muted-foreground">{{ t("SetBase.ui.dragNote") }}</p>
+            </div>
+            <Switch v-model="configStore.contentScript.dragLinkOnSpeedDial" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  </div>
 </template>
-
-<style scoped lang="scss"></style>

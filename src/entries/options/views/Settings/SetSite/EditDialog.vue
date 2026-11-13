@@ -2,12 +2,14 @@
 import { provide, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { type ISiteUserConfig, type TSiteID } from "@ptd/site";
+import { Check, SlidersHorizontal } from "lucide-vue-next";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
-
+import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 import Editor from "./Editor.vue";
+import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui";
 
-const showDialog = defineModel<boolean>();
+const showDialog = defineModel<boolean>({ default: false });
 const props = defineProps<{
   siteId: TSiteID;
 }>();
@@ -16,7 +18,6 @@ const { t } = useI18n();
 const metadataStore = useMetadataStore();
 
 const isFormValid = ref<boolean>(false);
-
 const storedSiteUserConfig = ref<ISiteUserConfig & { valid?: boolean }>({ valid: false });
 provide("storedSiteUserConfig", storedSiteUserConfig);
 
@@ -34,37 +35,32 @@ function dialogEnter() {
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" max-width="800" scrollable @after-enter="dialogEnter">
-    <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>{{ t("SetSite.edit.title") }}</v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <Editor v-model="props.siteId" @update:form-valid="(v) => (isFormValid = v)" />
-      </v-card-text>
-      <v-divider />
-      <v-card-actions>
-        <v-spacer />
-        <v-btn color="error" prepend-icon="mdi-close-circle" variant="text" @click="showDialog = false">
-          {{ t("common.dialog.cancel") }}
-        </v-btn>
+  <Dialog v-model="showDialog" @after-open="dialogEnter">
+    <DialogContent class="max-w-3xl">
+      <DialogHeader>
+        <DialogTitle>
+          <SlidersHorizontal class="size-4 text-primary" />
+          <span>{{ t("SetSite.edit.title") }}</span>
+          <Badge v-if="props.siteId" variant="secondary" class="ml-1 gap-1.5 font-normal">
+            <SiteFavicon :site-id="props.siteId" :size="14" />
+            <span>{{ metadataStore.siteNameMap[props.siteId] ?? props.siteId }}</span>
+          </Badge>
+        </DialogTitle>
+      </DialogHeader>
 
-        <v-btn
-          :disabled="!isFormValid"
-          color="success"
-          prepend-icon="mdi-check-circle-outline"
-          variant="text"
-          @click="patchSite"
-        >
+      <div class="flex-1 overflow-y-auto px-5 py-4">
+        <Editor v-model="props.siteId" @update:form-valid="(v) => (isFormValid = v)" />
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" @click="showDialog = false">
+          {{ t("common.dialog.cancel") }}
+        </Button>
+        <Button :disabled="!isFormValid" @click="patchSite">
+          <Check class="size-4" />
           {{ t("common.dialog.ok") }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>

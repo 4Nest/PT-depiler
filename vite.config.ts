@@ -5,8 +5,8 @@ import path from "node:path";
 // Vite And it's plugins
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import vuetify from "vite-plugin-vuetify";
 import VueDevTools from "vite-plugin-vue-devtools";
+import tailwindcss from "@tailwindcss/vite";
 import webExtension from "vite-plugin-web-extension";
 
 // @ts-ignore
@@ -72,18 +72,6 @@ export default defineConfig({
     outDir: `dist-${target}`,
     emptyOutDir: true,
   },
-  // Vuetify 4: 强制 Vite 预打包 overlay 相关模块，避免 dev 模式下 useStack 被拆分为
-  // 两份实例导致 dialog 内的 menu/select 等浮层 z-index 计算失效（官方 Upgrade Guide 建议）。
-  // 仅影响 dev 模式；生产构建不受影响。
-  optimizeDeps: {
-    include: [
-      "vuetify/components/VOverlay",
-      "vuetify/components/VDialog",
-      "vuetify/components/VMenu",
-      "vuetify/components/VSelect",
-      "vuetify/components/VTooltip",
-    ],
-  },
   plugins: [
     vitePluginGenerateWebextLocales(),
     vitePluginGenerateSiteIndex(),
@@ -91,9 +79,7 @@ export default defineConfig({
       launchEditor: fs.existsSync(base_path("./.idea")) ? "webstorm" : "vscode",
     }),
     vue(),
-    vuetify({
-      styles: { configFile: "./src/styles/vuetify/settings.scss" },
-    }),
+    tailwindcss(),
     webExtension({
       browser: target,
       disableAutoLaunch: true,
@@ -175,7 +161,7 @@ export default defineConfig({
 
         web_accessible_resources: [
           {
-            resources: ["icons/*", "lib/*", "pt-depiler.css"],
+            resources: ["icons/*", "pt-depiler.css"],
             matches: ["*://*/*"],
           },
           // content script 的按需主逻辑（assets/cs-app.js）及其共享 chunk 依赖链，

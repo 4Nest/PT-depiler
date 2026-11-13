@@ -1,95 +1,105 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { BookOpen, ExternalLink, GitCommitHorizontal, Sparkles } from "lucide-vue-next";
+
 import { useConfigStore } from "@/options/stores/config.ts";
 import { REPO_URL } from "~/helper.ts";
+import {
+  Badge,
+  BrandLogo,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui";
 
-const showDialog = defineModel<boolean>();
-const configStore = useConfigStore();
+const showDialog = defineModel<boolean>({ default: false });
+
 const { t } = useI18n();
+const configStore = useConfigStore();
 
-interface ParsedVersion {
-  versionNumbers: number[]; // 版本号数字部分
-  buildHash: string; // 构建哈希值
-  fullVersion: string; // 完整版本字符串
-}
+const currentVersion = __EXT_VERSION__;
+const gitVersion = __GIT_VERSION__;
 
-function parseVersion(versionString: string): ParsedVersion {
-  const versionPart = versionString.slice(1); // 移除前缀 v 后的部分
-  const [mainVersion, buildHash = ""] = versionPart.split("+"); // 分割版本号和构建哈希
-
-  // 解析版本号数字部分
-  const versionNumbers = mainVersion
-    .split(".")
-    .map((numStr) => parseInt(numStr, 10))
-    .filter((num) => !isNaN(num));
-
-  return {
-    versionNumbers,
-    buildHash,
-    fullVersion: versionString,
-  };
-}
-
-const storeVersion = parseVersion(configStore.version);
-const currentVersion = parseVersion(__EXT_VERSION__);
-const failbackVersion = parseVersion("v0.0.5.1147+23f758f7"); // 这个版本号为引入更新窗口时间点前的发布送审版本号
-const storeBuildHash = computed<string>(() => storeVersion.buildHash || failbackVersion.buildHash);
-
-// const isFirstInstall = computed<boolean>(() => configStore.version === "");
-
-function dialogLeave() {
-  configStore.version = __EXT_VERSION__;
-  configStore.$save();
+function confirmAndClose() {
+  if (configStore.version !== currentVersion) {
+    configStore.version = currentVersion;
+    configStore.$save();
+  }
+  showDialog.value = false;
 }
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" eager persistent width="600" @after-leave="dialogLeave">
-    <v-card>
-      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
-        <span class="text-subtitle-1 font-weight-bold">
-          {{ t("layout.releaseNote.title", { extName: t("manifest.extName") }) }}
-        </span>
-        <v-btn icon="mdi-close" size="small" variant="text" @click="showDialog = false" />
-      </v-card-title>
+  <Dialog v-model="showDialog">
+    <DialogContent class="max-w-md">
+      <DialogHeader>
+        <DialogTitle>
+          <BrandLogo :size="22" class="rounded-md" />
+          <span>PT Depiler Lite</span>
+          <Badge variant="secondary" class="font-mono text-[11px]">{{ currentVersion }}</Badge>
+        </DialogTitle>
+        <DialogDescription>
+          {{ t("layout.releaseNote.title", { extName: "PT Depiler Lite" }) }}
+        </DialogDescription>
+      </DialogHeader>
 
-      <v-card-text class="text-center d-flex">
-        <v-container class="pa-0">
-          <v-row>
-            <v-col>
-              <v-img inline src="/icons/logo/128.png" width="128"></v-img>
-              <br />
-              <div class="d-inline-flex">
-                <span class="text-body-large text-medium-emphasis"
-                  >{{ currentVersion.fullVersion }}{{ t("layout.releaseNote.currentVersion") }}</span
-                >&nbsp;
-              </div>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col>
-              <div class="text-body-large">
-                <a :href="`${REPO_URL}/compare/${storeBuildHash}...${currentVersion.buildHash}`" target="_blank">
-                  {{ t("layout.releaseNote.changelog") }}
-                </a>
-                <v-divider vertical class="mx-2" />
-                <a :href="`${REPO_URL}/releases`" target="_blank">{{ t("layout.releaseNote.wiki") }}</a>
-                <v-divider vertical class="mx-2" />
-                <a :href="`${REPO_URL}/discussions/316`" target="_blank">{{ t("layout.releaseNote.faq") }}</a>
-              </div>
-            </v-col>
-          </v-row>
-        </v-container>
-      </v-card-text>
+      <div class="space-y-3 px-5 py-4 text-xs leading-relaxed text-muted-foreground">
+        <div class="rounded-lg border border-border bg-muted/40 p-3 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-medium text-foreground">当前构建版本</span>
+            <span class="font-mono text-foreground">{{ currentVersion }}</span>
+          </div>
+          <div v-if="gitVersion?.short" class="flex items-center justify-between">
+            <span>Git Commit</span>
+            <a
+              :href="`${REPO_URL}/commit/${gitVersion.long}`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1 font-mono text-primary hover:underline"
+            >
+              <GitCommitHorizontal class="size-3.5" />
+              {{ gitVersion.short }}
+            </a>
+          </div>
+        </div>
 
-      <v-card-actions class="pa-4 pt-2">
-        <v-btn block variant="flat" color="primary" @click="showDialog = false">{{
-          t("layout.releaseNote.startUsing")
-        }}</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+        <div class="grid grid-cols-2 gap-2">
+          <a
+            :href="`${REPO_URL}/releases`"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors hover:bg-accent"
+          >
+            <span class="inline-flex items-center gap-1.5 font-medium">
+              <Sparkles class="size-3.5 text-primary" />
+              Release Notes
+            </span>
+            <ExternalLink class="size-3 text-muted-foreground" />
+          </a>
+          <a
+            :href="`${REPO_URL}/wiki`"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors hover:bg-accent"
+          >
+            <span class="inline-flex items-center gap-1.5 font-medium">
+              <BookOpen class="size-3.5 text-primary" />
+              Wiki & FAQ
+            </span>
+            <ExternalLink class="size-3 text-muted-foreground" />
+          </a>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button class="w-full sm:w-auto" @click="confirmAndClose">
+          {{ t("layout.releaseNote.startUsing") }}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped lang="scss"></style>

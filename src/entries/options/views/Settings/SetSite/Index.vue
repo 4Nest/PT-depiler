@@ -4,14 +4,29 @@ import { vOnLongPress } from "@vueuse/components";
 import type { OnLongPressOptions } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
 import type { TSiteID } from "@ptd/site";
-import type { DataTableHeader } from "vuetify";
+import {
+  ArrowDown,
+  ArrowUp,
+  Crosshair,
+  ExternalLink,
+  Globe,
+  Loader2,
+  Lock,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  Wrench,
+  X,
+} from "lucide-vue-next";
 
 import { sendMessage } from "@/messages.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useTableCustomFilter } from "@/options/directives/useAdvanceFilter.ts";
-import { useTableColumnFit } from "@/options/directives/useTableColumnFit.ts";
 
 import AddDialog from "./AddDialog.vue";
 import EditDialog from "./EditDialog.vue";
@@ -20,10 +35,24 @@ import OneClickImportDialog from "./OneClickImportDialog.vue";
 import RebuildMapDialog from "./RebuildMapDialog.vue";
 import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 import DeleteDialog from "@/options/components/DeleteDialog.vue";
-import NavButton from "@/options/components/NavButton.vue";
-
-// 数据来源
 import { allAddedSiteInfo, type ISiteTableItem } from "./utils.ts";
+import {
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  DataTable,
+  Input,
+  Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Separator,
+  Switch,
+  Tooltip,
+  type DataTableColumn,
+  type DataTableSortItem,
+} from "~/components/ui";
 
 const { t } = useI18n();
 
@@ -37,46 +66,83 @@ const showDeleteDialog = ref<boolean>(false);
 const showOneClickImportDialog = ref<boolean>(false);
 const showRebuildMapDialog = ref<boolean>(false);
 
-const tableHeader = computed(() => {
-  const baseHeaders = [
-    // site favicon
-    { title: "№", key: "userConfig.sortIndex", align: "center" },
-    { title: t("SetSite.common.name"), key: "name", align: "left", sortable: false },
+const tableColumns = computed<DataTableColumn<ISiteTableItem>[]>(() => {
+  const cols: DataTableColumn<ISiteTableItem>[] = [
+    {
+      title: "№",
+      key: "userConfig.sortIndex",
+      align: "center",
+      width: 68,
+      sortable: true,
+    },
+    {
+      title: t("SetSite.common.name"),
+      key: "name",
+      align: "start",
+      sortable: false,
+      minWidth: 150,
+    },
     {
       title: t("SetSite.common.groups"),
       key: "groups",
-      align: "left",
+      align: "start",
       sortable: false,
-      minWidth: "8rem",
+      minWidth: 120,
     },
-    { title: t("SetSite.common.url"), key: "url", align: "start", sortable: false },
-    { title: t("SetSite.common.isOffline"), key: "userConfig.isOffline", align: "center" },
-    { title: t("SetSite.common.allowSearch"), key: "userConfig.allowSearch", align: "center" },
+    {
+      title: t("SetSite.common.url"),
+      key: "url",
+      align: "start",
+      sortable: false,
+      minWidth: 180,
+    },
+    {
+      title: t("SetSite.common.isOffline"),
+      key: "userConfig.isOffline",
+      align: "center",
+      width: 84,
+    },
+    {
+      title: t("SetSite.common.allowSearch"),
+      key: "userConfig.allowSearch",
+      align: "center",
+      width: 88,
+    },
     {
       title: t("SetSite.common.allowQueryUserInfo"),
       key: "userConfig.allowQueryUserInfo",
       align: "center",
+      width: 100,
     },
   ];
+
   if (configStore.contentScript.enabled && configStore.contentScript.allowExceptionSites) {
-    baseHeaders.push({
+    cols.push({
       title: t("SetSite.common.allowContentScript"),
       key: "userConfig.allowContentScript",
       align: "center",
+      width: 96,
     });
   }
 
-  return [...baseHeaders, { title: t("common.action"), key: "action", sortable: false }] as DataTableHeader[];
+  cols.push({
+    title: t("common.action"),
+    key: "action",
+    align: "end",
+    sortable: false,
+    width: 188,
+  });
+
+  return cols;
 });
 
-const booleanUserConfigKeywords = ["isOffline", "allowSearch", "allowQueryUserInfo"];
+const booleanUserConfigKeywords = ["isOffline", "allowSearch", "allowQueryUserInfo"] as const;
 
 const {
   tableWaitFilterRef,
   tableFilterRef,
   tableFilterFn,
   advanceFilterDictRef,
-  toggleKeywordStateFn,
   buildFilterDictFn,
   updateTableFilterValueFn,
 } = useTableCustomFilter<ISiteTableItem>({
@@ -88,6 +154,69 @@ const {
     ...Object.fromEntries(booleanUserConfigKeywords.map((x) => [`userConfig.${x}`, "boolean"])),
   },
 });
+
+function getBooleanFilterState(field: string): boolean | "indeterminate" {
+  const entry = advanceFilterDictRef.value[field];
+  if (!entry) return false;
+  if (entry.required?.includes("1")) return true;
+  if (entry.exclude?.includes("1")) return "indeterminate";
+  return false;
+}
+
+function cycleBooleanFilterState(field: string) {
+  const entry = advanceFilterDictRef.value[field] ?? { required: [], exclude: [] };
+  if (entry.required?.includes("1")) {
+    entry.required = [];
+    entry.exclude = ["1"];
+  } else if (entry.exclude?.includes("1")) {
+    entry.required = [];
+    entry.exclude = [];
+  } else {
+    entry.required = ["1"];
+    entry.exclude = [];
+  }
+  advanceFilterDictRef.value[field] = entry;
+  updateTableFilterValueFn();
+}
+
+function getGroupFilterState(group: string): boolean | "indeterminate" {
+  const entry = advanceFilterDictRef.value["userConfig.groups"];
+  if (!entry) return false;
+  if (entry.required?.includes(group)) return true;
+  if (entry.exclude?.includes(group)) return "indeterminate";
+  return false;
+}
+
+function cycleGroupFilterState(group: string) {
+  const entry = advanceFilterDictRef.value["userConfig.groups"] ?? { required: [], exclude: [] };
+  if (entry.required?.includes(group)) {
+    entry.required = entry.required.filter((x: string) => x !== group);
+    entry.exclude = [...(entry.exclude ?? []), group];
+  } else if (entry.exclude?.includes(group)) {
+    entry.exclude = entry.exclude.filter((x: string) => x !== group);
+  } else {
+    entry.required = [...(entry.required ?? []), group];
+  }
+  advanceFilterDictRef.value["userConfig.groups"] = entry;
+  updateTableFilterValueFn();
+}
+
+const activeFilterCount = computed(() => {
+  let count = 0;
+  for (const kw of booleanUserConfigKeywords) {
+    if (getBooleanFilterState(`userConfig.${kw}`) !== false) count++;
+  }
+  const groupEntry = advanceFilterDictRef.value["userConfig.groups"];
+  if (groupEntry) {
+    count += (groupEntry.required?.length ?? 0) + (groupEntry.exclude?.length ?? 0);
+  }
+  return count;
+});
+
+function clearSearchAndFilter() {
+  tableWaitFilterRef.value = "";
+  buildFilterDictFn("");
+}
 
 const tableSelected = ref<TSiteID[]>([]);
 
@@ -110,23 +239,23 @@ async function confirmDeleteSite(siteId: TSiteID) {
 const isFaviconFlushing = ref(false);
 async function flushSiteFavicon(siteId: TSiteID | TSiteID[]) {
   const siteIds = Array.isArray(siteId) ? siteId : [siteId];
-  for (const id of siteIds) {
-    await sendMessage("getSiteFavicon", { site: id, flush: true });
+  isFaviconFlushing.value = true;
+  try {
+    for (const id of siteIds) {
+      await sendMessage("getSiteFavicon", { site: id, flush: true });
+    }
+    runtimeStore.showSnackbar(t("SetSite.index.flushFaviconFinish"), { color: "success" });
+  } finally {
+    isFaviconFlushing.value = false;
   }
-  runtimeStore.showSnackbar(t("SetSite.index.flushFaviconFinish"), { color: "success" });
 }
 
-// 站点 id 列表（按优先级降序排列，与表格中按 userConfig.sortIndex 排序时的顺序一致）
 const orderedSiteIds = computed(() => metadataStore.getSortedAddedSites.map((x) => x.id));
 
-// 表格排序中的优先级列：快捷排序只在排序包含优先级时才有意义，否则改优先级不会让行移动
-// （见 #1597 里提出者的反馈；多列排序时只要排序里带了优先级即可，不要求它排在第一列）
 const sortIndexSortBy = computed(() =>
   (configStore.tableBehavior.SetSite.sortBy ?? []).find((sortBy) => sortBy.key === "userConfig.sortIndex"),
 );
 const isSortBySortIndex = computed(() => sortIndexSortBy.value !== undefined);
-
-// 优先级按升序排列时，视觉上的「上移/移至最前」对应优先级的下降，需要反转位置
 const isSortIndexAsc = computed(() => sortIndexSortBy.value?.order === "asc");
 
 function resolveSortIndexPosition(position: "up" | "down" | "top" | "bottom"): "up" | "down" | "top" | "bottom" {
@@ -144,7 +273,7 @@ function resolveSortIndexPosition(position: "up" | "down" | "top" | "bottom"): "
 }
 
 function canMoveSiteSortIndex(siteId: TSiteID, direction: "up" | "down") {
-  if (!isSortBySortIndex.value) return false; // 未按优先级排序时禁用快捷排序
+  if (!isSortBySortIndex.value) return false;
   const index = orderedSiteIds.value.indexOf(siteId);
   const position = resolveSortIndexPosition(direction);
   return position === "up" ? index > 0 : index !== -1 && index < orderedSiteIds.value.length - 1;
@@ -157,16 +286,7 @@ async function moveSiteSortIndex(siteId: TSiteID, position: "up" | "down" | "top
   }
 }
 
-// 站点排序按钮：短按（点击）移动一位，长按移至最前/最后
-const SORT_INDEX_LONG_PRESS_DELAY = 600; // 短按与长按的分界（ms）
-
-/**
- * 两种操作都交给 v-on-long-press 的 pointer 事件驱动，不再另挂 @click：
- * · 长按 → 上面的 handler，移至最前 / 最后；
- * · 短按 → onMouseUp 的 !isLongPress 分支，移动一位；
- * · `modifiers.prevent` 按文档挡掉浏览器在释放时补发的兼容 click（触摸输入），
- *   这样也不会有「长按完又被当成一次点击」的余波。
- */
+const SORT_INDEX_LONG_PRESS_DELAY = 600;
 function sortIndexLongPressBinding(siteId: TSiteID, position: "up" | "down"): [() => void, OnLongPressOptions] {
   const edgePosition = position === "up" ? "top" : "bottom";
   return [
@@ -181,286 +301,351 @@ function sortIndexLongPressBinding(siteId: TSiteID, position: "up" | "down"): [(
   ];
 }
 
-const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useTableColumnFit(tableHeader);
+function formatSiteDescription(desc: string | string[] | undefined): string {
+  if (!desc) return "";
+  return Array.isArray(desc) ? desc.join("\n") : desc;
+}
 </script>
 
 <template>
-  <v-card class="set-site">
-    <v-card-title class="pa-4 border-b">
-      <div class="d-flex flex-wrap align-center ga-2">
-        <NavButton
-          :text="t('common.btn.add')"
-          color="primary"
-          variant="flat"
-          icon="mdi-plus"
-          @click="showAddDialog = true"
-        />
+  <Card class="overflow-hidden">
+    <!-- 顶部工具栏 -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <Button size="sm" @click="showAddDialog = true">
+          <Plus class="size-4" />
+          {{ t("common.btn.add") }}
+        </Button>
 
-        <NavButton
-          :disabled="tableSelected.length === 0"
-          :text="t('common.remove')"
-          color="error"
-          icon="mdi-minus"
-          @click="deleteSite(tableSelected)"
-        />
+        <Button variant="outline" size="sm" @click="showOneClickImportDialog = true">
+          <Crosshair class="size-4" />
+          {{ t("SetSite.index.oneClickImport") }}
+        </Button>
 
-        <v-divider class="mx-1" vertical />
+        <Separator orientation="vertical" class="mx-0.5 h-5" />
 
-        <NavButton
-          color="secondary"
-          icon="mdi-crosshairs-gps"
-          :text="t('SetSite.index.oneClickImport')"
-          @click="() => (showOneClickImportDialog = true)"
-        />
-
-        <v-divider class="mx-1" vertical />
-
-        <NavButton
-          :disabled="tableSelected.length === 0"
-          :loading="isFaviconFlushing"
-          :text="t('SetSite.index.table.flushFavicon')"
-          color="secondary"
-          icon="mdi-face-recognition"
-          @click="() => flushSiteFavicon(tableSelected)"
-        />
-
-        <NavButton
-          :text="t('SetSite.index.reBuildMap')"
-          color="secondary"
-          icon="mdi-wrench"
-          @click="showRebuildMapDialog = true"
-        />
-
-        <v-spacer />
-        <v-text-field
-          v-model="tableWaitFilterRef"
-          append-icon="mdi-magnify"
-          clearable
-          density="compact"
-          hide-details
-          label="Search"
-          max-width="500"
-          single-line
-          @click:clear="buildFilterDictFn('')"
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="tableSelected.length === 0 || isFaviconFlushing"
+          @click="flushSiteFavicon(tableSelected)"
         >
-          <template #prepend-inner>
-            <v-menu min-width="100">
-              <template v-slot:activator="{ props }">
-                <v-icon icon="mdi-filter" v-bind="props" @click="buildFilterDictFn('')" />
-              </template>
-              <v-list class="pa-0">
-                <v-list-item v-for="keyword in booleanUserConfigKeywords" :key="keyword">
-                  <v-checkbox
-                    v-model="advanceFilterDictRef[`userConfig.${keyword}`].required"
-                    :label="t(`SetSite.common.${keyword}`)"
-                    density="compact"
-                    hide-details
-                    indeterminate
-                    true-value="1"
-                    @click.stop="(v: any) => toggleKeywordStateFn(`userConfig.${keyword}`, '1')"
-                    @update:model-value="() => updateTableFilterValueFn()"
-                  ></v-checkbox>
-                </v-list-item>
+          <Loader2 v-if="isFaviconFlushing" class="size-4 animate-spin" />
+          <RefreshCw v-else class="size-4" />
+          {{ t("SetSite.index.table.flushFavicon") }}
+        </Button>
 
-                <v-divider />
-
-                <v-list-item-subtitle class="ma-2">{{ t("SetSite.common.groups") }}</v-list-item-subtitle>
-                <v-list-item
-                  v-for="(item, index) in metadataStore.getSitesGroupData"
-                  :key="index"
-                  :value="index"
-                  class="pr-6"
-                >
-                  <v-checkbox
-                    v-model="advanceFilterDictRef[`userConfig.groups`].required"
-                    :label="`${index} (${item.length})`"
-                    :value="index"
-                    density="compact"
-                    hide-details
-                    indeterminate
-                    @click.stop="(v: any) => toggleKeywordStateFn(`userConfig.groups`, index)"
-                    @update:model-value="() => updateTableFilterValueFn()"
-                  ></v-checkbox>
-                </v-list-item>
-              </v-list>
-            </v-menu>
-          </template>
-        </v-text-field>
+        <Button
+          variant="destructive"
+          size="sm"
+          :disabled="tableSelected.length === 0"
+          @click="deleteSite(tableSelected)"
+        >
+          <Trash2 class="size-4" />
+          {{ t("common.remove") }}
+        </Button>
       </div>
-    </v-card-title>
-    <v-data-table
-      ref="fitTableRef"
-      :class="fitTableClass"
-      v-model="tableSelected"
-      :headers="fittedHeaders"
-      :items="allAddedSiteInfo"
-      :items-per-page="configStore.tableBehavior.SetSite.itemsPerPage"
-      :custom-filter="tableFilterFn"
-      :filter-keys="['id'] /* 对每个item值只检索一次 */"
+
+      <div class="flex flex-wrap items-center gap-2">
+        <Button variant="ghost" size="sm" @click="showRebuildMapDialog = true">
+          <Wrench class="size-4" />
+          {{ t("SetSite.index.reBuildMap") }}
+        </Button>
+
+        <div class="flex items-center gap-1.5">
+          <Popover @update:open="(open) => open && buildFilterDictFn(tableWaitFilterRef)">
+            <PopoverTrigger as-child>
+              <Button variant="outline" size="sm" class="relative gap-1.5 px-2.5">
+                <SlidersHorizontal class="size-3.5" />
+                <Badge v-if="activeFilterCount > 0" variant="default" class="h-4 px-1 text-[10px] tabular-nums">
+                  {{ activeFilterCount }}
+                </Badge>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" class="w-72 p-3">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-foreground">{{ t("common.advancedSettings") }}</span>
+                  <button
+                    v-if="activeFilterCount > 0"
+                    type="button"
+                    class="text-[11px] text-primary hover:underline"
+                    @click="clearSearchAndFilter"
+                  >
+                    {{ t("common.dialog.reset") }}
+                  </button>
+                </div>
+
+                <div class="space-y-1.5">
+                  <div
+                    v-for="keyword in booleanUserConfigKeywords"
+                    :key="keyword"
+                    class="flex cursor-pointer items-center justify-between rounded-md px-1.5 py-1 hover:bg-muted/50"
+                    @click="cycleBooleanFilterState(`userConfig.${keyword}`)"
+                  >
+                    <div class="flex items-center gap-2">
+                      <Checkbox
+                        :model-value="getBooleanFilterState(`userConfig.${keyword}`)"
+                        @click.stop
+                        @update:model-value="cycleBooleanFilterState(`userConfig.${keyword}`)"
+                      />
+                      <Label class="cursor-pointer text-xs font-normal">
+                        {{ t(`SetSite.common.${keyword}`) }}
+                      </Label>
+                    </div>
+                    <span class="text-[10px] text-muted-foreground">
+                      {{
+                        getBooleanFilterState(`userConfig.${keyword}`) === true
+                          ? "✓"
+                          : getBooleanFilterState(`userConfig.${keyword}`) === "indeterminate"
+                            ? "−"
+                            : ""
+                      }}
+                    </span>
+                  </div>
+                </div>
+
+                <template v-if="Object.keys(metadataStore.getSitesGroupData).length > 0">
+                  <Separator />
+                  <div class="space-y-1.5">
+                    <div class="text-xs font-medium text-muted-foreground">
+                      {{ t("SetSite.common.groups") }}
+                    </div>
+                    <div class="max-h-48 space-y-1 overflow-y-auto pr-1">
+                      <div
+                        v-for="(item, groupName) in metadataStore.getSitesGroupData"
+                        :key="groupName"
+                        class="flex cursor-pointer items-center justify-between rounded-md px-1.5 py-1 hover:bg-muted/50"
+                        @click="cycleGroupFilterState(String(groupName))"
+                      >
+                        <div class="flex min-w-0 items-center gap-2">
+                          <Checkbox
+                            :model-value="getGroupFilterState(String(groupName))"
+                            @click.stop
+                            @update:model-value="cycleGroupFilterState(String(groupName))"
+                          />
+                          <span class="truncate text-xs text-foreground">{{ groupName }}</span>
+                        </div>
+                        <span class="text-[11px] text-muted-foreground tabular-nums">({{ item.length }})</span>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <div class="relative w-56 sm:w-64">
+            <Search
+              class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input v-model="tableWaitFilterRef" :placeholder="t('common.search')" class="h-8 pl-8 pr-7 text-xs" />
+            <button
+              v-if="tableWaitFilterRef"
+              type="button"
+              class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+              @click="clearSearchAndFilter"
+            >
+              <X class="size-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 站点表格 -->
+    <DataTable
+      v-model:selected="tableSelected"
+      :columns="tableColumns"
+      :items="allAddedSiteInfo ?? []"
+      row-key="id"
+      selectable
       :search="tableFilterRef"
-      :sort-by="configStore.tableBehavior.SetSite.sortBy"
-      class="table-stripe table-header-no-wrap"
-      item-value="id"
+      :filter-keys="['id']"
+      :custom-filter="tableFilterFn"
+      :sort-by="configStore.tableBehavior.SetSite.sortBy ?? []"
+      :items-per-page="configStore.tableBehavior.SetSite.itemsPerPage ?? -1"
       :multi-sort="configStore.enableTableMultiSort"
-      hover
-      show-select
-      @update:itemsPerPage="(v) => configStore.updateTableBehavior('SetSite', 'itemsPerPage', v)"
-      @update:sortBy="(v) => configStore.updateTableBehavior('SetSite', 'sortBy', v)"
+      :sticky-action-column="configStore.tableActionColumnFixed"
+      :action-position="configStore.tableActionColumnPosition"
+      @update:items-per-page="(v: number) => configStore.updateTableBehavior('SetSite', 'itemsPerPage', v)"
+      @update:sort-by="(v: DataTableSortItem[]) => configStore.updateTableBehavior('SetSite', 'sortBy', v)"
     >
-      <template #item.userConfig.sortIndex="{ item }">
-        <div class="d-flex">
-          <SiteFavicon :site-id="item.id" />
+      <template #cell-userConfig.sortIndex="{ item }">
+        <div class="flex flex-col items-center justify-center gap-0.5">
+          <SiteFavicon :site-id="item.id" :size="20" />
+          <span class="text-[10px] leading-none text-muted-foreground tabular-nums">
+            {{ item.userConfig.sortIndex ?? 0 }}
+          </span>
         </div>
       </template>
-      <template #item.name="{ item }">
-        <span>
-          <!-- 与一键导入对话框保持一致：锁 = 私有，地球 = 公开。
-               图标放在描述 tooltip 的 activator（内层 span）之外，免得 hover 图标时两个 tooltip 一起弹。 -->
-          <v-icon
-            :color="item.metadata.type === 'private' ? 'primary' : 'secondary'"
-            :icon="item.metadata.type === 'private' ? 'mdi-lock' : 'mdi-web'"
-            :title="
+
+      <template #cell-name="{ item }">
+        <div class="flex items-center gap-1.5">
+          <Tooltip
+            :content="
               t(item.metadata.type === 'private' ? 'SetSite.common.siteTypePrivate' : 'SetSite.common.siteTypePublic')
             "
-            class="mr-1"
-            size="14"
-          />
-          <span>
-            {{ item.userConfig?.merge?.name ?? item.metadata?.name }}
-            <v-tooltip max-width="400" v-if="item.metadata.description" activator="parent">
-              <span v-if="typeof item.metadata.description === 'string'">{{ item.metadata.description }}</span>
-              <ul v-else>
-                <li v-for="(text, index) in item.metadata.description" :key="index">{{ text }}</li>
-              </ul>
-            </v-tooltip>
-          </span>
-        </span>
+          >
+            <Lock v-if="item.metadata.type === 'private'" class="size-3.5 shrink-0 text-primary" />
+            <Globe v-else class="size-3.5 shrink-0 text-muted-foreground" />
+          </Tooltip>
+
+          <Tooltip :content="formatSiteDescription(item.metadata.description)" :disabled="!item.metadata.description">
+            <span class="font-medium text-foreground">
+              {{ item.userConfig?.merge?.name ?? item.metadata?.name }}
+            </span>
+          </Tooltip>
+
+          <Badge v-if="item.metadata.isDead" variant="destructive" class="px-1.5 py-0 text-[10px]">
+            {{ t("SetSite.common.isOffline") }}
+          </Badge>
+        </div>
       </template>
-      <template #item.groups="{ item }">
-        {{ (item.userConfig.groups ?? []).join(", ") }}
+
+      <template #cell-groups="{ item }">
+        <div class="flex flex-wrap gap-1">
+          <Badge
+            v-for="group in item.userConfig.groups ?? []"
+            :key="group"
+            variant="secondary"
+            class="px-1.5 py-0 text-[11px] font-normal"
+          >
+            {{ group }}
+          </Badge>
+          <span v-if="!item.userConfig.groups?.length" class="text-xs text-muted-foreground/60">—</span>
+        </div>
       </template>
-      <template #item.url="{ item }">
+
+      <template #cell-url="{ item }">
         <a
           :href="item.userConfig?.url ?? item.metadata?.urls?.[0]"
-          class="text-primary font-weight-medium text-decoration-underline"
-          rel="noopener noreferrer nofollow"
           target="_blank"
+          rel="noopener noreferrer nofollow"
+          class="inline-flex max-w-[240px] items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-4"
         >
-          {{ item.userConfig?.url ?? item.metadata?.urls?.[0] }}
-          <v-icon icon="mdi-open-in-new" size="x-small"></v-icon>
+          <span class="truncate font-mono">{{ item.userConfig?.url ?? item.metadata?.urls?.[0] }}</span>
+          <ExternalLink class="size-3 shrink-0" />
         </a>
       </template>
-      <template #item.userConfig.isOffline="{ item }">
-        <v-switch
-          v-model="item.userConfig.isOffline"
-          :disabled="item.metadata.isDead"
-          class="table-switch-btn"
-          color="success"
-          hide-details
-          @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'isOffline', v as boolean)"
-        />
-      </template>
-      <template #item.userConfig.allowSearch="{ item }">
-        <v-switch
-          v-model="item.userConfig.allowSearch"
-          :disabled="item.metadata.isDead || item.userConfig.isOffline || !item.metadata.hasSearch"
-          class="table-switch-btn"
-          color="success"
-          hide-details
-          @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'allowSearch', v as boolean)"
-        />
-      </template>
-      <template #item.userConfig.allowQueryUserInfo="{ item }">
-        <v-switch
-          v-model="item.userConfig.allowQueryUserInfo"
-          :disabled="item.metadata.isDead || item.userConfig.isOffline || !item.metadata.hasUserInfo"
-          class="table-switch-btn"
-          color="success"
-          hide-details
-          @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'allowQueryUserInfo', v as boolean)"
-        />
-      </template>
-      <template #item.userConfig.allowContentScript="{ item }">
-        <v-switch
-          v-model="item.userConfig.allowContentScript"
-          :disabled="item.metadata.isDead || item.userConfig.isOffline"
-          class="table-switch-btn"
-          color="success"
-          hide-details
-          @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'allowContentScript', v as boolean)"
-        />
-      </template>
-      <template #item.action="{ item }">
-        <v-btn-group class="table-action" density="compact" variant="plain">
-          <!-- 站点信息编辑 -->
-          <v-btn
-            :disabled="item.metadata.isDead"
-            :title="t('common.edit')"
-            color="info"
-            icon="mdi-pencil"
-            size="small"
-            @click="() => editSite(item.id)"
-          />
 
-          <!-- 默认站点搜索入口编辑（只有配置了 siteMetadata.searchEntry 的站点才支持该设置） -->
-          <v-btn
-            :title="t('SetSite.index.table.searchEntries')"
-            :disabled="item.metadata.isDead || !item.metadata.searchEntries"
-            class="v-btn--icon"
-            size="small"
-          >
-            <v-icon icon="mdi-magnify"></v-icon>
-            <v-menu :close-on-content-click="false" activator="parent">
+      <template #cell-userConfig.isOffline="{ item }">
+        <div class="flex justify-center">
+          <Switch
+            :model-value="Boolean(item.userConfig.isOffline)"
+            :disabled="Boolean(item.metadata.isDead)"
+            @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'isOffline', v)"
+          />
+        </div>
+      </template>
+
+      <template #cell-userConfig.allowSearch="{ item }">
+        <div class="flex justify-center">
+          <Switch
+            :model-value="Boolean(item.userConfig.allowSearch)"
+            :disabled="Boolean(item.metadata.isDead || item.userConfig.isOffline || !item.metadata.hasSearch)"
+            @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'allowSearch', v)"
+          />
+        </div>
+      </template>
+
+      <template #cell-userConfig.allowQueryUserInfo="{ item }">
+        <div class="flex justify-center">
+          <Switch
+            :model-value="Boolean(item.userConfig.allowQueryUserInfo)"
+            :disabled="Boolean(item.metadata.isDead || item.userConfig.isOffline || !item.metadata.hasUserInfo)"
+            @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'allowQueryUserInfo', v)"
+          />
+        </div>
+      </template>
+
+      <template #cell-userConfig.allowContentScript="{ item }">
+        <div class="flex justify-center">
+          <Switch
+            :model-value="Boolean(item.userConfig.allowContentScript)"
+            :disabled="Boolean(item.metadata.isDead || item.userConfig.isOffline)"
+            @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'allowContentScript', v)"
+          />
+        </div>
+      </template>
+
+      <template #cell-action="{ item }">
+        <div class="inline-flex items-center justify-end gap-0.5">
+          <Tooltip :content="t('common.edit')">
+            <Button variant="ghost" size="icon-xs" :disabled="Boolean(item.metadata.isDead)" @click="editSite(item.id)">
+              <Pencil class="size-3.5 text-info" />
+            </Button>
+          </Tooltip>
+
+          <Popover>
+            <Tooltip :content="t('SetSite.index.table.searchEntries')">
+              <PopoverTrigger as-child>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  :disabled="Boolean(item.metadata.isDead || !item.metadata.searchEntries)"
+                >
+                  <Search class="size-3.5 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+            </Tooltip>
+            <PopoverContent align="end" class="w-64 p-3">
               <EditSearchEntryList :item="item" />
-            </v-menu>
-          </v-btn>
+            </PopoverContent>
+          </Popover>
 
-          <v-divider class="mx-1" inset vertical />
+          <Separator orientation="vertical" class="mx-0.5 h-3.5" />
 
-          <!-- 站点排序（短按：与相邻站点交换位置；长按：移至最前/最后，均要求表格按优先级排序） -->
-          <v-btn
-            v-on-long-press="sortIndexLongPressBinding(item.id, 'up')"
-            :disabled="!canMoveSiteSortIndex(item.id, 'up')"
-            :title="isSortBySortIndex ? t('SetSite.index.table.moveUp') : t('SetSite.index.table.moveNeedSortIndex')"
-            color="orange"
-            icon="mdi-arrow-up"
-            size="small"
-          />
-
-          <v-btn
-            v-on-long-press="sortIndexLongPressBinding(item.id, 'down')"
-            :disabled="!canMoveSiteSortIndex(item.id, 'down')"
-            :title="isSortBySortIndex ? t('SetSite.index.table.moveDown') : t('SetSite.index.table.moveNeedSortIndex')"
-            color="orange"
-            icon="mdi-arrow-down"
-            size="small"
-          />
-
-          <!-- 刷新站点图标 -->
-          <v-btn
-            :disabled="item.metadata.isDead"
-            :loading="isFaviconFlushing"
-            :title="t('SetSite.index.table.flushFavicon')"
-            color="indigo"
-            icon="mdi-face-recognition"
-            size="small"
-            @click="() => flushSiteFavicon(item.id)"
-          ></v-btn>
-
-          <v-divider class="mx-1" inset vertical />
-
-          <v-btn
-            :title="t('common.remove')"
-            color="error"
-            icon="mdi-delete"
-            size="small"
-            @click="() => deleteSite([item.id])"
+          <Tooltip
+            :content="isSortBySortIndex ? t('SetSite.index.table.moveUp') : t('SetSite.index.table.moveNeedSortIndex')"
           >
-          </v-btn>
-        </v-btn-group>
+            <Button
+              v-on-long-press="sortIndexLongPressBinding(item.id, 'up')"
+              variant="ghost"
+              size="icon-xs"
+              :disabled="!canMoveSiteSortIndex(item.id, 'up')"
+            >
+              <ArrowUp class="size-3.5 text-warning" />
+            </Button>
+          </Tooltip>
+
+          <Tooltip
+            :content="
+              isSortBySortIndex ? t('SetSite.index.table.moveDown') : t('SetSite.index.table.moveNeedSortIndex')
+            "
+          >
+            <Button
+              v-on-long-press="sortIndexLongPressBinding(item.id, 'down')"
+              variant="ghost"
+              size="icon-xs"
+              :disabled="!canMoveSiteSortIndex(item.id, 'down')"
+            >
+              <ArrowDown class="size-3.5 text-warning" />
+            </Button>
+          </Tooltip>
+
+          <Tooltip :content="t('SetSite.index.table.flushFavicon')">
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              :disabled="Boolean(item.metadata.isDead) || isFaviconFlushing"
+              @click="flushSiteFavicon(item.id)"
+            >
+              <RefreshCw class="size-3.5 text-primary" />
+            </Button>
+          </Tooltip>
+
+          <Separator orientation="vertical" class="mx-0.5 h-3.5" />
+
+          <Tooltip :content="t('common.remove')">
+            <Button variant="ghost" size="icon-xs" @click="deleteSite([item.id])">
+              <Trash2 class="size-3.5 text-destructive" />
+            </Button>
+          </Tooltip>
+        </div>
       </template>
-    </v-data-table>
-  </v-card>
+    </DataTable>
+  </Card>
 
   <AddDialog v-model="showAddDialog" />
   <DeleteDialog v-model="showDeleteDialog" :to-delete-ids="toDeleteIds" :confirm-delete="confirmDeleteSite" />
@@ -468,5 +653,3 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
   <OneClickImportDialog v-model="showOneClickImportDialog" />
   <RebuildMapDialog v-model="showRebuildMapDialog" />
 </template>
-
-<style scoped lang="scss"></style>

@@ -1,67 +1,68 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { AlertTriangle, Loader2, Trash2 } from "lucide-vue-next";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui";
 
 type TDeleteId = any;
+type ConfirmDeleteFn = (toDeleteId: TDeleteId) => Promise<void> | void;
 
-const showDialog = defineModel<boolean>();
+const showDialog = defineModel<boolean>({ default: false });
+
 const { toDeleteIds, confirmDelete: confirmDeleteFn } = defineProps<{
   toDeleteIds: TDeleteId[];
-  confirmDelete: (toDeleteId: TDeleteId) => Promise<void> | void;
+  confirmDelete: ConfirmDeleteFn;
 }>();
+
 const emits = defineEmits<{
   (e: "allDelete"): void;
 }>();
 
 const { t } = useI18n();
-
 const isDeleting = ref(false);
 
-async function confirmDelete() {
+async function handleConfirm() {
   isDeleting.value = true;
-  await Promise.allSettled(toDeleteIds.map((toDeleteId) => confirmDeleteFn(toDeleteId)));
-  isDeleting.value = false;
-  showDialog.value = false;
-  emits("allDelete");
-}
-
-async function dialogEnter() {
-  isDeleting.value = false;
+  try {
+    await Promise.allSettled(toDeleteIds.map((id) => confirmDeleteFn(id)));
+    showDialog.value = false;
+    emits("allDelete");
+  } finally {
+    isDeleting.value = false;
+  }
 }
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" :persistent="isDeleting" width="300" @after-enter="dialogEnter">
-    <v-card>
-      <v-card-title class="bg-red-lighten-2">
-        {{ t("common.dialog.title.confirmAction") }}
-      </v-card-title>
-
-      <v-card-text class="text-body-large">
-        {{ t("common.dialog.deleteText", [toDeleteIds!.length]) }}
-
-        <slot name="append-text" />
-      </v-card-text>
-
-      <v-divider />
-
-      <v-card-actions>
-        <v-spacer />
-        <v-btn color="info" prepend-icon="mdi-close-circle" variant="text" @click="showDialog = false">
-          <span class="ml-1">{{ t("common.dialog.cancel") }}</span>
-        </v-btn>
-        <v-btn
-          :loading="isDeleting"
-          color="error"
-          prepend-icon="mdi-check-circle-outline"
-          variant="text"
-          @click="confirmDelete"
-        >
-          <span class="ml-1">{{ t("common.dialog.ok") }}</span>
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <Dialog v-model="showDialog" @after-open="isDeleting = false">
+    <DialogContent class="max-w-md" :prevent-outside-close="isDeleting" :hide-close="isDeleting">
+      <DialogHeader>
+        <DialogTitle class="text-destructive">
+          <AlertTriangle class="size-4 text-destructive" />
+          {{ t("common.dialog.title.confirmAction") }}
+        </DialogTitle>
+        <DialogDescription>
+          {{ t("common.dialog.deleteText", [toDeleteIds.length]) }}
+        </DialogDescription>
+      </DialogHeader>
+      <DialogFooter>
+        <Button variant="outline" :disabled="isDeleting" @click="showDialog = false">
+          {{ t("common.dialog.cancel") }}
+        </Button>
+        <Button variant="destructive" :disabled="isDeleting" @click="handleConfirm">
+          <Loader2 v-if="isDeleting" class="size-4 animate-spin" />
+          <Trash2 v-else class="size-4" />
+          {{ t("common.dialog.ok") }}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped lang="scss"></style>

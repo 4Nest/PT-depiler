@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { type IImplicitUserInfo, type ILevelRequirement, IUserInfo } from "@ptd/site";
+import { CornerDownRight } from "lucide-vue-next";
+import { type IImplicitUserInfo, type ILevelRequirement, type IUserInfo } from "@ptd/site";
 
 import UserLevelsComponent from "./UserLevelsComponent.vue";
 
@@ -7,7 +8,7 @@ const {
   nextLevelUnMet,
   userInfo,
   showNextLevelName = true,
-  iconClass = "mr-3",
+  iconClass = "",
 } = defineProps<{
   nextLevelUnMet: Partial<IImplicitUserInfo & { level?: ILevelRequirement }>;
   userInfo: IUserInfo;
@@ -17,12 +18,11 @@ const {
 </script>
 
 <template>
-  <!-- 计算剩余升级情况 -->
-  <v-icon icon="mdi-keyboard-tab" color="orange" size="small" :class="iconClass" />
-
-  <span v-if="showNextLevelName && nextLevelUnMet.level">{{ nextLevelUnMet.level.name }}:&nbsp;</span>
-
-  <UserLevelsComponent :user-info="userInfo" :level-requirement="nextLevelUnMet" :hide-ratio-in-table="true" />
+  <span class="inline-flex flex-wrap items-center gap-1 text-xs">
+    <CornerDownRight :class="['size-3.5 shrink-0 text-warning', iconClass]" />
+    <span v-if="showNextLevelName && nextLevelUnMet.level" class="font-medium text-foreground">
+      {{ nextLevelUnMet.level.name }}:
+    </span>
+    <UserLevelsComponent :user-info="userInfo" :level-requirement="nextLevelUnMet" :hide-ratio-in-table="true" />
+  </span>
 </template>
-
-<style scoped lang="scss"></style>

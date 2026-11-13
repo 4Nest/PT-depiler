@@ -20,9 +20,42 @@ import {
   GridComponent,
   type GridComponentOption,
 } from "echarts/components";
+import {
+  ArrowLeft,
+  CalendarRange,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  EyeOff,
+  ImageDown,
+  Lock,
+  RotateCcw,
+  Save,
+  SlidersHorizontal,
+  Unlock,
+} from "lucide-vue-next";
 
 import { NO_IMAGE } from "@ptd/site";
 
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Checkbox,
+  Input,
+  Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui";
 import { downloadBlob, formatSize, formatDate } from "@/options/utils.ts";
 import { IStoredUserInfo } from "@/shared/types.ts";
 
@@ -31,7 +64,6 @@ import { useConfigStore } from "@/options/stores/config.ts";
 
 import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 import SiteName from "@/options/components/SiteName.vue";
-import NavButton from "@/options/components/NavButton.vue";
 import CheckSwitchButton from "@/options/components/CheckSwitchButton.vue";
 
 import { type IUserDataStatistic, loadFullData, setSubDate } from "./utils.ts";
@@ -53,9 +85,13 @@ const router = useRouter();
 const configStore = useConfigStore();
 const chartContainerRef = useTemplateRef<HTMLDivElement>("chartContainer");
 const { width: containerWidth } = useElementSize(chartContainerRef);
-const perChartHeight = computed(() => 400);
+const perChartHeight = 380;
 
 const allowEditName = ref<boolean>(false);
+const showControlPanel = ref<boolean>(true);
+const customStartDate = ref<string>("");
+const customEndDate = ref<string>("");
+const customRangePopoverOpen = ref<boolean>(false);
 
 const rawDataRef = shallowRef<IUserDataStatistic>({ siteDateRange: {}, dailyUserInfo: {}, incrementalData: {} });
 
@@ -79,7 +115,7 @@ const selectedDataComputed = computed<IUserDataStatistic["dailyUserInfo"]>(() =>
 function getTotalDataByField(field: keyof IStoredUserInfo) {
   return selectedDateRanges.value.map((x) =>
     Object.values(selectedDataComputed.value[x] ?? {})
-      .map((x: IStoredUserInfo) => x[field])
+      .map((item: IStoredUserInfo) => item[field])
       .filter(isNumber)
       .reduce((a, b) => (a ?? 0) + (b ?? 0), 0),
   ) as number[];
@@ -93,16 +129,13 @@ const formatDict = {
 
 function createTotalInfoTooltipFormatter(type: (keyof typeof formatDict)[]) {
   return function (params: any) {
-    let result = "<div>" + params[0].name + "</div>";
+    let result = `<div style="font-weight:600;margin-bottom:4px;">${params[0].name}</div>`;
     params.forEach(function (param: any) {
       const formatFunction = formatDict[type[param.seriesIndex] ?? "number"];
-
       result +=
-        `<div style='color: ${param.color}'>` +
+        `<div style="color:${param.color};display:flex;align-items:center;gap:6px;">` +
         param.marker +
-        param.seriesName +
-        ": " +
-        formatFunction(param.value) +
+        `<span>${param.seriesName}: <strong>${formatFunction(param.value)}</strong></span>` +
         "</div>";
     });
     return result;
@@ -116,10 +149,11 @@ const totalSiteBaseInfoChartOptions = computed(() => {
   const seedingBonus = getTotalDataByField("seedingBonus");
 
   return {
+    backgroundColor: "transparent",
     title: {
       text: `[${configStore.userName}] ${t("UserDataStatistic.chart.totalSiteBase")}`,
-      subtext: `${t("UserDataStatistic.chart.uploadLabel")}: ${formatSize(uploaded.at(-1)!)}, ${t("UserDataStatistic.chart.downloadLabel")}: ${formatSize(downloaded.at(-1)!)}, ${t("levelRequirement.bonus")}: ${(bonus.at(-1) ?? 0).toFixed(2)}, ${t("levelRequirement.seedingBonus")}: ${(seedingBonus.at(-1) ?? 0).toFixed(2)}`,
-      left: "center", // 设置标题居中
+      subtext: `${t("UserDataStatistic.chart.uploadLabel")}: ${formatSize(uploaded.at(-1) ?? 0)}, ${t("UserDataStatistic.chart.downloadLabel")}: ${formatSize(downloaded.at(-1) ?? 0)}, ${t("levelRequirement.bonus")}: ${(bonus.at(-1) ?? 0).toFixed(2)}, ${t("levelRequirement.seedingBonus")}: ${(seedingBonus.at(-1) ?? 0).toFixed(2)}`,
+      left: "center",
     },
     tooltip: {
       trigger: "axis",
@@ -132,11 +166,11 @@ const totalSiteBaseInfoChartOptions = computed(() => {
         t("levelRequirement.bonus"),
         t("levelRequirement.seedingBonus"),
       ],
-      bottom: 10,
+      bottom: 6,
       orient: "horizontal",
     },
-    grid: { left: "3%", right: "4%", bottom: "10%", containLabel: true },
-    xAxis: { type: "category", boundaryGap: false, data: selectedDateRanges.value }, // 时间轴
+    grid: { left: "3%", right: "4%", bottom: "12%", containLabel: true },
+    xAxis: { type: "category", boundaryGap: false, data: selectedDateRanges.value },
     yAxis: [
       {
         type: "value",
@@ -165,10 +199,11 @@ const totalSiteSeedingInfoChartOptions = computed(() => {
   const seedingSize = getTotalDataByField("seedingSize");
 
   return {
+    backgroundColor: "transparent",
     title: {
       text: `[${configStore.userName}] ${t("UserDataStatistic.chart.totalSiteSeeding")}`,
-      subtext: `${t("UserDataStatistic.chart.seedingSizeLabel")}: ${formatSize(seedingSize.at(-1)!)}, ${t("common.count")}: ${(seeding.at(-1) ?? 0).toFixed(2)}`,
-      left: "center", // 设置标题居中
+      subtext: `${t("UserDataStatistic.chart.seedingSizeLabel")}: ${formatSize(seedingSize.at(-1) ?? 0)}, ${t("common.count")}: ${(seeding.at(-1) ?? 0).toFixed(0)}`,
+      left: "center",
     },
     tooltip: {
       trigger: "axis",
@@ -176,11 +211,11 @@ const totalSiteSeedingInfoChartOptions = computed(() => {
     },
     legend: {
       data: [t("UserDataStatistic.chart.seedingSizeLabel"), t("UserDataStatistic.chart.seedingLabel")],
-      bottom: 10,
+      bottom: 6,
       orient: "horizontal",
     },
-    grid: { left: "3%", right: "4%", bottom: "10%", outerBoundsMode: "same", outerBoundsContain: "axisLabel" },
-    xAxis: { type: "category", boundaryGap: false, data: selectedDateRanges.value }, // 时间轴
+    grid: { left: "3%", right: "4%", bottom: "12%", containLabel: true },
+    xAxis: { type: "category", boundaryGap: false, data: selectedDateRanges.value },
     yAxis: [
       {
         type: "value",
@@ -208,11 +243,10 @@ const totalSiteSeedingInfoChartOptions = computed(() => {
   } as EChartsLineChartOption;
 });
 
-// Echart 不支持在 tooltip 中直接获取鼠标悬停的系列索引，所以我们需要通过 mousemove 事件手动记录
 const lastHoveredSeriesIndex = ref<number>(-1);
 
 function updateLastHoveredSeriesIndex(data: any) {
-  lastHoveredSeriesIndex.value = data?.seriesIndex ?? -1; // 获取鼠标悬停的系列索引
+  lastHoveredSeriesIndex.value = data?.seriesIndex ?? -1;
 }
 
 const createPerSiteChartOptionsFn = (
@@ -224,16 +258,13 @@ const createPerSiteChartOptionsFn = (
     const series = selectedSites.value.map((site) => {
       let data;
       if (incr) {
-        // 使用预计算的增量数据，大幅提升性能
         data = selectedDateRanges.value.map((date) => {
           const incrementalValue = rawDataRef.value.incrementalData[site]?.[date]?.[field];
-          // 修正：强制转换为数字，避免 NaN 或字符串
           return isNumber(incrementalValue) ? incrementalValue : Number(incrementalValue) || 0;
         });
       } else {
         data = selectedDateRanges.value.map((date) => {
           const val = selectedDataComputed.value[date]?.[site]?.[field];
-          // 修正：强制转换为数字，避免 NaN 或字符串
           return isNumber(val) ? val : Number(val) || 0;
         });
       }
@@ -252,6 +283,7 @@ const createPerSiteChartOptionsFn = (
     const seriesTotal = series.map((x) => ({ name: x.name, value: x.data.reduce((a, b) => a + b, 0) }));
 
     return {
+      backgroundColor: "transparent",
       title: {
         text: `[${configStore.userName}] ${t("UserDataStatistic.chart.perSiteK" + field + (incr ? "Incr" : ""))}`,
         left: "center",
@@ -263,30 +295,29 @@ const createPerSiteChartOptionsFn = (
         },
         formatter: (params: any[]) => {
           let ret = "";
-          const date = params?.[0]?.name ?? "No Date"; // 从params 中拿到日期
-          ret += `<span class="font-weight-bold">${date}</span><br>`;
+          const date = params?.[0]?.name ?? "No Date";
+          ret += `<div style="font-weight:600;margin-bottom:4px;">${date}</div>`;
 
           const hasData = params.some((x) => Number(x.data));
-          const totalCount = params.reduce((acc, cur) => acc + (Number(cur.data) || 0), 0); // 算出总和
-          let thresholdSite = 0; // 低于阈值的站点数量
+          const totalCount = params.reduce((acc, cur) => acc + (Number(cur.data) || 0), 0);
+          let thresholdSite = 0;
 
           if (hasData) {
-            ret += '<table style="width: 100%;">';
-            ret += `<tr class="font-weight-bold" style="border-bottom: 1pt solid black;"><td class="pr-3">${t("UserDataStatistic.chart.totalLabel")}</td><td class="pr-3 text-right">${formatDict[format](totalCount)}</td><td class="text-right">100%</td></tr>`;
+            ret += '<table style="width: 100%; border-collapse: collapse;">';
+            ret += `<tr style="font-weight:600;border-bottom:1px solid rgba(128,128,128,0.35);"><td style="padding-right:12px;">${t("UserDataStatistic.chart.totalLabel")}</td><td style="padding-right:12px;text-align:right;">${formatDict[format](totalCount)}</td><td style="text-align:right;">100%</td></tr>`;
 
-            const sortedParams = params.sort((a, b) => b.data - a.data);
+            const sortedParams = [...params].sort((a, b) => b.data - a.data);
 
             for (const data of sortedParams) {
               const dataValue = Number(data.data) || 0;
+              if (dataValue === 0) continue;
 
-              if (dataValue === 0) continue; // 跳过无数据的站点
               const site = data.seriesName;
               const siteName = allAddedSiteMetadata[site]?.siteName ?? site;
               const siteFavicon = allAddedSiteMetadata[site]?.faviconSrc ?? NO_IMAGE;
-              const precentValue = (dataValue / totalCount) * 100;
-              const isHighlightSite = lastHoveredSeriesIndex.value === data.seriesIndex; // 是否高亮此行
+              const precentValue = totalCount !== 0 ? (dataValue / totalCount) * 100 : 0;
+              const isHighlightSite = lastHoveredSeriesIndex.value === data.seriesIndex;
 
-              // 跳过低于阈值且没有高亮的站点
               if (
                 !isHighlightSite &&
                 Math.abs(precentValue) < (configStore.userStatisticControl.hidePerSitePrecentThreshold ?? 0)
@@ -295,15 +326,15 @@ const createPerSiteChartOptionsFn = (
                 continue;
               }
 
-              ret += `<tr style='${isHighlightSite ? `color: ${data.color};` : ""}'>
-<td class="pr-3"><div class="d-inline-flex align-center"><img src="${siteFavicon}" class="mr-1" style="width:16px; height: 16px; " alt="${siteName}">${siteName}</div></td>
-<td class="pr-3 text-right">${formatDict[format](data.value)}</td>
-<td class="text-right">${precentValue.toFixed(2)}%</td>
+              ret += `<tr style="${isHighlightSite ? `color:${data.color};` : ""}">
+<td style="padding-right:12px;"><div style="display:inline-flex;align-items:center;"><img src="${siteFavicon}" style="width:16px;height:16px;margin-right:4px;" alt="${siteName}">${siteName}</div></td>
+<td style="padding-right:12px;text-align:right;">${formatDict[format](data.value)}</td>
+<td style="text-align:right;">${precentValue.toFixed(2)}%</td>
 </tr>`;
             }
 
             if (thresholdSite > 0) {
-              ret += `<tr><td colspan="3" class="text-right">${t("UserDataStatistic.chart.hiddenSites", { count: thresholdSite })}</td></tr>`;
+              ret += `<tr><td colspan="3" style="text-align:right;">${t("UserDataStatistic.chart.hiddenSites", { count: thresholdSite })}</td></tr>`;
             }
 
             ret += "</table>";
@@ -316,13 +347,13 @@ const createPerSiteChartOptionsFn = (
       },
       legend: {
         data: seriesTotal.sort((a, b) => b.value - a.value).map((x) => x.name),
-        bottom: 10,
+        bottom: 6,
         orient: "horizontal",
         type: "scroll",
-        formatter: (site) => allAddedSiteMetadata[site].siteName ?? site,
+        formatter: (site) => allAddedSiteMetadata[site]?.siteName ?? site,
       },
-      grid: { left: "3%", right: "4%", bottom: "10%", outerBoundsMode: "same", outerBoundsContain: "axisLabel" },
-      xAxis: { type: "category", boundaryGap: true, data: selectedDateRanges.value }, // 所有柱状图都使用 boundaryGap: true
+      grid: { left: "3%", right: "4%", bottom: "14%", containLabel: true },
+      xAxis: { type: "category", boundaryGap: true, data: selectedDateRanges.value },
       yAxis: [
         { type: "value", name: t("UserDataStatistic.chart.dataLabel"), axisLabel: { formatter: formatDict[format] } },
       ],
@@ -339,34 +370,28 @@ const perSiteChartField: [keyof IStoredUserInfo, keyof typeof formatDict][] = [
   ["seedingBonus", "number"],
 ] as const;
 
-// echarts 主题
 const echartsTheme = computed(() => (configStore.uiTheme === "dark" ? "dark" : null));
 provide(THEME_KEY, echartsTheme);
 
 onMounted(async () => {
   rawDataRef.value = await loadFullData();
-
-  // 加载所有站点的元数据
   await loadAllAddedSiteMetadata(Object.keys(rawDataRef.value.siteDateRange));
 
-  // 从路由中加载默认参数
   const { days = -1, sites = [] } = route.query ?? {};
-
   const dateRange = (days as number) > 0 ? days : configStore.userStatisticControl.dateRange;
 
-  // noinspection SuspiciousTypeOfGuard
   if (typeof dateRange === "number") {
     selectedDateRanges.value = setSubDate(dateRange);
   } else {
-    // 我们不保存上一次自定义时间段的范围，所以如果上一次是自定义时间段，则默认显示所有数据
     if (dateRange === "custom") {
       configStore.userStatisticControl.dateRange = "all";
     }
-
     selectedDateRanges.value = allDateRanges.value;
   }
 
-  // 勾选站点，优先使用 route 参数，其次是上次保存的配置，最后是全部站点
+  customStartDate.value = selectedDateRanges.value[0] ?? allDateRanges.value[0] ?? "";
+  customEndDate.value = selectedDateRanges.value.at(-1) ?? allDateRanges.value.at(-1) ?? "";
+
   if ((sites as string[]).length > 0) {
     selectedSites.value = sites as string[];
   } else if ((configStore.userStatisticControl.selectedSites ?? []).length > 0) {
@@ -380,37 +405,64 @@ onMounted(async () => {
   }
 });
 
+function selectDayRange(day: number) {
+  configStore.userStatisticControl.dateRange = day;
+  selectedDateRanges.value = setSubDate(day);
+}
+
+function selectAllRange() {
+  configStore.userStatisticControl.dateRange = "all";
+  selectedDateRanges.value = allDateRanges.value;
+}
+
+function applyCustomDateRange() {
+  if (!customStartDate.value || !customEndDate.value) return;
+  const start = new Date(`${customStartDate.value}T00:00:00`);
+  const end = new Date(`${customEndDate.value}T00:00:00`);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return;
+  selectedDateRanges.value = eachDayOfInterval({ start, end }).map((x) => formatDate(x, "yyyy-MM-dd")) as string[];
+  configStore.userStatisticControl.dateRange = "custom";
+  customRangePopoverOpen.value = false;
+}
+
+function toggleSite(siteId: string, checked: boolean | "indeterminate") {
+  if (checked === true) {
+    if (!selectedSites.value.includes(siteId)) {
+      selectedSites.value = [...selectedSites.value, siteId];
+    }
+  } else {
+    selectedSites.value = selectedSites.value.filter((id) => id !== siteId);
+  }
+}
+
 function exportStatisticImg() {
   const createdAt = formatDate(new Date());
-  const mainCanvas = document.createElement("canvas");
-  const chartsCanvas = document.querySelectorAll("#chartContainer canvas");
+  const chartsCanvas = Array.from(document.querySelectorAll("#chartContainer canvas")) as HTMLCanvasElement[];
+  if (chartsCanvas.length === 0) return;
 
-  mainCanvas.width = containerWidth.value;
-  mainCanvas.height = (perChartHeight.value + 10) * chartsCanvas.length + 10;
+  const targetWidth = Math.max(...chartsCanvas.map((c) => c.clientWidth), containerWidth.value || 700);
+  const mainCanvas = document.createElement("canvas");
+  mainCanvas.width = targetWidth;
+  mainCanvas.height = (perChartHeight + 16) * chartsCanvas.length + 24;
 
   const ctx = mainCanvas.getContext("2d") as CanvasRenderingContext2D;
-
-  // 填充白色背景
-  ctx.fillStyle = "white";
+  ctx.fillStyle = configStore.uiTheme === "dark" ? "#0b1120" : "#ffffff";
   ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
 
-  // 将 echart 图表渲染到 canvas 上
-  let yIndex = 0;
+  let yIndex = 8;
   for (const chartCanvas of chartsCanvas) {
-    ctx.drawImage(chartCanvas as HTMLCanvasElement, 0, yIndex, chartCanvas.clientWidth, chartCanvas.clientHeight);
-    yIndex += perChartHeight.value + 10;
+    const drawW = chartCanvas.clientWidth || targetWidth;
+    const drawH = chartCanvas.clientHeight || perChartHeight;
+    const offsetX = Math.max(0, (targetWidth - drawW) / 2);
+    ctx.drawImage(chartCanvas, offsetX, yIndex, drawW, drawH);
+    yIndex += drawH + 16;
   }
 
-  // 在 canvas 上添加右对齐文字
-  ctx.font = "12px Arial";
-  ctx.fillStyle = "#b5b5b5";
-  ctx.textAlign = "right"; // 设置文字右对齐
+  ctx.font = "12px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.textAlign = "right";
+  ctx.fillText(`Created By PT-Depiler (${__EXT_VERSION__}) at ${createdAt}`, targetWidth - 12, yIndex + 4);
 
-  const textX = containerWidth.value - 10; // 距离右侧边缘 10px
-  const textY = yIndex;
-  ctx.fillText("Created By PT-Depiler (" + __EXT_VERSION__ + ") at " + createdAt, textX, textY);
-
-  // 导出图片：这个导出很快（只是把已有图表 canvas 拼起来 + 编码），不加 loading，免得按钮白闪一下
   mainCanvas.toBlob((blob) => {
     if (blob) {
       void downloadBlob(
@@ -429,231 +481,321 @@ function saveControl() {
 </script>
 
 <template>
-  <v-card>
-    <v-row class="justify-start pa-2">
-      <v-col ref="chartContainer" id="chartContainer" style="max-width: 800px">
-        <!-- 总上传、总下载、总积分 -->
+  <div class="space-y-4">
+    <!-- 顶部控制栏 -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <Button variant="outline" size="sm" @click="router.back()">
+          <ArrowLeft />
+          {{ t("common.back") }}
+        </Button>
+        <div>
+          <h1 class="text-lg font-semibold tracking-tight text-foreground">{{ t("MyData.index.viewStatistic") }}</h1>
+          <p
+            :class="[
+              'text-xs text-muted-foreground tabular-nums transition-[filter] duration-150',
+              configStore.myDataTableControl.privacyBlur && 'ptd-privacy-blur',
+            ]"
+          >
+            {{ selectedDateRanges[0] ?? "-" }} ~ {{ selectedDateRanges.at(-1) ?? "-" }} · {{ selectedSites.length }}
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          :class="
+            configStore.myDataTableControl.privacyBlur
+              ? 'border-primary/45 bg-primary/12 text-primary hover:bg-primary/18 hover:text-primary'
+              : ''
+          "
+          @click="
+            () => {
+              configStore.myDataTableControl.privacyBlur = !configStore.myDataTableControl.privacyBlur;
+              configStore.$save();
+            }
+          "
+        >
+          <EyeOff v-if="configStore.myDataTableControl.privacyBlur" />
+          <Eye v-else />
+          <span>
+            {{
+              configStore.myDataTableControl.privacyBlur
+                ? t("MyData.index.privacyBlurred")
+                : t("MyData.index.privacyBlur")
+            }}
+          </span>
+        </Button>
+        <Button variant="outline" size="sm" @click="showControlPanel = !showControlPanel">
+          <SlidersHorizontal />
+          <span>{{ t("UserDataStatistic.chart.chartStyleSettings") }}</span>
+          <ChevronUp v-if="showControlPanel" class="size-3.5" />
+          <ChevronDown v-else class="size-3.5" />
+        </Button>
+        <Button variant="secondary" size="sm" @click="exportStatisticImg">
+          <ImageDown />
+          {{ t("common.exportImage") }}
+        </Button>
+        <Button size="sm" @click="saveControl">
+          <Save />
+          {{ t("common.saveSettings") }}
+        </Button>
+      </div>
+    </div>
+
+    <!-- 样式与筛选配置卡 -->
+    <Card v-if="showControlPanel">
+      <CardHeader class="border-b border-border py-3">
+        <CardTitle class="text-sm">{{ t("UserDataStatistic.chart.chartStyleSettings") }}</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-5 pt-4">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <!-- 用户名 -->
+          <div class="space-y-1.5">
+            <Label class="text-xs">{{ t("common.username") }}</Label>
+            <div
+              :class="[
+                'flex items-center gap-1.5 transition-[filter] duration-150',
+                configStore.myDataTableControl.privacyBlur && 'ptd-privacy-blur',
+              ]"
+            >
+              <Button
+                variant="outline"
+                size="icon-sm"
+                :class="allowEditName ? 'border-success/50 text-success' : ''"
+                @click="allowEditName = !allowEditName"
+              >
+                <Unlock v-if="allowEditName" />
+                <Lock v-else />
+              </Button>
+              <Select
+                v-if="!allowEditName && Object.keys(configStore.getUserNames.names).length > 0"
+                v-model="configStore.userName"
+              >
+                <SelectTrigger class="h-8 flex-1 text-xs">
+                  <SelectValue :placeholder="t('common.username')" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="(_, name) in configStore.getUserNames.names" :key="name" :value="String(name)">
+                    {{ name }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Input v-else v-model="configStore.userName" :readonly="!allowEditName" class="h-8 flex-1 text-xs" />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                :title="t('common.dialog.reset')"
+                @click="configStore.userName = configStore.getUserNames.perfName"
+              >
+                <RotateCcw />
+              </Button>
+            </div>
+          </div>
+
+          <!-- 时间段选择 -->
+          <div class="space-y-1.5">
+            <Label class="text-xs">{{ t("UserDataStatistic.chart.dateRange") }}</Label>
+            <div class="flex flex-wrap items-center gap-1 rounded-md border border-border bg-muted/40 p-0.5">
+              <Button
+                v-for="day in [7, 30, 60, 90, 180]"
+                :key="day"
+                :variant="configStore.userStatisticControl.dateRange === day ? 'secondary' : 'ghost'"
+                size="xs"
+                :class="configStore.userStatisticControl.dateRange === day ? 'bg-background shadow-2xs' : ''"
+                @click="selectDayRange(day)"
+              >
+                {{ t("UserDataStatistic.dateRange.day", [day]) }}
+              </Button>
+              <Popover v-model:open="customRangePopoverOpen">
+                <PopoverTrigger as-child>
+                  <Button
+                    :variant="configStore.userStatisticControl.dateRange === 'custom' ? 'secondary' : 'ghost'"
+                    size="xs"
+                    :class="configStore.userStatisticControl.dateRange === 'custom' ? 'bg-background shadow-2xs' : ''"
+                  >
+                    <CalendarRange class="size-3" />
+                    {{ t("UserDataStatistic.dateRange.custom") }}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" class="w-72 space-y-3 p-3.5">
+                  <div class="space-y-1.5">
+                    <Label class="text-xs">{{ t("common.AdvanceFilterGenerateDialog.date") }}</Label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <Input
+                        v-model="customStartDate"
+                        type="date"
+                        :min="allDateRanges[0]"
+                        :max="allDateRanges.at(-1)"
+                        class="h-8 text-xs"
+                      />
+                      <Input
+                        v-model="customEndDate"
+                        type="date"
+                        :min="allDateRanges[0]"
+                        :max="allDateRanges.at(-1)"
+                        class="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div class="flex justify-end gap-2">
+                    <Button variant="ghost" size="xs" @click="customRangePopoverOpen = false">
+                      {{ t("common.dialog.cancel") }}
+                    </Button>
+                    <Button size="xs" @click="applyCustomDateRange">
+                      {{ t("common.dialog.confirm") }}
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button
+                :variant="configStore.userStatisticControl.dateRange === 'all' ? 'secondary' : 'ghost'"
+                size="xs"
+                :class="configStore.userStatisticControl.dateRange === 'all' ? 'bg-background shadow-2xs' : ''"
+                @click="selectAllRange"
+              >
+                {{ t("UserDataStatistic.dateRange.all") }}
+              </Button>
+            </div>
+          </div>
+
+          <!-- 阈值设置 -->
+          <div class="space-y-1.5">
+            <Label class="text-xs">{{ t("UserDataStatistic.chart.hideLowPercentLabel") }}</Label>
+            <div class="flex items-center gap-2">
+              <Input
+                v-model.number="configStore.userStatisticControl.hidePerSitePrecentThreshold"
+                type="number"
+                :min="0"
+                :max="100"
+                :step="0.5"
+                class="h-8 w-28 text-xs tabular-nums"
+              />
+              <span class="text-xs text-muted-foreground"
+                >% · {{ t("UserDataStatistic.chart.hideLowPercentHint") }}</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- 展示图表开关 -->
+        <div class="space-y-2">
+          <Label class="text-xs font-semibold">{{ t("UserDataStatistic.chart.displayChart") }}</Label>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+            <label
+              v-for="(val, key) in configStore.userStatisticControl.showChart"
+              :key="key"
+              class="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs select-none hover:bg-muted/40"
+            >
+              <Checkbox v-model="configStore.userStatisticControl.showChart[key]" />
+              <span class="truncate">{{ t("UserDataStatistic.chart." + key) }}</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 展示站点勾选 -->
+        <div class="space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <Label class="text-xs font-semibold">{{ t("UserDataStatistic.chart.displaySiteSettings") }}</Label>
+              <Badge variant="secondary" class="text-[11px] tabular-nums">
+                {{ selectedSites.length }} / {{ allSites.length }}
+              </Badge>
+            </div>
+            <CheckSwitchButton v-model="selectedSites" :all="allSites" />
+          </div>
+
+          <div
+            :class="[
+              'grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 transition-[filter] duration-150',
+              configStore.myDataTableControl.privacyBlur && 'ptd-privacy-blur',
+            ]"
+          >
+            <label
+              v-for="siteId in allSites"
+              :key="siteId"
+              :class="[
+                'flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs transition-colors select-none',
+                !availableSites.includes(siteId)
+                  ? 'cursor-not-allowed border-border/50 bg-muted/30 opacity-50'
+                  : selectedSites.includes(siteId)
+                    ? 'border-primary/40 bg-primary/[0.04]'
+                    : 'border-border bg-background hover:bg-muted/40',
+              ]"
+            >
+              <Checkbox
+                :model-value="availableSites.includes(siteId) ? selectedSites.includes(siteId) : 'indeterminate'"
+                :disabled="!availableSites.includes(siteId)"
+                @update:model-value="(v) => toggleSite(siteId, v)"
+              />
+              <SiteFavicon :site-id="siteId" :size="15" />
+              <SiteName :site-id="siteId" tag="span" class="truncate" />
+            </label>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- 双栏响应式 ECharts 图表网格 -->
+    <div
+      ref="chartContainer"
+      id="chartContainer"
+      :class="[
+        'grid grid-cols-1 gap-4 xl:grid-cols-2 transition-[filter] duration-150',
+        configStore.myDataTableControl.privacyBlur && 'ptd-privacy-blur',
+      ]"
+    >
+      <Card v-if="configStore.userStatisticControl.showChart.totalSiteBase" class="overflow-hidden p-3">
         <v-chart
-          v-if="configStore.userStatisticControl.showChart.totalSiteBase"
           :option="totalSiteBaseInfoChartOptions"
           :style="{ height: `${perChartHeight}px` }"
           autoresize
-          class="chart"
+          class="w-full"
           group="totalSiteBase"
         />
-        <!-- 总保种体积、总保种数量 -->
+      </Card>
+
+      <Card v-if="configStore.userStatisticControl.showChart.totalSiteSeeding" class="overflow-hidden p-3">
         <v-chart
-          v-if="configStore.userStatisticControl.showChart.totalSiteSeeding"
           :option="totalSiteSeedingInfoChartOptions"
           :style="{ height: `${perChartHeight}px` }"
           autoresize
-          class="chart"
+          class="w-full"
           group="totalSiteSeeding"
         />
-        <!-- 分站点上传、下载、做种、做种量、积分、时魔值数据 -->
-        <template v-for="[field, format] in perSiteChartField" :key="field">
+      </Card>
+
+      <template v-for="[field, format] in perSiteChartField" :key="field">
+        <Card
+          v-if="(configStore.userStatisticControl.showChart as any)[`perSiteK${field}`]"
+          class="overflow-hidden p-3"
+        >
           <v-chart
-            v-if="
-              // @ts-ignore
-              configStore.userStatisticControl.showChart[`perSiteK${field}`]
-            "
             :group="`perSiteK${field}`"
             :option="createPerSiteChartOptionsFn(field, format).value"
             :style="{ height: `${perChartHeight}px` }"
             autoresize
-            class="chart"
+            class="w-full"
             @mousemove="updateLastHoveredSeriesIndex"
           />
+        </Card>
+
+        <Card
+          v-if="(configStore.userStatisticControl.showChart as any)[`perSiteK${field}Incr`]"
+          class="overflow-hidden p-3"
+        >
           <v-chart
-            v-if="
-              // @ts-ignore
-              configStore.userStatisticControl.showChart[`perSiteK${field}Incr`]
-            "
             :group="`perSiteK${field}Incr`"
             :option="createPerSiteChartOptionsFn(field, format, true).value"
             :style="{ height: `${perChartHeight}px` }"
             autoresize
-            class="chart"
+            class="w-full"
             @mousemove="updateLastHoveredSeriesIndex"
           />
-        </template>
-      </v-col>
-      <v-col>
-        <v-row class="flex-nowrap mb-1">
-          <v-col class="d-flex align-center ga-2">
-            <NavButton color="secondary" icon="mdi-arrow-left" :text="t('common.back')" @click="() => router.back()" />
-            <v-spacer />
-            <NavButton
-              color="secondary"
-              icon="mdi-file-export-outline"
-              :text="t('common.exportImage')"
-              @click="exportStatisticImg"
-            />
-            <NavButton
-              color="primary"
-              variant="flat"
-              icon="mdi-content-save"
-              :text="t('common.saveSettings')"
-              @click="saveControl"
-            />
-          </v-col>
-        </v-row>
-
-        <div class="text-subtitle-1 font-weight-bold pb-2 mb-3 border-b">
-          {{ t("UserDataStatistic.chart.chartStyleSettings") }}
-        </div>
-        <v-row>
-          <v-col class="align-self-center">
-            <v-label>{{ t("common.username") }}</v-label>
-          </v-col>
-          <v-col cols="12" sm="10">
-            <v-combobox
-              v-model="configStore.userName"
-              :readonly="!allowEditName"
-              append-inner-icon="mdi-history"
-              :items="Object.keys(configStore.getUserNames.names)"
-              hide-details
-              :label="t('common.username')"
-              @click:append-inner="() => (configStore.userName = configStore.getUserNames.perfName)"
-            >
-              <template #prepend>
-                <v-icon
-                  :color="allowEditName ? 'success' : ''"
-                  :icon="!allowEditName ? 'mdi-lock' : 'mdi-lock-open'"
-                  @click="allowEditName = !allowEditName"
-                ></v-icon>
-              </template>
-            </v-combobox>
-          </v-col>
-        </v-row>
-
-        <v-row>
-          <v-col class="align-self-center">
-            <v-label>{{ t("UserDataStatistic.chart.displayChart") }}</v-label>
-          </v-col>
-          <v-col cols="12" sm="10">
-            <v-row gap="0">
-              <v-col
-                v-for="(item, index) in configStore.userStatisticControl.showChart"
-                class="py-0"
-                :key="index"
-                cols="6"
-              >
-                <v-checkbox
-                  v-model="configStore.userStatisticControl.showChart[index]"
-                  :label="t('UserDataStatistic.chart.' + index)"
-                  density="compact"
-                  hide-details
-                />
-              </v-col>
-            </v-row>
-          </v-col>
-        </v-row>
-
-        <v-row>
-          <v-col class="align-self-center">
-            <v-label>{{ t("UserDataStatistic.chart.dateRange") }}</v-label>
-          </v-col>
-          <v-col cols="12" sm="10">
-            <v-btn-toggle
-              v-model="configStore.userStatisticControl.dateRange"
-              density="comfortable"
-              mandatory
-              variant="tonal"
-              class="overflow-x-auto"
-              color="blue"
-            >
-              <v-btn
-                v-for="day in [7, 30, 60, 90, 180]"
-                :key="day"
-                :value="day"
-                @click="() => (selectedDateRanges = setSubDate(day))"
-              >
-                {{ t("UserDataStatistic.dateRange.day", [day]) }}
-              </v-btn>
-              <v-btn value="custom">
-                {{ t("UserDataStatistic.dateRange.custom") }}
-                <v-menu :close-on-content-click="false" activator="parent">
-                  <v-date-picker
-                    :max="allDateRanges.at(-1)"
-                    :min="allDateRanges.at(0)"
-                    hide-header
-                    multiple="range"
-                    show-adjacent-months
-                    @update:model-value="
-                      (v: unknown) => {
-                        const [start, end] = v as Date[];
-                        selectedDateRanges = eachDayOfInterval({ start, end }).map((x) =>
-                          formatDate(x, 'yyyy-MM-dd'),
-                        ) as string[];
-                        configStore.userStatisticControl.dateRange = 'custom';
-                      }
-                    "
-                  />
-                </v-menu>
-              </v-btn>
-              <v-btn value="all" @click="selectedDateRanges = allDateRanges">
-                {{ t("UserDataStatistic.dateRange.all") }}
-              </v-btn>
-            </v-btn-toggle>
-          </v-col>
-        </v-row>
-
-        <v-row>
-          <v-col class="align-self-center">
-            <v-label>{{ t("UserDataStatistic.chart.chartSettings") }}</v-label>
-          </v-col>
-          <v-col cols="12" sm="10">
-            <v-number-input
-              v-model="configStore.userStatisticControl.hidePerSitePrecentThreshold"
-              :max="100"
-              :min="0"
-              :precision="2"
-              :step="1"
-              controlVariant="default"
-              :hint="t('UserDataStatistic.chart.hideLowPercentHint')"
-              :label="t('UserDataStatistic.chart.hideLowPercentLabel')"
-              persistent-hint
-              suffix="%"
-            ></v-number-input>
-          </v-col>
-        </v-row>
-
-        <div class="d-flex align-center justify-space-between pt-4 pb-2 mb-2 border-b">
-          <span class="text-subtitle-1 font-weight-bold">{{ t("UserDataStatistic.chart.displaySiteSettings") }}</span>
-          <CheckSwitchButton v-model="selectedSites" :all="allSites" color="secondary" />
-        </div>
-
-        <v-row gap="0" class="my-2">
-          <v-col v-for="siteId in allSites" :key="siteId" class="py-0" cols="6" sm="3">
-            <v-checkbox
-              v-model="selectedSites"
-              :disabled="!availableSites.includes(siteId)"
-              :indeterminate="!availableSites.includes(siteId)"
-              :value="siteId"
-              density="compact"
-              hide-details
-              indeterminate-icon="mdi-close"
-              multiple
-            >
-              <template #label>
-                <SiteFavicon :site-id="siteId" :size="16" />
-                <SiteName :site-id="siteId" tag="p" :class="['ml-1']" />
-              </template>
-            </v-checkbox>
-          </v-col>
-        </v-row>
-      </v-col>
-    </v-row>
-  </v-card>
+        </Card>
+      </template>
+    </div>
+  </div>
 </template>
-
-<style scoped lang="scss">
-.chart {
-  height: 400px;
-
-  + .chart {
-    margin-top: 10px;
-  }
-}
-</style>

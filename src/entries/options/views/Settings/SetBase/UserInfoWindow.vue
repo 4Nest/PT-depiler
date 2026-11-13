@@ -1,12 +1,31 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { range } from "es-toolkit";
+import { useI18n } from "vue-i18n";
+import { RefreshCw } from "lucide-vue-next";
 
 import { EJobType } from "@/background/utils/alarms.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { formatDate } from "@/options/utils.ts";
-import { useI18n } from "vue-i18n";
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Separator,
+  Switch,
+  Tooltip,
+} from "~/components/ui";
 
 const { t } = useI18n();
 const configStore = useConfigStore();
@@ -23,8 +42,7 @@ async function getNextFlushUserInfoAt() {
 
 async function save() {
   if (configStore.userInfo.autoReflush.enabled) {
-    // noinspection ES6MissingAwait
-    getNextFlushUserInfoAt();
+    void getNextFlushUserInfoAt();
   } else {
     nextFlushUserInfoAt.value = 0;
   }
@@ -35,155 +53,180 @@ defineExpose({
 });
 
 onMounted(async () => {
-  // noinspection ES6MissingAwait
-  getNextFlushUserInfoAt();
+  void getNextFlushUserInfoAt();
 });
 </script>
 
 <template>
-  <v-row>
-    <v-col md="10" lg="8">
-      <v-label>{{ t("SetBase.userInfo.userDataRefresh") }}</v-label>
+  <div class="space-y-5">
+    <!-- 用户数据刷新 -->
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ t("SetBase.userInfo.userDataRefresh") }}</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <Label for="userinfo-concurrency">{{ t("userInfo.queueConcurrency") }}</Label>
+          <Input
+            id="userinfo-concurrency"
+            v-model.number="configStore.userInfo.queueConcurrency"
+            type="number"
+            :min="1"
+            :max="25"
+            class="w-full tabular-nums sm:w-32"
+          />
+        </div>
 
-      <v-number-input
-        v-model="configStore.userInfo.queueConcurrency"
-        :max="25"
-        :min="1"
-        :label="t('userInfo.queueConcurrency')"
-      ></v-number-input>
+        <Separator />
 
-      <v-switch
-        v-model="configStore.userInfo.alwaysPickLastUserInfo"
-        :label="t('userInfo.alwaysPickLastUserInfo')"
-        color="success"
-        hide-details
-      />
+        <label class="flex cursor-pointer items-center justify-between gap-4">
+          <span class="text-sm font-medium text-foreground">{{ t("userInfo.alwaysPickLastUserInfo") }}</span>
+          <Switch v-model="configStore.userInfo.alwaysPickLastUserInfo" />
+        </label>
 
-      <!-- 自动刷新 -->
-      <v-switch
-        v-model="configStore.userInfo.autoReflush.enabled"
-        :label="t('userInfo.enableAutoRefresh')"
-        color="success"
-        hide-details
-      />
-      <v-row v-if="configStore.userInfo.autoReflush.enabled" class="mt-1 ml-2 mb-2">
-        <v-alert type="info" variant="outlined">
-          <div class="d-inline-flex align-center text-no-wrap mb-1">
-            • {{ t("SetBase.userInfo.afterTime") }}
-            <v-text-field
-              :model-value="configStore.userInfo.autoReflush.afterTime"
-              class="mx-2"
-              density="compact"
-              hide-details
-              readonly
+        <Separator />
+
+        <!-- 自动刷新 -->
+        <div class="space-y-3">
+          <label class="flex cursor-pointer items-center justify-between gap-4">
+            <span class="text-sm font-medium text-foreground">{{ t("userInfo.enableAutoRefresh") }}</span>
+            <Switch v-model="configStore.userInfo.autoReflush.enabled" />
+          </label>
+
+          <Alert v-if="configStore.userInfo.autoReflush.enabled" variant="info" class="space-y-2.5">
+            <div class="flex flex-wrap items-center gap-2 text-xs text-foreground">
+              <span>• {{ t("SetBase.userInfo.afterTime") }}</span>
+              <Input
+                v-model="configStore.userInfo.autoReflush.afterTime"
+                type="time"
+                class="h-7 w-28 px-2 text-xs tabular-nums"
+              />
+              <span>{{ t("userInfo.autoRefresh.every") }}</span>
+              <Select
+                :model-value="String(configStore.userInfo.autoReflush.interval)"
+                @update:model-value="(v) => (configStore.userInfo.autoReflush.interval = Number(v))"
+              >
+                <SelectTrigger class="h-7 w-20 text-xs tabular-nums">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="n in range(1, 24)" :key="n" :value="String(n)">{{ n }}</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>{{ t("userInfo.autoRefresh.hoursLabel") }}</span>
+              <strong class="font-semibold">{{ t("userInfo.autoRefresh.unrefreshedSite") }}</strong>
+              <span>{{ t("userInfo.autoRefresh.ofSites") }}</span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 text-xs text-foreground">
+              <span>• {{ t("userInfo.autoRefresh.retryOnFail") }}</span>
+              <Select
+                :model-value="String(configStore.userInfo.autoReflush.retry.max)"
+                @update:model-value="(v) => (configStore.userInfo.autoReflush.retry.max = Number(v))"
+              >
+                <SelectTrigger class="h-7 w-18 text-xs tabular-nums">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="n in range(0, 6)" :key="n" :value="String(n)">{{ n }}</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>{{ t("userInfo.autoRefresh.times") }}</span>
+              <Select
+                :model-value="String(configStore.userInfo.autoReflush.retry.interval)"
+                @update:model-value="(v) => (configStore.userInfo.autoReflush.retry.interval = Number(v))"
+              >
+                <SelectTrigger class="h-7 w-18 text-xs tabular-nums">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="n in range(1, 11)" :key="n" :value="String(n)">{{ n }}</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>{{ t("userInfo.autoRefresh.minutes") }}</span>
+            </div>
+
+            <div
+              class="flex flex-wrap items-center justify-end gap-3 pt-1 text-[11px] text-muted-foreground tabular-nums"
             >
-              <v-menu :close-on-content-click="false" activator="parent" min-width="0">
-                <v-time-picker v-model="configStore.userInfo.autoReflush.afterTime" format="24hr"></v-time-picker>
-              </v-menu>
-            </v-text-field>
-            后，{{ t("userInfo.autoRefresh.every") }}
-            <v-select
-              v-model="configStore.userInfo.autoReflush.interval"
-              :items="range(1, 24)"
-              :max="23"
-              :min="1"
-              class="mx-2"
-              density="compact"
-              hide-details
-            />
-            {{ t("userInfo.autoRefresh.hoursLabel") }}
-            <p class="font-weight-bold">{{ t("userInfo.autoRefresh.unrefreshedSite") }}</p>
-            {{ t("userInfo.autoRefresh.ofSites") }}
-          </div>
-          <br />
-          <div class="d-inline-flex align-center text-no-wrap">
-            • {{ t("userInfo.autoRefresh.retryOnFail") }}
-            <v-select
-              v-model="configStore.userInfo.autoReflush.retry.max"
-              :items="range(0, 6)"
-              class="mx-2"
-              density="compact"
-              hide-details
-            />
-            {{ t("userInfo.autoRefresh.times") }}
-            <v-select
-              v-model="configStore.userInfo.autoReflush.retry.interval"
-              :items="range(1, 11)"
-              class="mx-2"
-              density="compact"
-              hide-details
-            />
-            {{ t("userInfo.autoRefresh.minutes") }}
-          </div>
-          <div class="d-flex align-center justify-end mt-1">
-            {{ t("userInfo.autoRefresh.lastFlushTime") }} {{ formatDate(metadataStore.lastUserInfoAutoFlushAt) }} &nbsp;
-            {{ t("userInfo.autoRefresh.nextFlushTime") }}
-            {{ nextFlushUserInfoAt != 0 ? formatDate(nextFlushUserInfoAt) : "-" }}
-            <v-btn
-              :title="t('userInfo.autoRefresh.getNextFlushTime')"
-              class="ml-1"
-              density="compact"
-              icon="mdi-refresh"
-              size="x-small"
-              variant="text"
-              @click="getNextFlushUserInfoAt"
-            ></v-btn>
-          </div>
-        </v-alert>
-      </v-row>
+              <span>
+                {{ t("userInfo.autoRefresh.lastFlushTime") }}
+                {{ formatDate(metadataStore.lastUserInfoAutoFlushAt) }}
+              </span>
+              <span>
+                {{ t("userInfo.autoRefresh.nextFlushTime") }}
+                {{ nextFlushUserInfoAt != 0 ? formatDate(nextFlushUserInfoAt) : "-" }}
+              </span>
+              <Tooltip :content="t('userInfo.autoRefresh.getNextFlushTime')" side="top">
+                <Button variant="ghost" size="icon-xs" @click="getNextFlushUserInfoAt">
+                  <RefreshCw class="size-3" />
+                </Button>
+              </Tooltip>
+            </div>
+          </Alert>
+        </div>
 
-      <!-- 自动延长cookies -->
-      <v-switch
-        v-model="configStore.autoExtendCookies.enabled"
-        :label="t('userInfo.autoExtendCookies.enabled')"
-        color="success"
-        hide-details
-      />
-      <v-row v-if="configStore.autoExtendCookies.enabled" class="mt-1 ml-2 mb-2">
-        <v-alert type="info" variant="outlined">
-          <div class="d-inline-flex align-center text-no-wrap">
-            {{ t("userInfo.autoExtendCookies.triggerThreshold") }}:
-            <v-select
-              v-model="configStore.autoExtendCookies.triggerThreshold"
-              :items="range(1, 4)"
-              :max="3"
-              :min="1"
-              class="mx-2"
-              density="compact"
-              hide-details
-            />
-            {{ t("userInfo.autoExtendCookies.weeks") }}
-            {{ t("userInfo.autoExtendCookies.extensionDuration") }}:
-            <v-select
-              v-model="configStore.autoExtendCookies.extensionDuration"
-              :items="range(1, 13)"
-              :max="12"
-              :min="1"
-              class="mx-2"
-              density="compact"
-              hide-details
-            />
-            {{ t("userInfo.autoExtendCookies.months") }}
-          </div>
-        </v-alert>
-      </v-row>
+        <Separator />
 
-      <v-label>{{ t("SetBase.userInfo.userInfoDisplay") }}</v-label>
+        <!-- 自动延长 Cookies -->
+        <div class="space-y-3">
+          <label class="flex cursor-pointer items-center justify-between gap-4">
+            <span class="text-sm font-medium text-foreground">{{ t("userInfo.autoExtendCookies.enabled") }}</span>
+            <Switch v-model="configStore.autoExtendCookies.enabled" />
+          </label>
 
-      <v-switch
-        v-model="configStore.userInfo.showDeadSiteInOverview"
-        :label="t('userInfo.showDeadSite')"
-        color="success"
-        hide-details
-      />
-      <v-switch
-        v-model="configStore.userInfo.showPassedSiteInOverview"
-        :label="t('userInfo.showPassedSite')"
-        color="success"
-        hide-details
-      />
-    </v-col>
-  </v-row>
+          <Alert v-if="configStore.autoExtendCookies.enabled" variant="info">
+            <div class="flex flex-wrap items-center gap-2 text-xs text-foreground">
+              <span>{{ t("userInfo.autoExtendCookies.triggerThreshold") }}:</span>
+              <Select
+                :model-value="String(configStore.autoExtendCookies.triggerThreshold)"
+                @update:model-value="(v) => (configStore.autoExtendCookies.triggerThreshold = Number(v))"
+              >
+                <SelectTrigger class="h-7 w-18 text-xs tabular-nums">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="n in range(1, 4)" :key="n" :value="String(n)">{{ n }}</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>{{ t("userInfo.autoExtendCookies.weeks") }}</span>
+              <span>{{ t("userInfo.autoExtendCookies.extensionDuration") }}:</span>
+              <Select
+                :model-value="String(configStore.autoExtendCookies.extensionDuration)"
+                @update:model-value="(v) => (configStore.autoExtendCookies.extensionDuration = Number(v))"
+              >
+                <SelectTrigger class="h-7 w-18 text-xs tabular-nums">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="n in range(1, 13)" :key="n" :value="String(n)">{{ n }}</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>{{ t("userInfo.autoExtendCookies.months") }}</span>
+            </div>
+          </Alert>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- 用户信息展示 -->
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ t("SetBase.userInfo.userInfoDisplay") }}</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <label class="flex cursor-pointer items-center justify-between gap-4">
+          <span class="text-sm font-medium text-foreground">{{ t("userInfo.showDeadSite") }}</span>
+          <Switch v-model="configStore.userInfo.showDeadSiteInOverview" />
+        </label>
+
+        <Separator />
+
+        <label class="flex cursor-pointer items-center justify-between gap-4">
+          <span class="text-sm font-medium text-foreground">{{ t("userInfo.showPassedSite") }}</span>
+          <Switch v-model="configStore.userInfo.showPassedSiteInOverview" />
+        </label>
+      </CardContent>
+    </Card>
+  </div>
 </template>
-
-<style scoped lang="scss"></style>

@@ -1,98 +1,189 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, shallowRef, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
-import type { DataTableHeader } from "vuetify";
+import { Code2, FileSearch, Pause, Play, RefreshCw, Search, X } from "lucide-vue-next";
 
 import { sendMessage } from "@/messages.ts";
-import { ILoggerItem } from "@/shared/types.ts";
+import type { ILoggerItem } from "@/shared/types.ts";
 import { formatDate } from "@/options/utils.ts";
-import { useTableColumnFit } from "@/options/directives/useTableColumnFit.ts";
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Tooltip,
+  type DataTableColumn,
+  type DataTableSortItem,
+} from "~/components/ui";
 
 const { t } = useI18n();
 const logger = shallowRef<ILoggerItem[]>([]);
+const isPolling = ref<boolean>(true);
+const isLoading = ref<boolean>(false);
 
-const tableHeader = [
-  { title: "ID", value: "id", width: 150 },
-  { title: "Time", value: "time", width: 100 },
-  { title: "Message", value: "msg" },
-  { title: t("common.action"), value: "action", width: 150 },
-] as DataTableHeader[];
+const tableColumns = computed<DataTableColumn<ILoggerItem>[]>(() => [
+  { title: "ID", key: "id", align: "start", width: 150 },
+  { title: "Time", key: "time", align: "start", width: 170 },
+  { title: "Message", key: "msg", align: "start", minWidth: 320 },
+  { title: t("common.action"), key: "action", align: "end", width: 84, sortable: false },
+]);
+const sortBy = ref<DataTableSortItem[]>([{ key: "time", order: "desc" }]);
 
 const showLogDataDialog = ref<boolean>(false);
-const logData = ref<ILoggerItem | null>(null);
+const logData = ref<unknown>(null);
+const tableFilter = ref<string>("");
 
-function showLogDataDialogHandler(item: ILoggerItem) {
+function showLogDataDialogHandler(item: unknown) {
   logData.value = item;
   showLogDataDialog.value = true;
 }
 
-function loadLogger() {
-  sendMessage("getLogger", undefined).then((res) => {
-    logger.value = res;
-  });
+async function loadLogger() {
+  isLoading.value = true;
+  try {
+    logger.value = await sendMessage("getLogger", undefined);
+  } finally {
+    isLoading.value = false;
+  }
 }
 
-// 轮询日志的定时器句柄：必须在组件卸载时清掉。
-// 此前直接 `setInterval(...)` 且从不 clear，离开该页后定时器仍然每秒触发
-// `sendMessage("getLogger")`（每次最多回带 500 条日志）直到整个选项页关闭。
 let loggerTimer: ReturnType<typeof setInterval> | undefined;
 
+function startPolling() {
+  stopPolling();
+  loggerTimer = setInterval(() => {
+    if (isPolling.value) {
+      void loadLogger();
+    }
+  }, 1000);
+}
+
+function stopPolling() {
+  if (loggerTimer) {
+    clearInterval(loggerTimer);
+    loggerTimer = undefined;
+  }
+}
+
+function togglePolling() {
+  isPolling.value = !isPolling.value;
+  if (isPolling.value) {
+    void loadLogger();
+  }
+}
+
 onMounted(() => {
-  loggerTimer = setInterval(() => loadLogger(), 1000);
+  void loadLogger();
+  startPolling();
 });
 
 onUnmounted(() => {
-  clearInterval(loggerTimer);
-  loggerTimer = undefined;
+  stopPolling();
 });
-
-const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useTableColumnFit(tableHeader);
 </script>
 
 <template>
-  <v-card>
-    <v-card-title class="pa-4 border-b d-flex align-center justify-space-between">
-      <span class="text-subtitle-1 font-weight-bold">{{ t("route.About.Logger") }}</span>
-    </v-card-title>
-    <v-data-table
-      ref="fitTableRef"
-      :class="fitTableClass"
-      :headers="fittedHeaders"
-      :items="logger"
-      :sort-by="[{ key: 'time', order: 'desc' }]"
-      class="table-stripe table-header-no-wrap"
-      hover
-      must-sort
-    >
-      <template #item.id="{ item }">
-        <code class="text-no-wrap">{{ item.id }}</code>
-      </template>
+  <Card>
+    <CardHeader class="flex-row flex-wrap items-center justify-between gap-3 space-y-0">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <span class="text-sm font-semibold text-foreground">{{ t("route.About.Logger") }}</span>
+        <Badge variant="secondary" class="tabular-nums">{{ logger.length }}</Badge>
+        <Badge :variant="isPolling ? 'success' : 'outline'" class="gap-1 text-[11px]">
+          <span class="size-1.5 rounded-full" :class="isPolling ? 'animate-pulse bg-success' : 'bg-muted-foreground'" />
+          {{ isPolling ? "Live" : "Paused" }}
+        </Badge>
+      </div>
 
-      <template #item.time="{ item }">
-        <span class="text-no-wrap ptd-num">{{ formatDate(item.time!) }}</span>
-      </template>
+      <div class="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" @click="togglePolling">
+          <Pause v-if="isPolling" class="size-3.5" />
+          <Play v-else class="size-3.5" />
+          {{ isPolling ? "暂停" : "继续" }}
+        </Button>
 
-      <template #item.action="{ item }">
-        <v-btn-group class="table-action" density="compact" variant="text">
-          <v-btn
-            :title="t('Logger.action.details')"
-            :disabled="typeof item.data === 'undefined'"
-            color="primary"
-            size="small"
-            icon="mdi-archive-search"
-            @click="showLogDataDialogHandler(item.data)"
+        <Tooltip content="立即刷新" side="top">
+          <Button variant="outline" size="icon-sm" :disabled="isLoading" @click="loadLogger">
+            <RefreshCw class="size-3.5" :class="{ 'animate-spin': isLoading }" />
+          </Button>
+        </Tooltip>
+
+        <div class="relative w-full sm:w-72">
+          <Search
+            class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
           />
-        </v-btn-group>
-      </template>
-    </v-data-table>
-  </v-card>
-  <v-dialog v-model="showLogDataDialog" max-width="800px">
-    <v-card>
-      <v-card-text>
-        <pre>{{ logData }}</pre>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
-</template>
+          <Input v-model="tableFilter" :placeholder="t('common.search')" class="pl-8 pr-8" />
+          <button
+            v-if="tableFilter"
+            type="button"
+            class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            @click="tableFilter = ''"
+          >
+            <X class="size-3.5" />
+          </button>
+        </div>
+      </div>
+    </CardHeader>
 
-<style scoped lang="scss"></style>
+    <DataTable
+      v-model:sort-by="sortBy"
+      :columns="tableColumns"
+      :items="logger"
+      :search="tableFilter"
+      :filter-keys="['id', 'msg']"
+      :row-key="(r) => `${r.id ?? ''}-${r.time ?? ''}-${r.msg ?? ''}`"
+    >
+      <template #cell-id="{ item }">
+        <code class="whitespace-nowrap rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+          {{ item.id }}
+        </code>
+      </template>
+
+      <template #cell-time="{ item }">
+        <span class="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+          {{ formatDate(item.time!) }}
+        </span>
+      </template>
+
+      <template #cell-msg="{ item }">
+        <span class="text-xs leading-relaxed text-foreground">{{ item.msg }}</span>
+      </template>
+
+      <template #cell-action="{ item }">
+        <div class="inline-flex items-center justify-end">
+          <Tooltip :content="t('Logger.action.details')" side="top">
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              :disabled="typeof item.data === 'undefined'"
+              @click="showLogDataDialogHandler(item.data)"
+            >
+              <FileSearch class="size-3.5 text-primary" />
+            </Button>
+          </Tooltip>
+        </div>
+      </template>
+    </DataTable>
+  </Card>
+
+  <Dialog v-model="showLogDataDialog">
+    <DialogContent class="max-w-3xl">
+      <DialogHeader>
+        <DialogTitle>
+          <Code2 class="size-4 text-primary" />
+          <span>{{ t("Logger.action.details") }}</span>
+        </DialogTitle>
+      </DialogHeader>
+      <div class="flex-1 overflow-y-auto px-5 py-4">
+        <pre
+          class="max-h-[65vh] overflow-auto rounded-lg border border-border bg-muted/40 p-4 font-mono text-xs leading-relaxed text-foreground"
+          >{{ JSON.stringify(logData, null, 2) }}</pre>
+      </div>
+    </DialogContent>
+  </Dialog>
+</template>

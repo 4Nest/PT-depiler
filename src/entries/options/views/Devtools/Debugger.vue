@@ -12,26 +12,42 @@ import {
   getSite as createSiteInstance,
   type TSiteID,
 } from "@ptd/site";
-
 import { getDownloader } from "@ptd/downloader";
 import { getBackupServer } from "@ptd/backupServer";
+import { AlertTriangle, Bug, Database, Globe, Server, Terminal } from "lucide-vue-next";
+
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
 import { sendMessage } from "@/messages.ts";
-
 import { setupReplaceUnsafeHeader } from "~/extends/axios/replaceUnsafeHeader.ts";
 import { setupRetryWhenCloudflareBlock } from "~/extends/axios/retryWhenCloudflareBlock.ts";
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Checkbox,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui";
 
 setupRetryWhenCloudflareBlock(setupReplaceUnsafeHeader(axios));
 
 const { t } = useI18n();
 
 function enableLibrary() {
-  (window as any).axios = axios;
-  (window as any).Sizzle = Sizzle;
-  (window as any)._ = estoolkit;
-  (window as any).datefns = datefns;
-  (window as any).sendMessage = sendMessage;
+  const win = window as unknown as Record<string, unknown>;
+  win.axios = axios;
+  win.Sizzle = Sizzle;
+  win._ = estoolkit;
+  win.datefns = datefns;
+  win.sendMessage = sendMessage;
   console.log("开发库已启用");
 }
 
@@ -49,7 +65,7 @@ const piniaStoreName: Array<{ title: string; value: string }> = Object.keys(pini
   title: x.replace(/^.+\//, "").replace(/\.ts$/, ""),
   value: x,
 }));
-const selectedPiniaStore = ref();
+const selectedPiniaStore = ref<string>("");
 
 const metadataStore = useMetadataStore();
 
@@ -71,7 +87,6 @@ async function getSiteInstance() {
   if (useCustomerConfig.value) {
     customerConfig = await getSiteConfig();
   }
-
   return await createSiteInstance(selectedSite.value, customerConfig);
 }
 
@@ -88,7 +103,7 @@ async function getPiniaStore(storeName: string) {
   }
 }
 
-const log = async (v: any) => {
+const log = async (v: unknown) => {
   console.log(await v);
 };
 
@@ -125,11 +140,9 @@ const resetItems = computed<resetItem[]>(() => [
     resetFn: async () => {
       const metadataStore = useMetadataStore();
       if (clearSiteTarget.value === "all") {
-        // 清空所有站点数据
         metadataStore.lastUserInfo = {};
         await sendMessage("setExtStorage", { key: "userInfo", value: {} });
       } else {
-        // 清空指定站点数据
         if (metadataStore.lastUserInfo[clearSiteTarget.value]) delete metadataStore.lastUserInfo[clearSiteTarget.value];
         const userInfo = (await sendMessage("getExtStorage", "userInfo")) as Record<string, any>;
         if (userInfo && userInfo[clearSiteTarget.value]) {
@@ -157,176 +170,202 @@ async function resetFnWrapper(resetFn: resetItem["resetFn"]) {
 </script>
 
 <template>
-  <v-alert type="warning" style="margin-bottom: 10px">
-    <v-alert-title> {{ t("Debugger.title") }} </v-alert-title>
-    {{ t("Debugger.consoleOutput") }}
-  </v-alert>
-  <v-card class="mb-2">
-    <v-table>
-      <tbody>
-        <tr>
-          <td>
-            <div class="d-flex justify-center align-center text-body-medium">{{ t("Debugger.enableLibrary") }}</div>
-          </td>
-          <td>
-            <v-container>
-              <v-row density="compact">
-                <v-col class="d-flex align-center">
-                  <v-btn @click="enableLibrary" class="mr-3">{{ t("common.enable") }}</v-btn>
-                  {{ t("Debugger.libraryList") }}
-                </v-col>
-              </v-row>
-            </v-container>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div class="d-flex justify-center align-center text-body-medium">{{ t("Debugger.debugBuiltinSite") }}</div>
-          </td>
-          <td>
-            <v-container>
-              <v-row density="compact">
-                <v-col cols="4">
-                  <v-autocomplete v-model="selectedSite" :items="definitionList" hide-details label="site" />
-                </v-col>
-                <v-col cols="2">
-                  <v-checkbox v-model="useCustomerConfig" hide-details :label="t('Debugger.mergeUserConfig')" />
-                </v-col>
-                <v-col class="d-flex align-center">
-                  <v-btn :disabled="!selectedSite" class="mr-2" @click="log(getSiteMetadata())">
-                    {{ t("Debugger.outputSiteDefinition") }}
-                  </v-btn>
-                  <v-btn :disabled="!selectedSite" class="mr-2" @click="log(getSiteConfig())">
-                    {{ t("Debugger.outputUserConfig") }}
-                  </v-btn>
-                  <v-btn :disabled="!selectedSite" class="mr-2" @click="log(getSiteInstance())">
-                    {{ t("Debugger.outputSiteInstance") }}
-                  </v-btn>
-                  <v-btn :disabled="!selectedSite" class="mr-2" @click="log(getSiteFavicon())">
-                    {{ t("Debugger.outputFavicon") }}
-                  </v-btn>
-                </v-col>
-              </v-row>
-            </v-container>
-          </td>
-        </tr>
-        <tr v-for="(server, serverType) in simpleServer" :key="serverType">
-          <td>
-            <div class="d-flex justify-center align-center text-body-medium">
-              {{ t("Debugger.debug", { serverType }) }}
-            </div>
-          </td>
-          <td>
-            <v-container>
-              <v-row density="compact">
-                <v-col cols="4">
-                  <v-autocomplete
-                    v-model="simpleServer[serverType].selected"
-                    :items="metadataStore[`get${serverType}s` as keyof typeof metadataStore] as any[]"
-                    item-title="name"
-                    item-value="id"
-                    :label="serverType"
-                    :messages="t('Debugger.addServerFirst', { serverType })"
-                  />
-                </v-col>
-                <v-col class="d-flex align-center">
-                  <v-btn
-                    :disabled="!server.selected"
-                    class="mr-2"
-                    @click="
-                      // @ts-ignore
-                      log(metadataStore[server.piniaKey][server.selected])
-                    "
-                  >
-                    {{ t("Debugger.outputConfig") }}
-                  </v-btn>
-                  <v-btn
-                    :disabled="!server.selected"
-                    class="mr-2"
-                    @click="
-                      // @ts-ignore
-                      log(server.getFn(metadataStore[server.piniaKey][server.selected]))
-                    "
-                  >
-                    {{ t("Debugger.outputInstance", { serverType }) }}
-                  </v-btn>
-                </v-col>
-              </v-row>
-            </v-container>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div class="d-flex justify-center align-center text-body-medium">{{ t("Debugger.debugPinia") }}</div>
-          </td>
-          <td>
-            <v-container>
-              <v-row density="compact">
-                <v-col cols="4">
-                  <v-autocomplete
-                    v-model="selectedPiniaStore"
-                    label="piniaStore"
-                    :items="piniaStoreName"
-                    hide-details
-                  />
-                </v-col>
-                <v-col class="d-flex align-center">
-                  <v-btn class="mr-2" :disabled="!selectedPiniaStore" @click="log(getPiniaStore(selectedPiniaStore))">
-                    {{ t("Debugger.outputPinia") }}
-                  </v-btn>
-                </v-col>
-              </v-row>
-            </v-container>
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <div class="d-flex justify-center align-center text-body-medium">{{ t("Debugger.pluginReset") }}</div>
-          </td>
-          <td>
-            <v-container>
-              <v-row no-gutters>
-                <v-col cols="12">
-                  <v-alert type="warning" variant="tonal">{{ t("Debugger.dangerWarning") }}</v-alert>
-                </v-col>
-                <v-col md="10">
-                  <v-list>
-                    <v-list-item
-                      v-for="item in resetItems"
-                      :key="item.title"
-                      :title="item.title"
-                      :subtitle="item.subTitle"
-                      color="primary"
-                      rounded
-                    >
-                      <template v-slot:prepend>
-                        <v-list-item-action class="mr-2">
-                          <v-btn color="red" @click="() => resetFnWrapper(item.resetFn)">{{
-                            t("common.dialog.reset")
-                          }}</v-btn>
-                        </v-list-item-action>
-                      </template>
-                      <template v-slot:append>
-                        <v-select
-                          v-if="item.id === 'clearSiteData'"
-                          v-model="clearSiteTarget"
-                          :items="siteSelectItems"
-                          :label="t('Debugger.selectSite')"
-                          hide-details
-                          density="compact"
-                          style="min-width: 150px; margin-left: 12px"
-                        />
-                      </template>
-                    </v-list-item>
-                  </v-list>
-                </v-col>
-              </v-row>
-            </v-container>
-          </td>
-        </tr>
-      </tbody>
-    </v-table>
-  </v-card>
-</template>
+  <div class="space-y-4">
+    <Alert variant="warning" :title="t('Debugger.title')">
+      {{ t("Debugger.consoleOutput") }}
+    </Alert>
 
-<style scoped lang="scss"></style>
+    <!-- 启用开发库 -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2">
+          <Terminal class="size-4 text-primary" />
+          {{ t("Debugger.enableLibrary") }}
+        </CardTitle>
+        <CardDescription>{{ t("Debugger.libraryList") }}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button size="sm" variant="secondary" @click="enableLibrary">
+          <Bug class="size-4" />
+          {{ t("common.enable") }}
+        </Button>
+      </CardContent>
+    </Card>
+
+    <!-- 调试内置站点 -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2">
+          <Globe class="size-4 text-primary" />
+          {{ t("Debugger.debugBuiltinSite") }}
+        </CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <Select v-model="selectedSite">
+            <SelectTrigger class="w-full sm:w-64">
+              <SelectValue :placeholder="t('Debugger.selectSite')" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="site in definitionList" :key="site" :value="site">
+                {{ site }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <label class="flex cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
+            <Checkbox v-model="useCustomerConfig" />
+            <span>{{ t("Debugger.mergeUserConfig") }}</span>
+          </label>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" :disabled="!selectedSite" @click="log(getSiteMetadata())">
+            {{ t("Debugger.outputSiteDefinition") }}
+          </Button>
+          <Button size="sm" variant="outline" :disabled="!selectedSite" @click="log(getSiteConfig())">
+            {{ t("Debugger.outputUserConfig") }}
+          </Button>
+          <Button size="sm" variant="outline" :disabled="!selectedSite" @click="log(getSiteInstance())">
+            {{ t("Debugger.outputSiteInstance") }}
+          </Button>
+          <Button size="sm" variant="outline" :disabled="!selectedSite" @click="log(getSiteFavicon())">
+            {{ t("Debugger.outputFavicon") }}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- 调试下载器与备份服务器 -->
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Card v-for="(server, serverType) in simpleServer" :key="serverType">
+        <CardHeader>
+          <CardTitle class="flex items-center gap-2">
+            <Server class="size-4 text-primary" />
+            {{ t("Debugger.debug", { serverType }) }}
+          </CardTitle>
+          <CardDescription>{{ t("Debugger.addServerFirst", { serverType }) }}</CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-3">
+          <Select v-model="simpleServer[serverType].selected">
+            <SelectTrigger>
+              <SelectValue :placeholder="serverType" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
+                v-for="item in serverType === 'Downloader'
+                  ? metadataStore.getDownloaders
+                  : metadataStore.getBackupServers"
+                :key="item.id"
+                :value="item.id"
+              >
+                {{ item.name }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div class="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              :disabled="!server.selected"
+              @click="
+                // @ts-ignore
+                log(metadataStore[server.piniaKey][server.selected])
+              "
+            >
+              {{ t("Debugger.outputConfig") }}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              :disabled="!server.selected"
+              @click="
+                // @ts-ignore
+                log(server.getFn(metadataStore[server.piniaKey][server.selected]))
+              "
+            >
+              {{ t("Debugger.outputInstance", { serverType }) }}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+
+    <!-- 调试 Pinia Store -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2">
+          <Database class="size-4 text-primary" />
+          {{ t("Debugger.debugPinia") }}
+        </CardTitle>
+      </CardHeader>
+      <CardContent class="flex flex-wrap items-center gap-3">
+        <Select v-model="selectedPiniaStore">
+          <SelectTrigger class="w-full sm:w-64">
+            <SelectValue placeholder="piniaStore" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="store in piniaStoreName" :key="store.value" :value="store.value">
+              {{ store.title }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Button
+          size="sm"
+          variant="outline"
+          :disabled="!selectedPiniaStore"
+          @click="log(getPiniaStore(selectedPiniaStore))"
+        >
+          {{ t("Debugger.outputPinia") }}
+        </Button>
+      </CardContent>
+    </Card>
+
+    <!-- 危险区：插件重置 -->
+    <Card class="border-destructive/40">
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2 text-destructive">
+          <AlertTriangle class="size-4" />
+          {{ t("Debugger.pluginReset") }}
+        </CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-3">
+        <Alert variant="destructive">
+          {{ t("Debugger.dangerWarning") }}
+        </Alert>
+
+        <div class="divide-y divide-border rounded-lg border border-border">
+          <div
+            v-for="item in resetItems"
+            :key="item.title"
+            class="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div class="min-w-0 space-y-0.5">
+              <div class="text-sm font-medium text-foreground">{{ item.title }}</div>
+              <div v-if="item.subTitle" class="text-xs text-muted-foreground">{{ item.subTitle }}</div>
+            </div>
+
+            <div class="flex shrink-0 items-center gap-2">
+              <Select v-if="item.id === 'clearSiteData'" v-model="clearSiteTarget">
+                <SelectTrigger class="w-40">
+                  <SelectValue :placeholder="t('Debugger.selectSite')" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="opt in siteSelectItems" :key="opt.value" :value="opt.value">
+                    {{ opt.title }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button variant="destructive" size="sm" @click="resetFnWrapper(item.resetFn)">
+                {{ t("common.dialog.reset") }}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+</template>

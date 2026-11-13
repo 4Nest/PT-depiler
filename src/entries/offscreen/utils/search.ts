@@ -1,5 +1,11 @@
 import { uniqBy } from "es-toolkit";
-import { normalizeTorrentPromotion, normalizedTorrentTagMap, sortTorrentTags, type TPatterns } from "@ptd/site";
+import {
+  cleanSubTitleTagPrefixes,
+  normalizeTorrentPromotion,
+  normalizedTorrentTagMap,
+  sortTorrentTags,
+  type TPatterns,
+} from "@ptd/site";
 
 import { onMessage, sendMessage } from "@/messages.ts";
 import type { IConfigPiniaStorageSchema } from "@/shared/types.ts";
@@ -37,6 +43,8 @@ onMessage("getSiteSearchResult", async ({ data: { siteId, keyword = "", searchEn
       // 这里也兜住了不经过 parseWholeTorrentFromRow 的 JSON API schema（如 GazelleJSONAPI 直接构造 ITorrent）。
       normalizeTorrentPromotion(item);
 
+      const rawTagNames = item.tags.map((t) => t.name).filter(Boolean);
+
       // 尽可能将 tags 转换预定义的部分，去重并排序
       item.tags = sortTorrentTags(
         uniqBy(
@@ -51,6 +59,10 @@ onMessage("getSiteSearchResult", async ({ data: { siteId, keyword = "", searchEn
           (tag) => tag.name,
         ),
       );
+
+      if (item.subTitle) {
+        item.subTitle = cleanSubTitleTagPrefixes(item.subTitle, item.tags, rawTagNames);
+      }
       return item;
     });
   }

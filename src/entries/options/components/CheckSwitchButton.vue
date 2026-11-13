@@ -1,42 +1,45 @@
-<script setup generic="T" lang="ts">
+<script setup lang="ts" generic="T = string">
 import { useI18n } from "vue-i18n";
+import { CheckSquare, FlipHorizontal2, Square } from "lucide-vue-next";
+import { Button } from "~/components/ui";
 
-import NavButton from "./NavButton.vue";
+const selected = defineModel<T[]>({ default: () => [] });
+
+const { all, disabled = false } = defineProps<{
+  all: T[];
+  disabled?: boolean;
+  size?: string;
+}>();
 
 const { t } = useI18n();
 
-const selected = defineModel<T[]>({ required: true });
-const { all } = defineProps<{
-  all: T[];
-}>();
+function selectAll() {
+  selected.value = [...all];
+}
 
-function updateSelected(value: T[]) {
-  selected.value = value;
+function selectNone() {
+  selected.value = [];
+}
+
+function selectInvert() {
+  const current = new Set(selected.value);
+  selected.value = all.filter((x) => !current.has(x));
 }
 </script>
 
 <template>
-  <NavButton
-    :text="t('common.checkbox.all')"
-    icon="mdi-checkbox-marked"
-    size="small"
-    v-bind="$attrs"
-    @click="() => updateSelected(all)"
-  />
-  <NavButton
-    :text="t('common.checkbox.none')"
-    icon="mdi-checkbox-blank-off-outline"
-    size="small"
-    v-bind="$attrs"
-    @click="() => updateSelected([])"
-  />
-  <NavButton
-    :text="t('common.checkbox.invert')"
-    icon="mdi-checkbox-intermediate-variant"
-    size="small"
-    v-bind="$attrs"
-    @click="() => updateSelected(all.filter((site) => !selected.includes(site)))"
-  />
+  <div class="inline-flex items-center rounded-md border border-border bg-background p-0.5 shadow-2xs">
+    <Button variant="ghost" size="xs" :disabled="disabled" @click="selectAll">
+      <CheckSquare class="size-3.5" />
+      {{ t("common.checkbox.all") }}
+    </Button>
+    <Button variant="ghost" size="xs" :disabled="disabled" @click="selectNone">
+      <Square class="size-3.5" />
+      {{ t("common.checkbox.none") }}
+    </Button>
+    <Button variant="ghost" size="xs" :disabled="disabled" @click="selectInvert">
+      <FlipHorizontal2 class="size-3.5" />
+      {{ t("common.checkbox.invert") }}
+    </Button>
+  </div>
 </template>
-
-<style scoped lang="scss"></style>

@@ -3,19 +3,30 @@ import { ref, useTemplateRef, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { cloneDeep, omit } from "es-toolkit";
 import { nanoid } from "nanoid";
-import type { DataTableHeader } from "vuetify";
+import { Copy, Download, Pencil, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-vue-next";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
-import { useTableColumnFit } from "@/options/directives/useTableColumnFit.ts";
 import { downloadBlob, formatDate } from "@/options/utils.ts";
 import type { ISearchSolutionMetadata, TSolutionKey } from "@/shared/types.ts";
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  DataTable,
+  Input,
+  Separator,
+  Switch,
+  Tooltip,
+  type DataTableColumn,
+  type DataTableSortItem,
+} from "~/components/ui";
 
 import EditDialog from "./EditDialog.vue";
 import SolutionLabel from "./SolutionLabel.vue";
 import DeleteDialog from "@/options/components/DeleteDialog.vue";
-import NavButton from "@/options/components/NavButton.vue";
 
 const { t } = useI18n();
 const configStore = useConfigStore();
@@ -27,20 +38,21 @@ const showDeleteDialog = ref(false);
 const solutionId = ref<TSolutionKey>("");
 
 const tableSelected = ref<TSolutionKey[]>([]);
-const tableHeader = computed(
-  () =>
-    [
-      { title: "№", key: "sort", align: "center", width: 150 },
-      { title: t("common.name"), key: "name", align: "start", width: 150 },
-      { title: t("SetSearchSolution.solution"), key: "solution", align: "start", minWidth: 400, sortable: false },
-      { title: t("SetSearchSolution.table.enable"), key: "enabled", align: "center", width: 120 },
-      { title: t("SetSearchSolution.table.default"), key: "isDefault", align: "center", width: 120, sortable: false },
-      { title: t("common.action"), key: "action", sortable: false, width: 200 },
-    ] as DataTableHeader[],
-);
-const tableFilter = ref("");
+const sortBy = ref<DataTableSortItem[]>([
+  { key: "enabled", order: "desc" },
+  { key: "sort", order: "desc" },
+]);
 
-// 「默认搜索方案」预设行（body.prepend）中的单元格需要与表头列顺序保持一致
+const tableColumns = computed<DataTableColumn<ISearchSolutionMetadata>[]>(() => [
+  { title: "№", key: "sort", align: "center", width: 84 },
+  { title: t("common.name"), key: "name", align: "start", minWidth: 160 },
+  { title: t("SetSearchSolution.solution"), key: "solution", align: "start", minWidth: 360, sortable: false },
+  { title: t("SetSearchSolution.table.enable"), key: "enabled", align: "center", width: 96 },
+  { title: t("SetSearchSolution.table.default"), key: "isDefault", align: "center", width: 96, sortable: false },
+  { title: t("common.action"), key: "action", align: "end", width: 160, sortable: false },
+]);
+
+const tableFilter = ref("");
 const isActionColumnAtStart = computed(() => configStore.tableActionColumnPosition === "start");
 
 function addSearchSolution() {
@@ -59,24 +71,22 @@ function importSearchSolution(e: Event) {
   if (e.target instanceof HTMLInputElement && e.target.files && e.target.files.length > 0) {
     for (const file of e.target.files) {
       const r = new FileReader();
-      r.onload = (e: any) => {
+      r.onload = (ev: ProgressEvent<FileReader>) => {
         try {
-          const result = JSON.parse(e.target.result) as IExportedSearchSolution[];
+          if (typeof ev.target?.result !== "string") return;
+          const result = JSON.parse(ev.target.result) as IExportedSearchSolution[];
           for (const solution of result) {
-            let importSolution = solution as ISearchSolutionMetadata;
-
+            const importSolution = solution as ISearchSolutionMetadata;
             if (importSolution.solutions && importSolution.solutions.length > 0) {
-              // 补全导出时移除的字段
               importSolution.id = nanoid();
               importSolution.enabled = false;
               importSolution.createdAt = +new Date();
               importSolution.isDefault = false;
               importSolution.sort = 1;
-
               metadataStore.addSearchSolution(importSolution);
             }
           }
-        } catch (error) {
+        } catch {
           runtimeStore.showSnackbar("Invalid JSON format when import search solution", { color: "error" });
         }
       };
@@ -85,15 +95,14 @@ function importSearchSolution(e: Event) {
       };
       r.readAsText(file);
     }
+    e.target.value = "";
   }
 }
 
 function exportSearchSolutions(solutionIds: TSolutionKey[]) {
   const exportedSolutions: IExportedSearchSolution[] = [];
-  for (const solutionId of solutionIds) {
-    exportedSolutions.push(
-      omit(metadataStore.solutions[solutionId], ["id", "enabled", "createdAt", "isDefault", "sort"]),
-    );
+  for (const id of solutionIds) {
+    exportedSolutions.push(omit(metadataStore.solutions[id], ["id", "enabled", "createdAt", "isDefault", "sort"]));
   }
 
   if (exportedSolutions.length > 0) {
@@ -101,7 +110,7 @@ function exportSearchSolutions(solutionIds: TSolutionKey[]) {
     void downloadBlob(
       exportedSolutionBlob,
       `search-solutions-export-${formatDate(new Date(), "yyyyMMdd'T'HHmm")}.json`,
-    ); // FIXME filename
+    );
   } else {
     runtimeStore.showSnackbar("No solutions to export", { color: "error" });
   }
@@ -113,25 +122,24 @@ function deleteSearchSolutions(solutionIds: TSolutionKey[]) {
   showDeleteDialog.value = true;
 }
 
-async function confirmDeleteSearchSolution(solutionId: TSolutionKey) {
-  return await metadataStore.removeSearchSolution(solutionId);
+async function confirmDeleteSearchSolution(id: TSolutionKey) {
+  return await metadataStore.removeSearchSolution(id);
 }
 
-function simplePatchSearchSolution(solutionId: TSolutionKey, value: boolean) {
-  metadataStore.solutions[solutionId].enabled = value;
+function simplePatchSearchSolution(id: TSolutionKey, value: boolean) {
+  metadataStore.solutions[id].enabled = value;
   metadataStore.$save();
 }
 
-function setDefaultSearchSolution(toDefault: boolean, solutionId: TSolutionKey) {
-  console.log(toDefault, solutionId);
+function setDefaultSearchSolution(toDefault: boolean, id: TSolutionKey) {
   if (toDefault) {
-    metadataStore.defaultSolutionId = solutionId;
+    metadataStore.defaultSolutionId = id;
     for (const solutionKey of Object.keys(metadataStore.solutions)) {
-      metadataStore.solutions[solutionKey].isDefault = solutionKey === solutionId;
+      metadataStore.solutions[solutionKey].isDefault = solutionKey === id;
     }
   } else {
     metadataStore.defaultSolutionId = "default";
-    metadataStore.solutions[solutionId].isDefault = false;
+    metadataStore.solutions[id].isDefault = false;
   }
 
   metadataStore.$save();
@@ -139,12 +147,11 @@ function setDefaultSearchSolution(toDefault: boolean, solutionId: TSolutionKey) 
 
 const isAllSolutionDefault = computed(() => metadataStore.defaultSolutionId === "default");
 
-async function copySearchSolution(solutionId: TSolutionKey) {
-  const toCopy = await metadataStore.getSearchSolution(solutionId);
+async function copySearchSolution(id: TSolutionKey) {
+  const toCopy = await metadataStore.getSearchSolution(id);
   if (!toCopy) return;
 
   const copied = cloneDeep(toCopy);
-  // 重置部分字段
   copied.id = nanoid();
   copied.createdAt = Date.now();
   copied.isDefault = false;
@@ -167,200 +174,185 @@ async function copySearchSolution(solutionId: TSolutionKey) {
     await metadataStore.addSearchSolution(copied);
   }
 }
-
-const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useTableColumnFit(tableHeader);
 </script>
 
 <template>
-  <v-card>
-    <v-card-title class="pa-4 border-b">
-      <div class="d-flex flex-wrap align-center ga-2">
-        <NavButton
-          :text="t('common.btn.add')"
-          color="primary"
-          variant="flat"
-          icon="mdi-plus"
-          @click="addSearchSolution"
-        />
+  <Card>
+    <CardHeader class="flex-row flex-wrap items-center justify-between gap-3 space-y-0">
+      <div class="flex flex-wrap items-center gap-2">
+        <Button size="sm" @click="addSearchSolution">
+          <Plus class="size-4" />
+          {{ t("common.btn.add") }}
+        </Button>
 
-        <NavButton
+        <Button
+          variant="outline"
+          size="sm"
+          class="text-destructive hover:bg-destructive/10 hover:text-destructive"
           :disabled="tableSelected.length === 0"
-          :text="t('common.remove')"
-          color="error"
-          icon="mdi-minus"
           @click="deleteSearchSolutions(tableSelected)"
-        />
+        >
+          <Trash2 class="size-4" />
+          {{ t("common.remove") }}
+        </Button>
 
-        <v-divider class="mx-1" vertical />
+        <Separator orientation="vertical" class="mx-0.5 h-5" />
 
         <input
           ref="importFile"
           accept="application/json"
           multiple
-          style="display: none"
+          class="hidden"
           type="file"
           @change="importSearchSolution"
         />
 
-        <NavButton
-          color="secondary"
-          icon="mdi-import"
-          :text="t('common.import')"
-          @click="() => importFileInputRef?.click()"
-        />
-        <NavButton
+        <Button variant="secondary" size="sm" @click="() => importFileInputRef?.click()">
+          <Upload class="size-4" />
+          {{ t("common.import") }}
+        </Button>
+
+        <Button
+          variant="secondary"
+          size="sm"
           :disabled="tableSelected.length === 0"
-          color="secondary"
-          icon="mdi-export"
-          :text="t('common.export')"
           @click="() => exportSearchSolutions(tableSelected)"
-        />
-
-        <v-spacer />
-
-        <v-text-field
-          v-model="tableFilter"
-          append-icon="mdi-magnify"
-          clearable
-          density="compact"
-          hide-details
-          :label="t('common.search')"
-          max-width="500"
-          single-line
-        />
+        >
+          <Download class="size-4" />
+          {{ t("common.export") }}
+        </Button>
       </div>
-    </v-card-title>
-    <v-data-table
-      ref="fitTableRef"
-      :class="fitTableClass"
-      v-model="tableSelected"
-      :filter-keys="['name']"
-      :headers="fittedHeaders"
+
+      <div class="relative w-full sm:w-72">
+        <Search class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input v-model="tableFilter" :placeholder="t('common.search')" class="pl-8 pr-8" />
+        <button
+          v-if="tableFilter"
+          type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          @click="tableFilter = ''"
+        >
+          <X class="size-3.5" />
+        </button>
+      </div>
+    </CardHeader>
+
+    <DataTable
+      v-model:selected="tableSelected"
+      v-model:sort-by="sortBy"
+      :columns="tableColumns"
       :items="metadataStore.getSearchSolutions"
       :items-per-page="configStore.tableBehavior.SetSearchSolution.itemsPerPage"
       :search="tableFilter"
-      :sort-by="[
-        // 因为此处涉及到了搜索栏的显示，所以我们不接受用户 **保存** 自定义排序
-        { key: 'enabled', order: 'desc' },
-        { key: 'sort', order: 'desc' },
-      ]"
-      class="table-stripe table-header-no-wrap"
-      hover
-      item-value="id"
+      :filter-keys="['name']"
+      row-key="id"
+      selectable
       :multi-sort="configStore.enableTableMultiSort"
-      show-select
-      @update:itemsPerPage="(v) => configStore.updateTableBehavior('SetSearchSolution', 'itemsPerPage', v)"
+      :sticky-action-column="configStore.tableActionColumnFixed"
+      :action-position="configStore.tableActionColumnPosition"
+      @update:items-per-page="(v) => configStore.updateTableBehavior('SetSearchSolution', 'itemsPerPage', v)"
     >
-      <!-- 这里预设一个固定的默认搜索方案 -->
-      <template #body.prepend>
-        <tr class="v-data-table__tr">
-          <td class="v-data-table__td"></td>
-          <td v-if="isActionColumnAtStart" class="v-data-table__td">
-            <v-btn-group class="table-action" density="compact" variant="plain">
-              <v-btn
-                :title="t('SetSearchSolution.copy')"
-                color="success"
-                icon="mdi-content-copy"
-                size="small"
-                @click="copySearchSolution('default')"
-              />
-            </v-btn-group>
+      <!-- 置顶内置默认全站搜索方案行 -->
+      <template #body-prepend>
+        <tr class="bg-muted/25 transition-colors hover:bg-muted/45">
+          <td class="w-10 px-3 py-2.5" />
+          <td v-if="isActionColumnAtStart" class="px-3 py-2.5 text-right">
+            <div class="inline-flex items-center justify-end gap-1">
+              <Tooltip :content="t('SetSearchSolution.copy')" side="top">
+                <Button variant="ghost" size="icon-xs" @click="copySearchSolution('default')">
+                  <Copy class="size-3.5 text-success" />
+                </Button>
+              </Tooltip>
+            </div>
           </td>
-          <td class="v-data-table__td"></td>
-          <td class="v-data-table__td">{{ t("layout.header.searchPlan.all") }}</td>
-          <td class="v-data-table__td">
-            <v-chip class="mb-1 mr-1 h-auto py-1" color="light-blue" label prepend-icon="mdi-refresh-auto" size="small">
+          <td class="px-3 py-2.5 text-center text-xs text-muted-foreground tabular-nums">—</td>
+          <td class="px-3 py-2.5 font-medium text-foreground">
+            {{ t("layout.header.searchPlan.all") }}
+          </td>
+          <td class="px-3 py-2.5">
+            <Badge variant="info" class="gap-1">
+              <RefreshCw class="size-3" />
               {{ t("SetSearchSolution.table.autoGenerate") }}
-            </v-chip>
+            </Badge>
           </td>
-          <td class="v-data-table__td v-data-table-column--align-center">
-            <v-switch class="table-switch-btn" disabled hide-details />
+          <td class="px-3 py-2.5 text-center">
+            <div class="inline-flex justify-center">
+              <Switch :model-value="false" disabled />
+            </div>
           </td>
-          <td class="v-data-table__td v-data-table-column--align-center">
-            <v-switch
-              :model-value="isAllSolutionDefault"
-              class="table-switch-btn"
-              color="success"
-              hide-details
-              readonly
-            />
+          <td class="px-3 py-2.5 text-center">
+            <div class="inline-flex justify-center">
+              <Switch :model-value="isAllSolutionDefault" disabled />
+            </div>
           </td>
-          <td v-if="!isActionColumnAtStart" class="v-data-table__td">
-            <v-btn-group class="table-action" density="compact" variant="plain">
-              <v-btn
-                :title="t('SetSearchSolution.copy')"
-                color="success"
-                icon="mdi-content-copy"
-                size="small"
-                @click="copySearchSolution('default')"
-              />
-            </v-btn-group>
+          <td v-if="!isActionColumnAtStart" class="px-3 py-2.5 text-right">
+            <div class="inline-flex items-center justify-end gap-1">
+              <Tooltip :content="t('SetSearchSolution.copy')" side="top">
+                <Button variant="ghost" size="icon-xs" @click="copySearchSolution('default')">
+                  <Copy class="size-3.5 text-success" />
+                </Button>
+              </Tooltip>
+            </div>
           </td>
         </tr>
       </template>
 
-      <template #item.solution="{ item }">
-        <SolutionLabel :closable="false" :group-props="{ column: true }" :solutions="item.solutions" />
+      <template #cell-sort="{ item }">
+        <span class="font-mono text-xs text-muted-foreground tabular-nums">{{ item.sort }}</span>
       </template>
 
-      <template #item.enabled="{ item }">
-        <v-switch
-          v-model="item.enabled"
-          class="table-switch-btn"
-          color="success"
-          hide-details
-          @update:model-value="(v) => simplePatchSearchSolution(item.id, v as boolean)"
-        />
+      <template #cell-name="{ item }">
+        <span class="font-medium text-foreground">{{ item.name }}</span>
       </template>
 
-      <template #item.isDefault="{ item }">
-        <v-switch
-          v-model="item.isDefault"
-          class="table-switch-btn"
-          color="success"
-          hide-details
-          @update:model-value="(v) => setDefaultSearchSolution(v as boolean, item.id)"
-        />
+      <template #cell-solution="{ item }">
+        <SolutionLabel :closable="false" column :solutions="item.solutions" />
       </template>
 
-      <template #item.action="{ item }">
-        <v-btn-group class="table-action" density="compact" variant="plain">
-          <v-btn
-            :title="t('SetSearchSolution.copy')"
-            size="small"
-            color="success"
-            icon="mdi-content-copy"
-            @click="copySearchSolution(item.id)"
-          />
-          <v-btn
-            :title="t('common.edit')"
-            color="info"
-            icon="mdi-pencil"
-            size="small"
-            @click="() => editSearchSolution(item.id)"
-          />
-          <v-btn
-            :title="t('common.export')"
-            size="small"
-            color="info"
-            icon="mdi-export"
-            @click="exportSearchSolutions([item.id])"
-          />
-          <v-btn
-            :title="t('common.remove')"
-            color="error"
-            icon="mdi-delete"
-            size="small"
-            @click="() => deleteSearchSolutions([item.id])"
-          >
-          </v-btn>
-        </v-btn-group>
+      <template #cell-enabled="{ item }">
+        <div class="inline-flex justify-center">
+          <Switch :model-value="item.enabled" @update:model-value="(v) => simplePatchSearchSolution(item.id, v)" />
+        </div>
       </template>
-    </v-data-table>
-  </v-card>
+
+      <template #cell-isDefault="{ item }">
+        <div class="inline-flex justify-center">
+          <Switch :model-value="item.isDefault" @update:model-value="(v) => setDefaultSearchSolution(v, item.id)" />
+        </div>
+      </template>
+
+      <template #cell-action="{ item }">
+        <div class="inline-flex items-center justify-end gap-0.5">
+          <Tooltip :content="t('SetSearchSolution.copy')" side="top">
+            <Button variant="ghost" size="icon-xs" @click="copySearchSolution(item.id)">
+              <Copy class="size-3.5 text-success" />
+            </Button>
+          </Tooltip>
+          <Tooltip :content="t('common.edit')" side="top">
+            <Button variant="ghost" size="icon-xs" @click="editSearchSolution(item.id)">
+              <Pencil class="size-3.5 text-info" />
+            </Button>
+          </Tooltip>
+          <Tooltip :content="t('common.export')" side="top">
+            <Button variant="ghost" size="icon-xs" @click="exportSearchSolutions([item.id])">
+              <Download class="size-3.5 text-muted-foreground" />
+            </Button>
+          </Tooltip>
+          <Tooltip :content="t('common.remove')" side="top">
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              @click="deleteSearchSolutions([item.id])"
+            >
+              <Trash2 class="size-3.5" />
+            </Button>
+          </Tooltip>
+        </div>
+      </template>
+    </DataTable>
+  </Card>
 
   <EditDialog v-model="showEditDialog" :solution-id="solutionId" />
   <DeleteDialog v-model="showDeleteDialog" :to-delete-ids="toDeleteIds" :confirm-delete="confirmDeleteSearchSolution" />
 </template>
-
-<style scoped lang="scss"></style>

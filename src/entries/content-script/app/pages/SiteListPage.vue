@@ -2,6 +2,7 @@
 import { computed, inject, ref, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { type ITorrent } from "@ptd/site";
+import { CloudDownload, Copy, Download, ListChecks, Save, Search } from "lucide-vue-next";
 
 import { sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
@@ -23,7 +24,6 @@ const enabledDownloadersBySite = computed(() => {
 });
 
 async function parseListPage(showNoTorrentError = true) {
-  // 使用克隆的文档，避免污染原始文档
   const parsedResult = await siteInstance.value?.transformListPage(document.cloneNode(true) as Document);
 
   let errorMessage = "";
@@ -35,7 +35,6 @@ async function parseListPage(showNoTorrentError = true) {
     runtimeStore.showSnackbar(errorMessage, { color: "error" });
   }
 
-  // 更新搜索状态，方便 SentToDownloaderDialog 中替换
   runtimeStore.search.searchPlanKey = "all";
   runtimeStore.search.searchKey = parsedResult?.keywords ?? "";
 
@@ -73,7 +72,7 @@ function handleLinkCopyMulti() {
         runtimeStore.showSnackbar(copied ? t("contentScript.copyLinkSuccess") : t("contentScript.copyLinkFailed"), {
           color: copied ? "success" : "error",
         });
-      } catch (e) {
+      } catch {
         runtimeStore.showSnackbar(t("contentScript.copyLinkFailed"), { color: "error" });
       }
     })
@@ -107,62 +106,49 @@ function handleAdvanceListModule() {
 }
 
 async function handleSearch() {
-  let keywords = (await parseListPage()).keywords;
-
+  const keywords = (await parseListPage()).keywords;
   doKeywordSearch(keywords);
 }
 </script>
 
 <template>
   <SpeedDialBtn
-    key="save"
-    :loading="localDownloadMultiStatus"
-    color="primary"
-    icon="mdi-content-save-all"
-    :title="t('downloaderLabel.localDownload')"
-    @click="wrapperConfirmFn(handleLocalDownloadMulti)"
-  />
-  <SpeedDialBtn
-    key="copy"
-    :loading="linkCopyMultiStatus"
-    color="primary"
-    icon="mdi-content-copy"
-    :title="t('contentScript.copyLink')"
-    @click="wrapperConfirmFn(handleLinkCopyMulti)"
-  />
-  <SpeedDialBtn
-    key="download"
-    :disabled="enabledDownloadersBySite.length === 0"
-    color="primary"
-    icon="mdi-cloud-download"
-    :title="t('contentScript.pushTo')"
-    @click="() => handleRemoteDownloadMulti()"
-  />
-  <SpeedDialBtn
-    key="download_default"
     v-if="metadataStore.defaultDownloader?.id"
+    key="download_default"
     :disabled="enabledDownloadersBySite.length === 0"
-    color="success"
-    icon="mdi-download"
+    emphasis="primary"
+    :icon="Download"
     :title="t('contentScript.pushToDefault')"
     @click="() => handleRemoteDownloadMulti(true)"
   />
   <SpeedDialBtn
+    key="download"
+    :disabled="enabledDownloadersBySite.length === 0"
+    :icon="CloudDownload"
+    :title="t('contentScript.pushTo')"
+    @click="() => handleRemoteDownloadMulti()"
+  />
+  <SpeedDialBtn
     key="advance"
-    color="secondary"
-    icon="mdi-checkbox-multiple-marked"
+    :icon="ListChecks"
     :title="t('contentScript.advanceList')"
     @click="handleAdvanceListModule"
   />
   <SpeedDialBtn
-    key="search"
-    color="secondary"
-    icon="mdi-home-search"
-    :title="t('contentScript.quickSearch')"
-    @click="handleSearch"
+    key="copy"
+    :loading="linkCopyMultiStatus"
+    :icon="Copy"
+    :title="t('contentScript.copyLink')"
+    @click="wrapperConfirmFn(handleLinkCopyMulti)"
   />
+  <SpeedDialBtn
+    key="save"
+    :loading="localDownloadMultiStatus"
+    :icon="Save"
+    :title="t('downloaderLabel.localDownload')"
+    @click="wrapperConfirmFn(handleLocalDownloadMulti)"
+  />
+  <SpeedDialBtn key="search" :icon="Search" :title="t('contentScript.quickSearch')" @click="handleSearch" />
 
   <AdvanceListModuleDialog v-model="showAdvanceListModuleDialog" :torrent-items="parsedTorrents" />
 </template>
-
-<style scoped lang="scss"></style>

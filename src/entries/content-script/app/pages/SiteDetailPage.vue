@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, inject, ref, shallowRef } from "vue";
+import { computed, inject } from "vue";
 import { useI18n } from "vue-i18n";
-import { type ITorrent } from "@ptd/site";
+import { CloudDownload, Copy, Download, Search } from "lucide-vue-next";
 
 import { sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
@@ -9,7 +9,6 @@ import { useMetadataStore } from "@/options/stores/metadata.ts";
 
 import type { IRemoteDownloadDialogData } from "../types.ts";
 import { copyTextToClipboard, doKeywordSearch, siteInstance, type IPtdData } from "../utils.ts";
-
 import SpeedDialBtn from "../components/SpeedDialBtn.vue";
 
 const metadataStore = useMetadataStore();
@@ -29,7 +28,6 @@ async function parseDetailPage() {
     throw new Error("无法解析当前页面种子链接");
   }
 
-  // 更新搜索状态，方便 SentToDownloaderDialog 中替换
   runtimeStore.search.searchPlanKey = "all";
   runtimeStore.search.searchKey = parsedResult?.title ?? "";
 
@@ -41,7 +39,6 @@ const remoteDownloadDialogData = inject<IRemoteDownloadDialogData>("remoteDownlo
 function handleLinkCopy() {
   parseDetailPage().then(async (torrent) => {
     const downloadUrl = await sendMessage("getTorrentDownloadLink", torrent);
-
     const copied = await copyTextToClipboard(downloadUrl);
     runtimeStore.showSnackbar(copied ? t("contentScript.copyLinkSuccess") : t("contentScript.copyLinkFailed"), {
       color: copied ? "success" : "error",
@@ -66,36 +63,21 @@ function handleSearch() {
 
 <template>
   <SpeedDialBtn
-    key="copy"
-    color="primary"
-    icon="mdi-content-copy"
-    :title="t('contentScript.copyLink')"
-    @click="handleLinkCopy"
-  />
-  <SpeedDialBtn
-    key="download"
-    :disabled="enabledDownloadersBySite.length === 0"
-    color="primary"
-    icon="mdi-cloud-download"
-    :title="t('contentScript.pushTo')"
-    @click="() => handleRemoteDownload()"
-  />
-  <SpeedDialBtn
-    key="download_default"
     v-if="metadataStore.defaultDownloader?.id"
+    key="download_default"
     :disabled="enabledDownloadersBySite.length === 0"
-    color="success"
-    icon="mdi-download"
+    emphasis="primary"
+    :icon="Download"
     :title="t('contentScript.pushToDefault')"
     @click="handleRemoteDownload(true)"
   />
   <SpeedDialBtn
-    key="search"
-    color="secondary"
-    icon="mdi-home-search"
-    :title="t('contentScript.quickSearch')"
-    @click="handleSearch"
+    key="download"
+    :disabled="enabledDownloadersBySite.length === 0"
+    :icon="CloudDownload"
+    :title="t('contentScript.pushTo')"
+    @click="() => handleRemoteDownload()"
   />
+  <SpeedDialBtn key="copy" :icon="Copy" :title="t('contentScript.copyLink')" @click="handleLinkCopy" />
+  <SpeedDialBtn key="search" :icon="Search" :title="t('contentScript.quickSearch')" @click="handleSearch" />
 </template>
-
-<style scoped lang="scss"></style>

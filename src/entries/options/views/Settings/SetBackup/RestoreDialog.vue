@@ -1,17 +1,42 @@
 <script setup lang="ts">
+import { ref, shallowRef, useTemplateRef } from "vue";
 import { useI18n } from "vue-i18n";
-import { ref, shallowRef } from "vue";
+import { useRouter } from "vue-router";
 import { isEmpty } from "es-toolkit/compat";
 import { zipBlobToBackupData } from "@ptd/backupServer/utils.ts";
 import type { IBackupData } from "@ptd/backupServer";
-import { useRouter } from "vue-router";
+import {
+  ArchiveRestore,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  FileArchive,
+  Loader2,
+  RotateCw,
+  Upload,
+} from "lucide-vue-next";
 
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { sendMessage } from "@/messages.ts";
+import { formatSize } from "@/options/utils.ts";
 import { BackupFields, type TBackupFields, type IRestoreOptions } from "@/shared/types.ts";
+import {
+  Alert,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Switch,
+} from "~/components/ui";
 
-const showDialog = defineModel<boolean>();
+const showDialog = defineModel<boolean>({ default: false });
 const { t } = useI18n();
 const router = useRouter();
 
@@ -36,6 +61,8 @@ const restoreOptions = ref<IRestoreOptions>({
 const configStore = useConfigStore();
 const runtimeStore = useRuntimeStore();
 
+const fileInputRef = useTemplateRef<HTMLInputElement>("fileInput");
+
 function buildBackupOptions() {
   restoreOptions.value = {
     fields: [...Object.keys(restoreData.value?.manifest?.files ?? {})] as TBackupFields[],
@@ -45,12 +72,18 @@ function buildBackupOptions() {
   currentStep.value = "restore";
 }
 
-/**
- * 如果是本地的文件，我们直接在 options 中解析，如果是服务器的文件，我们则在 offscreen 中解析
- */
-
 const backupFile = shallowRef<File>();
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (file) {
+    backupFile.value = file;
+    loadLocalBackupFile();
+  }
+}
+
 function loadLocalBackupFile() {
+  if (!backupFile.value) return;
   zipBlobToBackupData(backupFile.value as Blob, decryptKey.value)
     .then((data) => {
       restoreData.value = data;
@@ -76,6 +109,7 @@ function loadRemoteBackupFile() {
     })
       .then((data) => {
         restoreData.value = data;
+        isDecryptKeyValid.value = true;
         buildBackupOptions();
       })
       .catch((err) => {
@@ -95,15 +129,6 @@ function extractVersion(str: string = "") {
   return match ? match[1] : null;
 }
 
-/**
- *
- * 比较两个版本号字符串
- *
- * inputV1 < inputV2 返回 -1
- * inputV1 = inputV2 返回 0
- * inputV1 > inputV2 返回 1
- *
- */
 function compareVersion(inputV1?: string, inputV2?: string) {
   const v1 = extractVersion(inputV1);
   const v2 = extractVersion(inputV2);
@@ -129,14 +154,13 @@ const isDoingRestore = ref<boolean>(false);
 function doRestore() {
   isDoingRestore.value = true;
 
-  // 检查 version 字段
   if (!restoreData.value?.manifest?.version) {
     runtimeStore.showSnackbar(t("SetBackup.RestoreDialog.missingVersion"), { color: "error" });
     isDoingRestore.value = false;
     return;
   }
 
-  let warnRestore = compareVersion(restoreData.value.manifest.version, __EXT_VERSION__) == 1;
+  const warnRestore = compareVersion(restoreData.value.manifest.version, __EXT_VERSION__) == 1;
   if (!warnRestore || confirm(t("SetBackup.RestoreDialog.versionWarning"))) {
     sendMessage("restoreBackupData", { restoreData: restoreData.value!, restoreOptions: restoreOptions.value })
       .then(() => {
@@ -150,29 +174,25 @@ function doRestore() {
       .finally(() => {
         isDoingRestore.value = false;
       });
+  } else {
+    isDoingRestore.value = false;
   }
 }
 
 function convertIsoDurationToMinutes(duration: string): number {
   const regex = /P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?/;
   const match = duration.match(regex);
-
   if (!match) {
     throw new Error(`Invalid ISO 8601 duration format: ${duration}`);
   }
-
   const [, years, months, weeks, days, hours, minutes, seconds] = match;
-
-  // 转换各时间单位为分钟
   const minutesFromYears = years ? parseInt(years, 10) * 365 * 24 * 60 : 0;
-  const minutesFromMonths = months ? parseInt(months, 10) * 30 * 24 * 60 : 0; // 近似值，每月按30天计算
+  const minutesFromMonths = months ? parseInt(months, 10) * 30 * 24 * 60 : 0;
   const minutesFromWeeks = weeks ? parseInt(weeks, 10) * 7 * 24 * 60 : 0;
   const minutesFromDays = days ? parseInt(days, 10) * 24 * 60 : 0;
   const minutesFromHours = hours ? parseInt(hours, 10) * 60 : 0;
   const minutesFromMinutes = minutes ? parseInt(minutes, 10) : 0;
   const minutesFromSeconds = seconds ? parseInt(seconds, 10) / 60 : 0;
-
-  // 计算总分钟数
   return (
     minutesFromYears +
     minutesFromMonths +
@@ -184,14 +204,27 @@ function convertIsoDurationToMinutes(duration: string): number {
   );
 }
 
+function toggleRestoreField(field: TBackupFields, checked: boolean) {
+  const current = restoreOptions.value.fields ?? [];
+  if (checked) {
+    if (!current.includes(field)) {
+      restoreOptions.value.fields = [...current, field];
+    }
+  } else {
+    restoreOptions.value.fields = current.filter((f) => f !== field);
+  }
+}
+
 function resetDialog() {
   currentStep.value = restoreMetadata.type;
   decryptKey.value = configStore.backup.encryptionKey ?? "";
-
+  isDecryptKeyValid.value = true;
   restoreData.value = undefined;
+  if (fileInputRef.value) fileInputRef.value.value = "";
+
   if (restoreMetadata.type === "file") {
     backupFile.value = undefined;
-  } else if (restoreMetadata.type == "remote") {
+  } else if (restoreMetadata.type === "remote") {
     loadRemoteBackupFile();
   }
 }
@@ -203,155 +236,212 @@ function goToPtppImport() {
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" :persistent="isDoingRestore" max-width="800" scrollable @after-enter="resetDialog">
-    <v-card>
-      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
-        <span class="text-subtitle-1 font-weight-bold">{{ t("SetBackup.RestoreDialog.title") }}</span>
-        <v-btn
-          icon="mdi-close"
-          size="small"
-          variant="text"
-          :title="t('common.dialog.close')"
-          @click="showDialog = false"
-        />
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <v-alert class="mb-3" type="info" variant="tonal">
-          <span>{{ t("SetBackup.RestoreDialog.ptppPrompt") }}</span>
-          <template #append>
-            <v-btn color="primary" size="small" variant="outlined" prepend-icon="mdi-import" @click="goToPtppImport">
-              {{ t("SetBackup.RestoreDialog.ptppImport") }}
-            </v-btn>
-          </template>
-        </v-alert>
-        <v-window v-model="currentStep">
-          <v-window-item value="file" eager>
-            <v-file-input
-              v-model="backupFile"
-              accept="application/zip"
-              :label="t('SetBackup.RestoreDialog.selectFile')"
-              :placeholder="t('SetBackup.RestoreDialog.selectFile')"
-              show-size
-              @update:model-value="loadLocalBackupFile"
-            />
-            <v-text-field
-              v-model="decryptKey"
-              :append-icon="showDecryptKey ? 'mdi-eye' : 'mdi-eye-off'"
-              :type="showDecryptKey ? 'text' : 'password'"
-              :label="t('SetBackup.RestoreDialog.decryptKey')"
-              @click:append="showDecryptKey = !showDecryptKey"
-            />
-            <v-btn
-              v-if="!isDecryptKeyValid"
-              :disabled="!backupFile"
-              prepend-icon="mdi-cached"
-              block
-              color="warning"
-              :text="t('SetBackup.RestoreDialog.retry')"
-              @click="loadLocalBackupFile"
-            />
-          </v-window-item>
-          <v-window-item value="remote" eager>
-            <v-text-field
-              v-model="decryptKey"
-              :append-icon="showDecryptKey ? 'mdi-eye' : 'mdi-eye-off'"
-              :type="showDecryptKey ? 'text' : 'password'"
-              :label="t('SetBackup.RestoreDialog.decryptKey')"
-              @click:append="showDecryptKey = !showDecryptKey"
-            />
-            <v-btn
-              v-if="!isDecryptKeyValid"
-              :loading="isLoadingRemoteBackupFile"
-              prepend-icon="mdi-cached"
-              block
-              color="warning"
-              :text="t('SetBackup.RestoreDialog.retry')"
-              @click="loadRemoteBackupFile"
-            />
-          </v-window-item>
-          <v-window-item value="restore">
-            <v-label>{{ t("SetBackup.RestoreDialog.restoreOptions") }}</v-label>
-            <v-row no-gutters>
-              <v-col v-for="backupField in BackupFields" :key="backupField" cols="12" md="4">
-                <v-switch
-                  v-model="restoreOptions.fields"
-                  :label="t(`SetBackup.fields.${backupField}`)"
-                  :value="backupField"
-                  color="success"
-                  :disabled="!restoreData?.manifest?.files?.[backupField]"
-                  hide-details
-                />
-              </v-col>
-            </v-row>
+  <Dialog v-model="showDialog" @after-open="resetDialog">
+    <DialogContent class="max-w-2xl" :prevent-outside-close="isDoingRestore" :hide-close="isDoingRestore">
+      <DialogHeader>
+        <DialogTitle>
+          <ArchiveRestore class="size-4 text-primary" />
+          <span>{{ t("SetBackup.RestoreDialog.title") }}</span>
+        </DialogTitle>
+        <DialogDescription>
+          {{ restoreMetadata.type === "remote" ? restoreMetadata.path : t("SetBackup.RestoreDialog.selectFile") }}
+        </DialogDescription>
+      </DialogHeader>
 
-            <v-number-input
-              v-model="restoreOptions.expandCookieMinutes"
-              :label="t('SetBackup.RestoreDialog.expandCookieMinutes')"
-              :disabled="!restoreOptions.fields?.includes('cookies')"
-              persistent-hint
+      <div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+        <Alert variant="info">
+          <span>{{ t("SetBackup.RestoreDialog.ptppPrompt") }}</span>
+          <template #action>
+            <Button variant="outline" size="xs" @click="goToPtppImport">
+              <Upload class="size-3.5" />
+              {{ t("SetBackup.RestoreDialog.ptppImport") }}
+            </Button>
+          </template>
+        </Alert>
+
+        <!-- Step: 本地文件选择与解密 -->
+        <div v-if="currentStep === 'file'" class="space-y-4">
+          <div class="space-y-1.5">
+            <Label>{{ t("SetBackup.RestoreDialog.selectFile") }}</Label>
+            <input ref="fileInput" type="file" accept="application/zip" class="hidden" @change="onFileChange" />
+            <button
+              type="button"
+              class="flex w-full items-center justify-between gap-3 rounded-lg border border-dashed border-input bg-muted/25 px-4 py-4 text-left transition-colors hover:border-primary/50 hover:bg-muted/45"
+              @click="() => fileInputRef?.click()"
+            >
+              <div class="flex min-w-0 items-center gap-3">
+                <div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <FileArchive class="size-4" />
+                </div>
+                <div class="min-w-0">
+                  <div class="truncate text-sm font-medium text-foreground">
+                    {{ backupFile ? backupFile.name : t("SetBackup.RestoreDialog.selectFile") }}
+                  </div>
+                  <div class="text-xs text-muted-foreground tabular-nums">
+                    {{ backupFile ? formatSize(backupFile.size) : ".zip" }}
+                  </div>
+                </div>
+              </div>
+              <Button type="button" variant="secondary" size="sm" class="shrink-0">
+                <Upload class="size-3.5" />
+                {{ t("common.import") }}
+              </Button>
+            </button>
+          </div>
+
+          <div class="space-y-1.5">
+            <Label for="local-decrypt-key">{{ t("SetBackup.RestoreDialog.decryptKey") }}</Label>
+            <div class="relative">
+              <Input
+                id="local-decrypt-key"
+                v-model="decryptKey"
+                :type="showDecryptKey ? 'text' : 'password'"
+                :placeholder="t('SetBackup.RestoreDialog.decryptKey')"
+                class="pr-9"
+              />
+              <button
+                type="button"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                @click="showDecryptKey = !showDecryptKey"
+              >
+                <Eye v-if="showDecryptKey" class="size-4" />
+                <EyeOff v-else class="size-4" />
+              </button>
+            </div>
+          </div>
+
+          <Button
+            v-if="!isDecryptKeyValid"
+            variant="secondary"
+            class="w-full"
+            :disabled="!backupFile"
+            @click="loadLocalBackupFile"
+          >
+            <RotateCw class="size-4" />
+            {{ t("SetBackup.RestoreDialog.retry") }}
+          </Button>
+        </div>
+
+        <!-- Step: 远程文件解密 -->
+        <div v-else-if="currentStep === 'remote'" class="space-y-4">
+          <div class="space-y-1.5">
+            <Label for="remote-decrypt-key">{{ t("SetBackup.RestoreDialog.decryptKey") }}</Label>
+            <div class="relative">
+              <Input
+                id="remote-decrypt-key"
+                v-model="decryptKey"
+                :type="showDecryptKey ? 'text' : 'password'"
+                :placeholder="t('SetBackup.RestoreDialog.decryptKey')"
+                class="pr-9"
+              />
+              <button
+                type="button"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                @click="showDecryptKey = !showDecryptKey"
+              >
+                <Eye v-if="showDecryptKey" class="size-4" />
+                <EyeOff v-else class="size-4" />
+              </button>
+            </div>
+          </div>
+
+          <Button
+            v-if="!isDecryptKeyValid || isLoadingRemoteBackupFile"
+            variant="secondary"
+            class="w-full"
+            :disabled="isLoadingRemoteBackupFile"
+            @click="loadRemoteBackupFile"
+          >
+            <Loader2 v-if="isLoadingRemoteBackupFile" class="size-4 animate-spin" />
+            <RotateCw v-else class="size-4" />
+            {{ t("SetBackup.RestoreDialog.retry") }}
+          </Button>
+        </div>
+
+        <!-- Step: 选择恢复模块 -->
+        <div v-else-if="currentStep === 'restore'" class="space-y-4">
+          <div class="space-y-2">
+            <Label>{{ t("SetBackup.RestoreDialog.restoreOptions") }}</Label>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label
+                v-for="field in BackupFields"
+                :key="field"
+                class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/25 px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
+                :class="{ 'cursor-not-allowed opacity-50': !restoreData?.manifest?.files?.[field] }"
+              >
+                <span class="truncate">{{ t(`SetBackup.fields.${field}`) }}</span>
+                <Switch
+                  :model-value="(restoreOptions.fields ?? []).includes(field)"
+                  :disabled="!restoreData?.manifest?.files?.[field]"
+                  @update:model-value="(v) => toggleRestoreField(field, v)"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <Label for="expand-cookie-minutes">{{ t("SetBackup.RestoreDialog.expandCookieMinutes") }}</Label>
+            <Input
+              id="expand-cookie-minutes"
+              v-model.number="restoreOptions.expandCookieMinutes"
+              type="number"
               :min="0"
               :step="1"
-            >
-              <template #details>
-                <v-chip
-                  v-for="minutes in ['PT30M', 'PT1H', 'PT12H', 'P1D', 'P1W', 'P1M', 'P6M', 'P1Y']"
-                  :key="minutes"
-                  class="mr-1"
-                  size="small"
-                  @click="() => (restoreOptions.expandCookieMinutes = convertIsoDurationToMinutes(minutes))"
-                >
-                  {{ minutes }}
-                </v-chip>
-              </template>
-            </v-number-input>
-
-            <v-switch
-              v-model="restoreOptions.keepExistUserInfo"
-              color="success"
-              :label="t('SetBackup.RestoreDialog.keepExistUserInfo')"
+              :disabled="!restoreOptions.fields?.includes('cookies')"
+              class="tabular-nums"
             />
-          </v-window-item>
-        </v-window>
-      </v-card-text>
-      <v-divider />
-      <v-card-actions class="pa-4">
-        <v-spacer />
-        <v-btn :disabled="isDoingRestore" variant="text" @click="showDialog = false">
+            <div class="flex flex-wrap gap-1.5 pt-0.5">
+              <Button
+                v-for="minutes in ['PT30M', 'PT1H', 'PT12H', 'P1D', 'P1W', 'P1M', 'P6M', 'P1Y']"
+                :key="minutes"
+                type="button"
+                variant="outline"
+                size="xs"
+                class="font-mono text-[11px]"
+                :disabled="!restoreOptions.fields?.includes('cookies')"
+                @click="restoreOptions.expandCookieMinutes = convertIsoDurationToMinutes(minutes)"
+              >
+                {{ minutes }}
+              </Button>
+            </div>
+          </div>
+
+          <label
+            class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/25 px-3 py-2.5 text-xs font-medium text-foreground"
+          >
+            <span>{{ t("SetBackup.RestoreDialog.keepExistUserInfo") }}</span>
+            <Switch v-model="restoreOptions.keepExistUserInfo" />
+          </label>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" :disabled="isDoingRestore" @click="showDialog = false">
           {{ t("common.dialog.cancel") }}
-        </v-btn>
-        <v-btn
-          v-if="currentStep == 'restore'"
-          color="secondary"
-          prepend-icon="mdi-chevron-left"
-          variant="tonal"
+        </Button>
+        <Button
+          v-if="currentStep === 'restore'"
+          variant="secondary"
+          :disabled="isDoingRestore"
           @click="currentStep = restoreMetadata.type"
         >
+          <ChevronLeft class="size-4" />
           {{ t("common.dialog.prev") }}
-        </v-btn>
-        <v-btn
-          v-if="currentStep != 'restore'"
-          :disabled="isEmpty(restoreData)"
-          append-icon="mdi-chevron-right"
-          color="primary"
-          variant="tonal"
-          @click="currentStep = 'restore'"
-        >
+        </Button>
+        <Button v-if="currentStep !== 'restore'" :disabled="isEmpty(restoreData)" @click="currentStep = 'restore'">
           {{ t("common.dialog.next") }}
-        </v-btn>
-        <v-btn
-          v-if="currentStep == 'restore'"
-          :loading="isDoingRestore"
-          color="primary"
-          prepend-icon="mdi-import"
-          variant="flat"
+          <ChevronRight class="size-4" />
+        </Button>
+        <Button
+          v-if="currentStep === 'restore'"
+          :disabled="isDoingRestore || (restoreOptions.fields ?? []).length === 0"
           @click="doRestore"
         >
+          <Loader2 v-if="isDoingRestore" class="size-4 animate-spin" />
+          <Upload v-else class="size-4" />
           {{ t("common.dialog.ok") }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped lang="scss"></style>

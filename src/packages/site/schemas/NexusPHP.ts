@@ -183,6 +183,9 @@ export const parseSectionedHitAndRunElement = (element: HTMLElement) => {
  * @param self - When true (default) remove the matched element itself; when false remove its parent element instead.
  * @returns A function that accepts the matched title element and returns the cleaned subtitle string.
  */
+const DEFAULT_SUBTITLE_TAG_SELECTORS =
+  "img, .torrent-subtitle-tags, span.tags, span.tag, span.optiontag, span[class*='tag-'], span[class*='promotion-tag'], span[style*='background-color'][style*='color'], span[style*='background-image'][style*='color'], font.recommended";
+
 export const subTitleRemoveExtraElement =
   (removeSelectors: string[] = [], self: boolean = true) =>
   (element: HTMLElement) => {
@@ -190,11 +193,12 @@ export const subTitleRemoveExtraElement =
     if (testSubTitle && testSubTitle.length > 1) {
       const subTitleHtml = testSubTitle[testSubTitle.length - 1];
 
-      // 移除 removeSelectors 的内容
+      // 先移除通用标签徽章与图标节点，再移除站点自定义选择器内容
       const div = document.createElement("div");
       div.innerHTML = subTitleHtml;
+      div.querySelectorAll(DEFAULT_SUBTITLE_TAG_SELECTORS).forEach((el) => el.remove());
       for (const removeSelectorsKey of removeSelectors) {
-        div.querySelectorAll(removeSelectorsKey).forEach((el) => (self ? el : el.parentElement!).remove());
+        div.querySelectorAll(removeSelectorsKey).forEach((el) => (self ? el : el.parentElement)?.remove());
       }
       return extractContent(div.innerHTML).trim();
     }
@@ -494,13 +498,14 @@ export const SchemaMetadata: TSchemaMetadata<TMetadataKeys> = {
         filters: [{ name: "extImdbId" }],
       },
       tags: [
-        { name: "H&R", selector: "img.hitandrun", color: "black" },
-        { name: "Free", selector: "img.pro_free", color: "blue" },
-        { name: "2xFree", selector: "img.pro_free2up", color: "green" },
-        { name: "2xUp", selector: "img.pro_2up", color: "lime" },
-        { name: "2x50%", selector: "img.pro_50pctdown2up", color: "light-green" },
-        { name: "30%", selector: "img.pro_30pctdown", color: "indigo" },
-        { name: "50%", selector: "img.pro_50pctdown", color: "deep-orange-darken-1" },
+        { name: "H&R", selector: "img.hitandrun", color: "red" },
+        { name: "Free", selector: "img.pro_free, font.free", color: "blue" },
+        { name: "2xFree", selector: "img.pro_free2up, font.twoupfree", color: "green" },
+        { name: "2xUp", selector: "img.pro_2up, font.twoup", color: "lime" },
+        { name: "2x50%", selector: "img.pro_50pctdown2up, font.twouphalfdown", color: "light-green" },
+        { name: "30%", selector: "img.pro_30pctdown, font.thirtypercent", color: "indigo" },
+        { name: "50%", selector: "img.pro_50pctdown, font.halfdown", color: "orange" },
+        { name: "Hot", selector: "font.hot", color: "amber" },
       ],
     },
   },

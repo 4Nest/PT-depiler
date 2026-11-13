@@ -91,3 +91,124 @@ export function sortTorrentTags(tags: ITorrentTag[]) {
     return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
   });
 }
+
+const SAFE_BARE_TAG_ALIASES: Record<string, string[]> = {
+  HDR: ["HDR10+", "HDR10", "HDRVivid", "菁彩HDR", "HDR"],
+  DoVi: ["Dolby Vision", "杜比视界", "DoVi", "DV"],
+  HLG: ["HLG"],
+  H265: ["H.265", "H265", "HEVC", "x265"],
+  "Blu-ray": ["UHD Blu-ray", "Blu-ray", "BluRay"],
+  "WEB-DL": ["WEB-DL", "WEBDL"],
+  "4K": ["2160p", "4K"],
+  "1080p": ["1080p"],
+  中字: ["中文字幕", "中字", "官字", "简繁"],
+  繁体: ["繁中", "繁体"],
+  国语: ["国语", "国配", "中配", "普通话"],
+  粤语: ["粤语", "粤配"],
+  "Excl.": ["限时禁转", "禁转", "限转"],
+  DIY: ["DIY原盘", "DIY"],
+  官方: ["官种", "官组"],
+  "H&R": ["H&R", "HnR"],
+  VIP: ["VIP"],
+};
+
+const AMBIGUOUS_BARE_WORDS: Record<string, true> = {
+  官方: true,
+  热门: true,
+  熱門: true,
+  Hot: true,
+  Free: true,
+  独家: true,
+  原创: true,
+  原生: true,
+  动画: true,
+  活动: true,
+  其他: true,
+};
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * 剥离副标题最左侧因站点 DOM 标签未隔离而粘连的标签文字（如 "中字HDR10奥德赛..." -> "奥德赛..."），
+ * 同时保护 Gazelle 等站形如 "2160p / HEVC / ..." 的规格副标题与正常片名不被误删。
+ */
+export function cleanSubTitleTagPrefixes(
+  subTitle: string | number | undefined,
+  tags?: ITorrentTag[],
+  rawTagNames?: string[],
+): string {
+  if (subTitle === undefined || subTitle === null) return "";
+  let cur = String(subTitle).trim();
+  if (!cur) return "";
+
+  const activeTagNames = new Set<string>();
+  for (const t of tags ?? []) {
+    if (t?.name) activeTagNames.add(t.name.trim());
+  }
+  for (const name of rawTagNames ?? []) {
+    if (name?.trim()) activeTagNames.add(name.trim());
+  }
+  if (activeTagNames.size === 0) return cur;
+
+  const bracketCandidates = new Set<string>(activeTagNames);
+  const bareCandidates = new Set<string>();
+
+  for (const name of activeTagNames) {
+    // 跳过百分比优惠标签（如 50%、30%），避免误伤数字片名
+    if (/^\d+%$|^\dx/i.test(name)) continue;
+    const aliases = SAFE_BARE_TAG_ALIASES[name];
+    if (aliases) {
+      for (const alias of aliases) {
+        bracketCandidates.add(alias);
+        if (!AMBIGUOUS_BARE_WORDS[alias]) bareCandidates.add(alias);
+      }
+    } else if (!AMBIGUOUS_BARE_WORDS[name] && name.length <= 12) {
+      bareCandidates.add(name);
+    }
+  }
+
+  const sortedBracket = [...bracketCandidates].filter(Boolean).sort((a, b) => b.length - a.length);
+  const sortedBare = [...bareCandidates].filter(Boolean).sort((a, b) => b.length - a.length);
+
+  let changed = true;
+  let guard = 0;
+  while (changed && guard < 12) {
+    changed = false;
+    guard++;
+
+    // 1. 优先剥离头部带方括号包裹的已知标签，如 [禁转] / 【中字】
+    for (const token of sortedBracket) {
+      const re = new RegExp(`^[\\s]*[\\[【]${escapeRegExp(token)}[\\]】][\\s]*`, "i");
+      const m = cur.match(re);
+      if (m) {
+        const rest = cur.slice(m[0].length).trim();
+        if (rest.length > 0 && !/^[/|,·\-:：]/.test(rest)) {
+          cur = rest;
+          changed = true;
+          break;
+        }
+      }
+    }
+    if (changed) continue;
+
+    // 2. 剥离头部直接粘连的无歧义技术/字幕标签词，如 "中字HDR10奥德赛..."
+    for (const token of sortedBare) {
+      const endsWithAsciiWord = /[A-Za-z0-9+]$/.test(token);
+      const boundary = endsWithAsciiWord ? "(?![A-Za-z0-9.+])" : "";
+      const re = new RegExp(`^${escapeRegExp(token)}${boundary}[\\s]*`, "i");
+      const m = cur.match(re);
+      if (m) {
+        const rest = cur.slice(m[0].length).trim();
+        if (rest.length > 0 && !/^[/|,·\-:：]/.test(rest)) {
+          cur = rest;
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+
+  return cur;
+}

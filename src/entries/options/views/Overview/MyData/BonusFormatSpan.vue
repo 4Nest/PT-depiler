@@ -36,18 +36,19 @@ function toggleNumberSimplification() {
   if (normalizedValue.value.type !== "number") return;
 
   configStore.myDataTableControl.simplifyBonusNumbers = !configStore.myDataTableControl.simplifyBonusNumbers;
+  void configStore.$save();
 }
 </script>
 
 <template>
   <span
-    class="text-no-wrap"
+    :class="[
+      'whitespace-nowrap tabular-nums',
+      normalizedValue.type === 'number' ? 'cursor-pointer select-none' : 'cursor-default',
+    ]"
     :title="titleText"
     @dblclick="toggleNumberSimplification"
-    :style="{ cursor: normalizedValue.type === 'number' ? 'pointer' : 'default', userSelect: 'none' }"
   >
     {{ displayText }}
   </span>
 </template>
-
-<style scoped lang="scss"></style>

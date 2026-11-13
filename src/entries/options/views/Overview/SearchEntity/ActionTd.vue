@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { CloudDownload, Copy, Download, Loader2, Save } from "lucide-vue-next";
 import type { ITorrent } from "@ptd/site";
 
+import { cn } from "~/lib/utils";
+import { Button, Tooltip } from "~/components/ui";
 import { sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
@@ -13,10 +16,6 @@ const { torrentItems, density = "default" } = defineProps<{
   torrentItems: ITorrent[];
   density?: "compact" | "default";
 }>();
-
-const btnSize = computed(() => {
-  return density === "compact" ? "small" : "default";
-});
 
 const { t } = useI18n();
 const metadataStore = useMetadataStore();
@@ -72,48 +71,95 @@ function sendToDownloader(defaultDownload = false) {
 </script>
 
 <template>
-  <v-btn-group :density="density" class="table-action" variant="text">
-    <v-btn
-      v-if="metadataStore.defaultDownloader?.id"
-      :disabled="torrentItems.length == 0"
-      :size="btnSize"
-      color="primary"
-      icon="mdi-download"
-      :title="t('SearchEntity.ActionTd.sendToDefault')"
-      @click="() => sendToDownloader(true)"
-    />
+  <div
+    :class="
+      cn(
+        density === 'compact'
+          ? 'inline-flex items-center gap-0.5'
+          : 'inline-flex items-center divide-x divide-border overflow-hidden rounded-md border border-border bg-background shadow-2xs',
+      )
+    "
+  >
+    <!-- 推送到默认下载器 -->
+    <Tooltip v-if="metadataStore.defaultDownloader?.id" :content="t('SearchEntity.ActionTd.sendToDefault')">
+      <Button
+        :variant="density === 'compact' ? 'ghost' : 'ghost'"
+        :size="density === 'compact' ? 'icon-xs' : 'sm'"
+        :disabled="torrentItems.length === 0"
+        :class="
+          cn(
+            density === 'compact'
+              ? 'text-primary hover:bg-primary/10 hover:text-primary'
+              : 'h-8 rounded-none px-2.5 text-primary hover:bg-primary/10 hover:text-primary',
+          )
+        "
+        @click="() => sendToDownloader(true)"
+      >
+        <Download class="size-3.5" />
+      </Button>
+    </Tooltip>
 
-    <!-- 下载到服务器 -->
-    <v-btn
-      :disabled="torrentItems.length == 0"
-      :size="btnSize"
-      color="secondary"
-      icon="mdi-cloud-download-outline"
-      :title="t('SearchEntity.ActionTd.sendToDownloader')"
-      @click="() => sendToDownloader()"
-    />
+    <!-- 选择下载器推送 -->
+    <Tooltip :content="t('SearchEntity.ActionTd.sendToDownloader')">
+      <Button
+        variant="ghost"
+        :size="density === 'compact' ? 'icon-xs' : 'sm'"
+        :disabled="torrentItems.length === 0"
+        :class="
+          cn(
+            density === 'compact'
+              ? 'text-muted-foreground hover:text-foreground'
+              : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
+          )
+        "
+        @click="() => sendToDownloader(false)"
+      >
+        <CloudDownload class="size-3.5" />
+      </Button>
+    </Tooltip>
+
     <!-- 复制下载链接 -->
-    <v-btn
-      :disabled="torrentItems.length == 0"
-      :loading="copyTorrentDownloadLinkBtnStatus"
-      :size="btnSize"
-      color="secondary"
-      icon="mdi-content-copy"
-      :title="t('SearchEntity.ActionTd.copyLink')"
-      @click="() => copyTorrentDownloadLink()"
-    />
+    <Tooltip :content="t('SearchEntity.ActionTd.copyLink')">
+      <Button
+        variant="ghost"
+        :size="density === 'compact' ? 'icon-xs' : 'sm'"
+        :disabled="torrentItems.length === 0 || copyTorrentDownloadLinkBtnStatus"
+        :class="
+          cn(
+            density === 'compact'
+              ? 'text-muted-foreground hover:text-foreground'
+              : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
+          )
+        "
+        @click="() => copyTorrentDownloadLink()"
+      >
+        <Loader2 v-if="copyTorrentDownloadLinkBtnStatus" class="size-3.5 animate-spin" />
+        <Copy v-else class="size-3.5" />
+      </Button>
+    </Tooltip>
+
     <!-- 下载种子文件到本地 -->
-    <v-btn
-      :disabled="torrentItems.length == 0"
-      :loading="localDlTorrentDownloadLinkBtnStatus"
-      :size="btnSize"
-      color="secondary"
-      icon="mdi-content-save"
-      :title="t('SearchEntity.ActionTd.localDownload')"
-      @click="() => localDlTorrentDownloadLink()"
-    />
+    <Tooltip :content="t('SearchEntity.ActionTd.localDownload')">
+      <Button
+        variant="ghost"
+        :size="density === 'compact' ? 'icon-xs' : 'sm'"
+        :disabled="torrentItems.length === 0 || localDlTorrentDownloadLinkBtnStatus"
+        :class="
+          cn(
+            density === 'compact'
+              ? 'text-muted-foreground hover:text-foreground'
+              : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
+          )
+        "
+        @click="() => localDlTorrentDownloadLink()"
+      >
+        <Loader2 v-if="localDlTorrentDownloadLinkBtnStatus" class="size-3.5 animate-spin" />
+        <Save v-else class="size-3.5" />
+      </Button>
+    </Tooltip>
+
     <slot name="append" />
-  </v-btn-group>
+  </div>
 
   <!-- 在点击发送到远程服务器时，弹出选择下载器及其他自定义选项 -->
   <SentToDownloaderDialog
@@ -122,5 +168,3 @@ function sendToDownloader(defaultDownload = false) {
     :is-default-send="isDefaultSend"
   />
 </template>
-
-<style scoped lang="scss"></style>

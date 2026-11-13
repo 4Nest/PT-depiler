@@ -92,6 +92,8 @@
       "normalizeLevelName": "Use Site-defined Level Name",
       "onlyShowUserLevelRequirement": "Only show the upgrade queue in level requirements",
       "setting": "Settings",
+      "privacyBlur": "Privacy Blur",
+      "privacyBlurred": "Privacy Blurred",
       "showBonusNeededInterval": "Show estimated bonus time in level requirements",
       "showHnR": "Show H&R",
       "showIntervalAsDate": "Display level requirement time as date format",
@@ -263,7 +265,10 @@
       "emptyResult": "No matching torrents found. Try another keyword or check search status."
     },
     "siteFilter": {
-      "all": "All Site"
+      "all": "All Sites",
+      "expand": "Expand ({0})",
+      "collapse": "Collapse",
+      "multiSelectHint": "Click to filter by site (click again to reset), Ctrl/Cmd + Click to multi-select"
     }
   },
   "SearchResultSnapshot": {
@@ -302,6 +307,9 @@
   "SetBackup": {
     "AddDialog": {
       "title": "Add Backup Server"
+    },
+    "EditDialog": {
+      "title": "Edit Backup Server"
     },
     "Editor": {
       "backupConfig": "Backup Configuration",

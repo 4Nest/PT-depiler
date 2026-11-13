@@ -1,40 +1,42 @@
 <script setup lang="ts">
-import { watch, ref } from "vue";
+import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useLocale as useVuetifyLocal, useTheme } from "vuetify";
-import { useDevicePixelRatio } from "@vueuse/core";
+import { useDevicePixelRatio, useMediaQuery } from "@vueuse/core";
+import { Toaster } from "vue-sonner";
+import { AlertTriangle, X } from "lucide-vue-next";
 
 import { useConfigStore } from "@/options/stores/config.ts";
-import { useRuntimeStore } from "@/options/stores/runtime.ts";
-import { vuetifyLangMap } from "@/options/plugins/vuetify.ts";
-
 import Navigation from "./views/Layout/Navigation.vue";
 import Topbar from "./views/Layout/Topbar.vue";
 import ReleaseNoteDialog from "./views/Layout/ReleaseNoteDialog.vue";
 
-const vuetifyTheme = useTheme();
-const { current: currentVuetifyLocal } = useVuetifyLocal();
 const { locale: currentVueI18nLocal, t } = useI18n({ useScope: "global" });
-
 const configStore = useConfigStore();
-const runtimeStore = useRuntimeStore();
 
 watch(
   () => configStore.lang,
   (newLang) => {
     currentVueI18nLocal.value = newLang;
-    currentVuetifyLocal.value = vuetifyLangMap[newLang];
+    document.documentElement.lang = newLang === "zh_CN" ? "zh-CN" : "en";
   },
   { immediate: true },
 );
 
 watch(
   () => configStore.uiTheme,
-  (newTheme) => {
-    vuetifyTheme.change(newTheme);
+  (theme) => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
   },
   { immediate: true },
 );
+
+const isDesktop = useMediaQuery("(min-width: 1024px)");
+watch(isDesktop, (desktop) => {
+  if (configStore.autoToggleNavBarOnDisplayChange) {
+    configStore.isNavBarOpen = desktop;
+  }
+});
 
 const { pixelRatio } = useDevicePixelRatio();
 function setIgnoreWrongPixelRatio() {
@@ -52,32 +54,47 @@ configStore.$onReady(() => {
 </script>
 
 <template>
-  <v-app id="ptd" :theme="configStore.uiTheme">
-    <v-system-bar
-      v-if="(pixelRatio > 1.1 || pixelRatio < 0.8) && !configStore.ignoreWrongPixelRatio"
-      class="justify-center"
-      color="warning"
-    >
-      {{ t("layout.header.wrongPixelRatioNotice") }}&nbsp;&nbsp;
-      <v-icon class="ms-2 cursor-pointer" icon="mdi-close" @click="setIgnoreWrongPixelRatio" />
-    </v-system-bar>
+  <div id="ptd" class="flex min-h-screen w-full bg-background text-foreground">
+    <Navigation @open-release-note="showReleaseNoteDialog = true" />
 
-    <Topbar />
+    <div class="flex min-w-0 flex-1 flex-col">
+      <!-- 浏览器非标准缩放比温和提醒 -->
+      <div
+        v-if="(pixelRatio > 1.1 || pixelRatio < 0.8) && !configStore.ignoreWrongPixelRatio"
+        class="flex items-center justify-center gap-2 border-b border-warning/25 bg-warning/10 px-4 py-1.5 text-xs text-foreground"
+      >
+        <AlertTriangle class="size-3.5 shrink-0 text-warning" />
+        <span>{{ t("layout.header.wrongPixelRatioNotice") }}</span>
+        <button
+          type="button"
+          class="ml-1 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          @click="setIgnoreWrongPixelRatio"
+        >
+          <X class="size-3.5" />
+        </button>
+      </div>
 
-    <Navigation />
+      <Topbar />
 
-    <v-main id="ptd-main">
-      <v-container fluid class="pa-4 pa-md-6" style="max-width: 1920px">
-        <router-view v-slot="{ Component }">
-          <component :is="Component" />
-        </router-view>
-      </v-container>
-    </v-main>
+      <main id="ptd-main" class="flex-1 px-4 py-5 md:px-6 md:py-6">
+        <div class="mx-auto w-full max-w-[1720px]">
+          <router-view v-slot="{ Component }">
+            <component :is="Component" />
+          </router-view>
+        </div>
+      </main>
+    </div>
 
     <ReleaseNoteDialog v-model="showReleaseNoteDialog" />
 
-    <v-snackbar-queue v-model="runtimeStore.uiGlobalSnackbar" closable />
-  </v-app>
+    <Toaster
+      position="bottom-right"
+      :theme="configStore.uiTheme"
+      rich-colors
+      close-button
+      :toast-options="{
+        class: 'font-sans text-xs',
+      }"
+    />
+  </div>
 </template>
-
-<style scoped></style>

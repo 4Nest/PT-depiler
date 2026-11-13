@@ -351,7 +351,7 @@ export default class BittorrentSite {
         url = `${urlHelper.protocol}:${uri}`;
       } else if (uri.slice(0, 4) !== "http") {
         // 基于请求地址，处理 ./xxx, xxxx, /xxxx 等相对路径
-        const requestUrl = axios.getUri(requestConfig);
+        const requestUrl = axios.getUri(requestConfig) || requestConfig.baseURL || requestConfig.url || this.url;
         url = new URL(uri, requestUrl).toString();
       }
     }
@@ -752,17 +752,17 @@ export default class BittorrentSite {
    */
   public async transformDetailPage(doc: Document): Promise<ITorrent> {
     let torrent: Partial<ITorrent> = { site: this.metadata.id };
+    const pageUrl = doc.URL || (typeof location !== "undefined" ? location.href : "") || this.url;
     const parsedDetailsPage = doc.cloneNode(true) as Document; // 克隆一份文档，避免污染原始文档
 
     // 首先使用selectors来尝试获取种子详情
     const detailsSelectors = this.metadata.detail?.selectors || {};
     torrent = toMerged(torrent, this.getFieldsData(parsedDetailsPage, detailsSelectors));
 
-    // 如果未获取到 url，则 url 会被自动设置为 doc.URL || location.href
+    // 如果未获取到 url，则 url 会被自动设置为当前页面地址
     if (!torrent.url) {
-      torrent.url = parsedDetailsPage.URL || location.href; // 如果没有 url，则使用当前页面的 URL
+      torrent.url = pageUrl;
     }
-
     // 如果未获取到 id，且 url 中有 `&id=` 或者 `&tid=` 字段，则会被自动解析为 id
     if (!torrent.id) {
       const urlParams = new URLSearchParams(torrent.url.split("?")[1] ?? "");
@@ -785,7 +785,7 @@ export default class BittorrentSite {
     }
 
     if (torrent.link) {
-      torrent.link = this.fixLink(torrent.link, { baseURL: parsedDetailsPage.URL }); // 如果 link 存在，则进行修正
+      torrent.link = this.fixLink(torrent.link, { url: pageUrl, baseURL: this.url }); // 如果 link 存在，则进行修正
     }
 
     // 详情页解析出的种子同样保持 factor / tag 双写，口径与列表页一致
@@ -824,7 +824,12 @@ export default class BittorrentSite {
   public async getTorrentDownloadRequestConfig(torrent: ITorrent): Promise<AxiosRequestConfig> {
     const torrentDownloadLink = await this.getTorrentDownloadLink(torrent);
     return toMerged(
-      { baseURL: this.url, url: torrentDownloadLink, method: "GET", timeout: this.userConfig.timeout ?? 30e3 },
+      {
+        baseURL: this.url,
+        url: torrentDownloadLink,
+        method: "GET",
+        timeout: Math.max(this.userConfig.timeout ?? 0, 120e3),
+      },
       this.metadata.download?.requestConfig ?? {},
     );
   }

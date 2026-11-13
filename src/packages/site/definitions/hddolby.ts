@@ -183,6 +183,13 @@ export const siteMetadata: ISiteMetadata = {
       ...SchemaMetadata.search.selectors!,
       subTitle: {
         selector: ["td:has(a[href*='hit'][title]) > span:last"],
+        elementProcess: (element: HTMLElement) => {
+          const clone = element.cloneNode(true) as HTMLElement;
+          clone
+            .querySelectorAll("span.tags, span.tag, span.optiontag, span[style*='background'], a, img")
+            .forEach((el) => el.remove());
+          return clone.textContent?.trim() ?? "";
+        },
       },
       progress: selectorSearchProgress,
       status: selectorSearchStatus,

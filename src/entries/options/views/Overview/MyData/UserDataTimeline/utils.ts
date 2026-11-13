@@ -231,36 +231,3 @@ export const timelineDataRef = useResetableRef<ITimelineData>(
   },
   { shallow: true },
 );
-
-export type TKonvaConfig = Record<string, any>;
-// 默认文字颜色取自「其他文本颜色」配置；调用方传入的 fill 优先级更高（见下方 ...config）
-export const text = (config: TKonvaConfig) => ({
-  x: 0,
-  y: 0,
-  fontSize: 24,
-  fill: configStore.userDataTimelineControl.textColor,
-  ...config,
-});
-export const divider = (config: TKonvaConfig) => ({ x: 0, y: 0, stroke: "#0000001f", strokeWidth: 2, ...config });
-export const image = (config: TKonvaConfig) => {
-  const imageBaseSize = config.size ?? 24;
-  const imageWidth = config.image?.width ?? imageBaseSize;
-  const imageHeight = config.image?.height ?? imageBaseSize;
-
-  return {
-    x: 0,
-    y: 0,
-    scaleX: config.scaleX ?? imageBaseSize / imageWidth,
-    scaleY: config.scaleY ?? imageBaseSize / imageHeight,
-    width: config.canvas?.width ?? imageBaseSize,
-    height: config.canvas?.height ?? imageBaseSize,
-    ...config,
-  };
-};
-
-export const icon = (config: TKonvaConfig) =>
-  text({
-    fontSize: 32,
-    fontFamily: "Material Design Icons For PTD",
-    ...config,
-  });

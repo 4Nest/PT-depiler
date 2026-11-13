@@ -21,11 +21,12 @@ export async function getDownloaderModule(configType: string): Promise<downloade
 }
 
 export async function getDownloaderDefaultConfig(type: string): Promise<DownloaderBaseConfig> {
-  const config = cloneDeep((await getDownloaderModule(type)).clientConfig);
-  // 填入/覆盖 缺失项
+  const mod = await getDownloaderModule(type);
+  const config = cloneDeep(mod.clientConfig);
+  // 填入/覆盖 缺失项：默认开启自动开始，且对支持绕过 CSRF 的客户端（如 qBittorrent）默认启用移除 Origin 头
   config.feature ??= {};
-  config.feature.DefaultAutoStart ??= false;
-  config.feature.BypassCSRF ??= false;
+  config.feature.DefaultAutoStart ??= true;
+  config.feature.BypassCSRF ??= Boolean(mod.clientMetaData?.feature?.BypassCSRF?.allowed);
 
   return config;
 }

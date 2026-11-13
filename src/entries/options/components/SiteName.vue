@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { reactive, ref, useAttrs, watch } from "vue";
+import { computed, ref, useAttrs, watch } from "vue";
 import { type TSiteID } from "@ptd/site";
-
+import { cn } from "~/lib/utils";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 
 const metadataStore = useMetadataStore();
@@ -13,54 +13,52 @@ const props = defineProps<{
 }>();
 
 const attrs = useAttrs();
-
 const siteName = ref<string>("");
+const siteUrl = ref<string>("#");
 
-const tagIs = props.tag ?? "a";
+const tagIs = computed(() => props.tag ?? "a");
 
-const renderProp = reactive<Record<string, any>>({
-  ...attrs,
-  class: props.class ?? ["text-body-small", "text-decoration-none", "text-grey", "text-no-wrap"],
-});
-
-if (tagIs === "a") {
-  renderProp.href = "#";
-  renderProp.target = "_blank";
-  renderProp.rel = "noopener noreferrer nofollow";
-
-  metadataStore.getSiteUrl(props.siteId).then((url) => {
-    renderProp.href = url;
-  });
-}
-
-function updateSiteName(siteId: TSiteID) {
-  // 首先赋值为 siteId，防止空白
+function updateSiteInfo(siteId: TSiteID) {
   siteName.value = siteId;
-
-  // 优先从缓存中读取
   if (metadataStore.siteNameMap?.[siteId]) {
     siteName.value = metadataStore.siteNameMap[siteId];
   } else {
-    // 如果缓存中没有/或者没有生成缓存，则按之前的逻辑读取
     metadataStore.getSiteName(siteId).then((name) => {
       siteName.value = name;
+    });
+  }
+  if (tagIs.value === "a") {
+    metadataStore.getSiteUrl(siteId).then((url) => {
+      siteUrl.value = url || "#";
     });
   }
 }
 
 watch(
   () => props.siteId,
-  (newSiteId) => {
-    updateSiteName(newSiteId);
-  },
+  (id) => updateSiteInfo(id),
   { immediate: true },
 );
 </script>
 
 <template>
   <slot :name="siteName">
-    <component :is="tagIs" v-bind="renderProp">{{ siteName }}</component>
+    <component
+      :is="tagIs"
+      v-bind="attrs"
+      :href="tagIs === 'a' ? siteUrl : undefined"
+      :target="tagIs === 'a' ? '_blank' : undefined"
+      :rel="tagIs === 'a' ? 'noopener noreferrer nofollow' : undefined"
+      :class="
+        cn(
+          'whitespace-nowrap',
+          tagIs === 'a' &&
+            'font-medium text-foreground transition-colors hover:text-primary hover:underline underline-offset-4',
+          props.class,
+        )
+      "
+    >
+      {{ siteName }}
+    </component>
   </slot>
 </template>
-
-<style scoped lang="scss"></style>

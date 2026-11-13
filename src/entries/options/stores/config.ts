@@ -16,9 +16,9 @@ const deprecatedConfigKeys = [
   "searchEntifyControl.limitTorrentTitleTdWidth", // 已废弃，由 tableColumnFit 替代
 ];
 
-export const defaultTimelineBackgroundColor = "#455A64";
-export const defaultTimelineUserNameColor = "#FFFFFF";
-export const defaultTimelineTextColor = "#FFFFFF";
+export const defaultTimelineBackgroundColor = "#0B1120";
+export const defaultTimelineUserNameColor = "#60A5FA";
+export const defaultTimelineTextColor = "#F8FAFC";
 
 export const useConfigStore = defineStore("config", {
   persistWebExt: {
@@ -133,6 +133,7 @@ export const useConfigStore = defineStore("config", {
       showIntervalAsDate: false,
       simplifyBonusNumbers: false,
       showBonusNeededInterval: true,
+      privacyBlur: false,
     },
 
     userDataTimelineControl: {

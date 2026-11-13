@@ -3,7 +3,13 @@
  * @PTPPDefinitions https://github.com/pt-plugins/PT-Plugin-Plus/blob/dev/resource/sites/chdbits.co/config.json
  */
 import { ETorrentStatus, type ISiteMetadata } from "../types";
-import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP";
+import {
+  CategoryInclbookmarked,
+  CategoryIncldead,
+  CategorySpstate,
+  SchemaMetadata,
+  subTitleRemoveExtraElement,
+} from "../schemas/NexusPHP";
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
@@ -157,6 +163,22 @@ export const siteMetadata: ISiteMetadata = {
     ...SchemaMetadata.search,
     selectors: {
       ...SchemaMetadata.search.selectors,
+      subTitle: {
+        ...SchemaMetadata.search.selectors!.subTitle!,
+        elementProcess: subTitleRemoveExtraElement(["a, span, img, div"], true),
+      },
+      tags: [
+        ...SchemaMetadata.search.selectors!.tags!,
+        { name: "H&R", selector: "div.circle", color: "red" },
+        { name: "官方", selector: "div.tag-gf", color: "#426ab9" },
+        { name: "独占", selector: "div.tag-dz", color: "#ff9b00" },
+        { name: "DIY", selector: "div.tag-diy", color: "#00b6f5" },
+        { name: "首发", selector: "div.tag-sf", color: "#e01d65" },
+        { name: "国语", selector: "div.tag-gy", color: "#3e93a0" },
+        { name: "中字", selector: "div.tag-sub", color: "#006633" },
+        { name: "限转", selector: "div.tag-limited", color: "#aa5faa" },
+        { name: "特效", selector: "div.tag-txsub", color: "#8b0000" },
+      ],
       progress: {
         selector: ["td.rowfollow:last"],
         elementProcess: (element: HTMLElement) => {

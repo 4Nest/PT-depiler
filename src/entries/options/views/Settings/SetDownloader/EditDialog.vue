@@ -1,61 +1,70 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { Check, SlidersHorizontal } from "lucide-vue-next";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import type { IDownloaderMetadata, TDownloaderKey } from "@/shared/types.ts";
 
 import Editor from "./Editor.vue";
+import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui";
 
-const showDialog = defineModel<boolean>();
+const showDialog = defineModel<boolean>({ default: false });
 const { clientId } = defineProps<{
   clientId: TDownloaderKey;
 }>();
+
 const clientConfig = ref<IDownloaderMetadata>();
+const isConfigValid = ref<boolean>(true);
 
 const { t } = useI18n();
 const metadataStore = useMetadataStore();
 
 function dialogEnter() {
   if (clientId) {
-    clientConfig.value = { sortIndex: 100, advanceAddTorrentOptions: {}, ...metadataStore.downloaders[clientId] }; // 防止直接修改父组件的数据
+    const raw = metadataStore.downloaders[clientId];
+    clientConfig.value = {
+      sortIndex: 100,
+      ...raw,
+      feature: { ...(raw?.feature ?? {}) },
+      advanceAddTorrentOptions: { ...(raw?.advanceAddTorrentOptions ?? {}) },
+    };
   }
 }
 
 function editClientConfig() {
-  metadataStore.addDownloader(clientConfig.value as IDownloaderMetadata);
+  if (!clientConfig.value) return;
+  metadataStore.addDownloader(clientConfig.value);
   showDialog.value = false;
 }
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" max-width="800" scrollable @after-enter="dialogEnter">
-    <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>{{ t("SetDownloader.edit.title") }}</v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <Editor v-model="clientConfig" />
-      </v-card-text>
-      <v-divider />
-      <v-card-actions>
-        <v-spacer />
-        <v-btn color="error" prepend-icon="mdi-close-circle" variant="text" @click="showDialog = false">
+  <Dialog v-model="showDialog" @after-open="dialogEnter">
+    <DialogContent class="max-w-3xl">
+      <DialogHeader>
+        <DialogTitle>
+          <SlidersHorizontal class="size-4 text-primary" />
+          <span>{{ t("SetDownloader.edit.title") }}</span>
+          <Badge v-if="clientConfig?.name" variant="secondary" class="ml-1 font-normal">
+            {{ clientConfig.name }}
+          </Badge>
+        </DialogTitle>
+      </DialogHeader>
+
+      <div class="flex-1 overflow-y-auto px-5 py-4">
+        <Editor v-model="clientConfig" @update:config-valid="(v) => (isConfigValid = v)" />
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" @click="showDialog = false">
           {{ t("common.dialog.cancel") }}
-        </v-btn>
-
-        <v-btn color="success" prepend-icon="mdi-check-circle-outline" variant="text" @click="editClientConfig">
+        </Button>
+        <Button :disabled="!isConfigValid" @click="editClientConfig">
+          <Check class="size-4" />
           {{ t("common.dialog.ok") }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped lang="scss"></style>

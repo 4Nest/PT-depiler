@@ -5,31 +5,31 @@ export const setBaseChildren: RouteRecordRaw[] = [
     path: "",
     alias: "ui",
     name: "SetBaseUi",
-    meta: { icon: "mdi-palette" },
+    meta: { icon: "palette" },
     component: () => import("../views/Settings/SetBase/UiWindow.vue"),
   },
   {
     path: "search-entity",
     name: "SetBaseSearchEntity",
-    meta: { icon: "mdi-magnify" },
+    meta: { icon: "search" },
     component: () => import("../views/Settings/SetBase/SearchEntityWindow.vue"),
   },
   {
     path: "download",
     name: "SetBaseDownload",
-    meta: { icon: "mdi-download-network" },
+    meta: { icon: "download" },
     component: () => import("../views/Settings/SetBase/DownloadWindow.vue"),
   },
   {
     path: "user-info",
     name: "SetBaseUserInfo",
-    meta: { icon: "mdi-account" },
+    meta: { icon: "user" },
     component: () => import("../views/Settings/SetBase/UserInfoWindow.vue"),
   },
   {
     path: "backup",
     name: "SetBaseBackup",
-    meta: { icon: "mdi-backup-restore" },
+    meta: { icon: "key-round", usesGlobalSave: true },
     component: () => import("../views/Settings/SetBase/BackupWindow.vue"),
   },
 ] as const;
@@ -44,13 +44,13 @@ export const routes: RouteRecordRaw[] = [
         path: "/my-data",
         name: "MyData",
         alias: "",
-        meta: { icon: "mdi-view-dashboard-outline" },
+        meta: { icon: "layout-dashboard" },
         component: () => import("../views/Overview/MyData/Index.vue"),
       },
       {
         path: "/search-entity",
         name: "SearchEntity",
-        meta: { icon: "mdi-magnify" },
+        meta: { icon: "search" },
         component: () => import("../views/Overview/SearchEntity/Index.vue"),
       },
     ],
@@ -64,31 +64,31 @@ export const routes: RouteRecordRaw[] = [
       {
         path: "/set-site",
         name: "SetSite",
-        meta: { icon: "mdi-earth" },
+        meta: { icon: "globe" },
         component: () => import("../views/Settings/SetSite/Index.vue"),
       },
       {
         path: "/set-downloader",
         name: "SetDownloader",
-        meta: { icon: "mdi-cloud-download-outline" },
+        meta: { icon: "hard-drive-download" },
         component: () => import("../views/Settings/SetDownloader/Index.vue"),
       },
       {
         path: "/set-search-solution",
         name: "SetSearchSolution",
-        meta: { icon: "mdi-widgets" },
+        meta: { icon: "layers" },
         component: () => import("../views/Settings/SetSearchSolution/Index.vue"),
       },
       {
         path: "/set-backup",
         name: "SetBackup",
-        meta: { icon: "mdi-backup-restore" },
+        meta: { icon: "cloud-upload" },
         component: () => import("../views/Settings/SetBackup/Index.vue"),
       },
       {
         path: "/set-base",
         name: "SetBase",
-        meta: { icon: "mdi-cog-outline" },
+        meta: { icon: "sliders-horizontal" },
         component: () => import("../views/Settings/SetBase/Index.vue"),
         children: setBaseChildren,
       },
@@ -102,12 +102,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: "/logger",
         name: "Logger",
-        meta: { icon: "mdi-text-box-search-outline" },
+        meta: { icon: "scroll-text" },
         component: () => import("../views/About/Logger.vue"),
       },
     ],
   },
-
   {
     path: "/devtools",
     name: "Devtools",
@@ -116,26 +115,23 @@ export const routes: RouteRecordRaw[] = [
       {
         path: "/debugger",
         name: "Debugger",
-        meta: { icon: "mdi-bug" },
+        meta: { icon: "bug" },
         component: () => import("../views/Devtools/Debugger.vue"),
       },
     ],
   },
-
   {
     path: "/user-data-timeline",
     name: "UserDataTimeline",
     meta: { isMainMenu: false },
     component: () => import("../views/Overview/MyData/UserDataTimeline/Index.vue"),
   },
-
   {
     path: "/user-data-statistic",
     name: "UserDataStatistic",
     meta: { isMainMenu: false },
     component: () => import("../views/Overview/MyData/UserDataStatistic/Index.vue"),
   },
-
   { path: "/:pathMatch(.*)*", name: "NotFound", redirect: "/" },
 ];
 

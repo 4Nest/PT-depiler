@@ -1,6 +1,27 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  CalendarClock,
+  ChevronsDown,
+  ChevronsUp,
+  Clock,
+  Coins,
+  FileCheck,
+  FileDown,
+  FileText,
+  FileUp,
+  HandHelping,
+  HardDrive,
+  Leaf,
+  Scale,
+  Sprout,
+  Timer,
+  Zap,
+} from "lucide-vue-next";
+import {
   IImplicitUserInfo,
   isoDuration,
   convertIsoDurationToDate,
@@ -25,17 +46,16 @@ const {
 const { t } = useI18n();
 const configStore = useConfigStore();
 
-// Toggle function for double-click
 function toggleIntervalDisplay() {
   configStore.myDataTableControl.showIntervalAsDate = !configStore.myDataTableControl.showIntervalAsDate;
+  void configStore.$save();
 }
 
-// Toggle function for double-click to switch number simplification
 function toggleNumberSimplification() {
   configStore.myDataTableControl.simplifyBonusNumbers = !configStore.myDataTableControl.simplifyBonusNumbers;
+  void configStore.$save();
 }
 
-// Get interval display text and title
 function getIntervalDisplay(interval: number | isoDuration) {
   const showAsDate = configStore.myDataTableControl.showIntervalAsDate;
   const durationText = formatDuration(interval);
@@ -50,11 +70,10 @@ function getIntervalDisplay(interval: number | isoDuration) {
 function formatDuration(duration: number | isoDuration) {
   try {
     if (typeof duration === "number") {
-      // 如果是秒数，先转换为ISO duration格式再显示
       const isoDurationStr = convertSecondsToIsoDuration(duration);
       return isoDurationStr.substring(1);
     } else {
-      if (duration === "P") return "0D"; // 修正：如果 duration 只有 P，返回 0D
+      if (duration === "P") return "0D";
       return duration.substring(1);
     }
   } catch (e) {
@@ -73,16 +92,12 @@ function formatIntervalDate(duration: number | isoDuration): string {
       }
     }
 
-    // 展示剩余时间时，基于当前时刻计算；展现等级要求时，基于 joinTime 计算
-    // 注意每次渲染时重新取值，不能缓存到 setup 顶层（浏览器长期不关闭时缓存值会持续陈旧）
     const refTime = useJoinTimeAsRef ? (userInfo.joinTime ?? Date.now()) : Date.now();
     if (typeof duration === "number") {
-      // 如果是数字（秒）
       const targetDate = new Date(refTime + duration * 1000);
       const result = formatDate(targetDate, "yyyy-MM-dd");
       return typeof result === "string" ? result : "";
     } else {
-      // 如果是isoDuration字符串
       const result = formatDate(convertIsoDurationToDate(duration, refTime), "yyyy-MM-dd");
       return typeof result === "string" ? result : "";
     }
@@ -105,135 +120,190 @@ function formatBonus(bonusKey: "bonus" | "seedingBonus") {
 </script>
 
 <template>
-  <slot name="prepend"></slot>
-  <template v-if="levelRequirement.interval">
-    <v-icon :title="t('levelRequirement.interval')" icon="mdi-calendar-clock" size="small" />
+  <span class="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs tabular-nums">
+    <slot name="prepend" />
+
     <span
-      :title="getIntervalDisplay(levelRequirement.interval).title"
+      v-if="levelRequirement.interval"
+      class="inline-flex cursor-pointer select-none items-center gap-1 whitespace-nowrap"
+      :title="`${t('levelRequirement.interval')}: ${getIntervalDisplay(levelRequirement.interval).title}`"
       @dblclick="toggleIntervalDisplay"
-      style="cursor: pointer; user-select: none"
     >
-      {{ getIntervalDisplay(levelRequirement.interval).text }} </span
-    >;
-  </template>
-  <template v-if="levelRequirement.uploaded">
-    <v-icon :title="t('levelRequirement.uploaded')" color="green-darken-4" icon="mdi-chevron-up" size="small" />
-    {{ formatSize(levelRequirement.uploaded) }};
-  </template>
-  <template v-if="levelRequirement.trueUploaded">
-    <v-icon
+      <CalendarClock class="size-3.5 shrink-0 text-muted-foreground" />
+      <span>{{ getIntervalDisplay(levelRequirement.interval).text }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.uploaded"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.uploaded')"
+    >
+      <ArrowUp class="size-3.5 shrink-0 text-success" />
+      <span>{{ formatSize(levelRequirement.uploaded) }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.trueUploaded"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
       :title="t('levelRequirement.trueUploaded')"
-      color="green-darken-4"
-      icon="mdi-chevron-double-up"
-      size="small"
-    />
-    {{ formatSize(levelRequirement.trueUploaded) }};
-  </template>
-  <template v-if="levelRequirement.downloaded">
-    <v-icon :title="t('levelRequirement.downloaded')" color="red-darken-4" icon="mdi-chevron-down" size="small" />
-    {{ formatSize(levelRequirement.downloaded) }};
-  </template>
-  <template v-if="levelRequirement.trueDownloaded">
-    <v-icon
+    >
+      <ChevronsUp class="size-3.5 shrink-0 text-success" />
+      <span>{{ formatSize(levelRequirement.trueUploaded) }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.downloaded"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.downloaded')"
+    >
+      <ArrowDown class="size-3.5 shrink-0 text-destructive" />
+      <span>{{ formatSize(levelRequirement.downloaded) }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.trueDownloaded"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
       :title="t('levelRequirement.trueDownloaded')"
-      color="red-darken-4"
-      icon="mdi-chevron-double-down"
-      size="small"
-    />
-    {{ formatSize(levelRequirement.trueDownloaded) }};
-  </template>
-
-  <template v-if="levelRequirement.totalTraffic">
-    <v-icon :title="t('levelRequirement.totalTraffic')" color="orange-darken-4" icon="mdi-swap-vertical" size="small" />
-    {{ formatSize(levelRequirement.totalTraffic) }};
-  </template>
-
-  <template v-if="levelRequirement.ratio && !hideRatioInTable">
-    <v-icon :title="t('levelRequirement.ratio')" color="orange-darken-4" icon="mdi-scale-balance" size="small" />
-    {{ levelRequirement.ratio }};
-  </template>
-
-  <template v-if="levelRequirement.trueRatio && !hideRatioInTable">
-    <v-icon :title="t('levelRequirement.trueRatio')" color="orange-darken-4" icon="mdi-scale" size="small" />
-    {{ levelRequirement.trueRatio }};
-  </template>
-
-  <template v-if="levelRequirement.seeding">
-    <v-icon :title="t('levelRequirement.seeding')" color="green-darken-4" icon="mdi-sprout" size="small" />
-    {{ formatNumber(levelRequirement.seeding, { minimumFractionDigits: 0 }) }};
-  </template>
-
-  <template v-if="levelRequirement.seedingSize">
-    <v-icon :title="t('levelRequirement.seedingSize')" color="blue-darken-4" icon="mdi-dns" size="small" />
-    {{ formatSize(levelRequirement.seedingSize) }};
-  </template>
-
-  <template v-if="levelRequirement.seedingTime">
-    <v-icon :title="t('levelRequirement.seedingTime')" color="green-darken-4" icon="mdi-timer" size="small" />
-    {{ formatDuration(levelRequirement.seedingTime) }};
-  </template>
-
-  <template v-if="levelRequirement.averageSeedingTime">
-    <v-icon :title="t('levelRequirement.averageSeedingTime')" color="blue-darken-4" icon="mdi-timer" size="small" />
-    {{ formatDuration(levelRequirement.averageSeedingTime) }};
-  </template>
-
-  <template v-if="levelRequirement.bonus">
-    <v-icon :title="t('levelRequirement.bonus')" color="green-darken-4" icon="mdi-currency-usd" size="small" />
-    <span
-      :title="formatNumber(levelRequirement.bonus)"
-      @dblclick="toggleNumberSimplification"
-      style="cursor: pointer; user-select: none"
     >
-      {{ formatBonus("bonus") }} </span
-    >;
-  </template>
+      <ChevronsDown class="size-3.5 shrink-0 text-destructive" />
+      <span>{{ formatSize(levelRequirement.trueDownloaded) }}</span>
+    </span>
 
-  <template v-if="levelRequirement.seedingBonus">
-    <v-icon
-      :title="t('levelRequirement.seedingBonus')"
-      color="green-darken-4"
-      icon="mdi-lightning-bolt-circle"
-      size="small"
-    />
     <span
-      :title="formatNumber(levelRequirement.seedingBonus)"
-      @dblclick="toggleNumberSimplification"
-      style="cursor: pointer; user-select: none"
+      v-if="levelRequirement.totalTraffic"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.totalTraffic')"
     >
-      {{ formatBonus("seedingBonus") }} </span
-    >;
-  </template>
+      <ArrowUpDown class="size-3.5 shrink-0 text-warning" />
+      <span>{{ formatSize(levelRequirement.totalTraffic) }}</span>
+    </span>
 
-  <template v-if="levelRequirement.bonusPerHour">
-    <v-icon :title="t('levelRequirement.bonusPerHour')" color="green-darken-4" icon="mdi-leaf" size="small" />
-    {{ formatNumber(levelRequirement.bonusPerHour) }};
-  </template>
+    <span
+      v-if="levelRequirement.ratio && !hideRatioInTable"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.ratio')"
+    >
+      <Scale class="size-3.5 shrink-0 text-warning" />
+      <span>{{ levelRequirement.ratio }}</span>
+    </span>
 
-  <template v-if="levelRequirement.uploads">
-    <v-icon :title="t('levelRequirement.uploads')" color="green-darken-4" icon="mdi-file-upload" size="small" />
-    {{ formatNumber(levelRequirement.uploads, { minimumFractionDigits: 0 }) }};
-  </template>
+    <span
+      v-if="levelRequirement.trueRatio && !hideRatioInTable"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.trueRatio')"
+    >
+      <Scale class="size-3.5 shrink-0 text-info" />
+      <span>{{ levelRequirement.trueRatio }}</span>
+    </span>
 
-  <template v-if="levelRequirement.leeching">
-    <v-icon :title="t('levelRequirement.leeching')" color="red-darken-4" icon="mdi-file-download" size="small" />
-    {{ formatNumber(levelRequirement.leeching, { minimumFractionDigits: 0 }) }};
-  </template>
+    <span
+      v-if="levelRequirement.seeding"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.seeding')"
+    >
+      <Sprout class="size-3.5 shrink-0 text-success" />
+      <span>{{ formatNumber(levelRequirement.seeding, { minimumFractionDigits: 0 }) }}</span>
+    </span>
 
-  <template v-if="levelRequirement.snatches">
-    <v-icon :title="t('levelRequirement.snatches')" color="orange-darken-4" icon="mdi-file-check" size="small" />
-    {{ formatNumber(levelRequirement.snatches, { minimumFractionDigits: 0 }) }};
-  </template>
+    <span
+      v-if="levelRequirement.seedingSize"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.seedingSize')"
+    >
+      <HardDrive class="size-3.5 shrink-0 text-info" />
+      <span>{{ formatSize(levelRequirement.seedingSize) }}</span>
+    </span>
 
-  <template v-if="levelRequirement.posts">
-    <v-icon :title="t('levelRequirement.posts')" color="green-darken-4" icon="mdi-note-plus" size="small" />
-    {{ formatNumber(levelRequirement.posts, { minimumFractionDigits: 0 }) }};
-  </template>
+    <span
+      v-if="levelRequirement.seedingTime"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.seedingTime')"
+    >
+      <Timer class="size-3.5 shrink-0 text-success" />
+      <span>{{ formatDuration(levelRequirement.seedingTime) }}</span>
+    </span>
 
-  <template v-if="levelRequirement.adoptions">
-    <v-icon :title="t('levelRequirement.adoptions')" color="green-darken-4" icon="mdi-hand-extended" size="small" />
-    {{ formatNumber(levelRequirement.adoptions, { minimumFractionDigits: 0 }) }};
-  </template>
+    <span
+      v-if="levelRequirement.averageSeedingTime"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.averageSeedingTime')"
+    >
+      <Clock class="size-3.5 shrink-0 text-info" />
+      <span>{{ formatDuration(levelRequirement.averageSeedingTime) }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.bonus"
+      class="inline-flex cursor-pointer select-none items-center gap-0.5 whitespace-nowrap"
+      :title="`${t('levelRequirement.bonus')}: ${formatNumber(levelRequirement.bonus)}`"
+      @dblclick="toggleNumberSimplification"
+    >
+      <Coins class="size-3.5 shrink-0 text-warning" />
+      <span>{{ formatBonus("bonus") }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.seedingBonus"
+      class="inline-flex cursor-pointer select-none items-center gap-0.5 whitespace-nowrap"
+      :title="`${t('levelRequirement.seedingBonus')}: ${formatNumber(levelRequirement.seedingBonus)}`"
+      @dblclick="toggleNumberSimplification"
+    >
+      <Zap class="size-3.5 shrink-0 text-warning" />
+      <span>{{ formatBonus("seedingBonus") }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.bonusPerHour"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.bonusPerHour')"
+    >
+      <Leaf class="size-3.5 shrink-0 text-success" />
+      <span>{{ formatNumber(levelRequirement.bonusPerHour) }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.uploads"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.uploads')"
+    >
+      <FileUp class="size-3.5 shrink-0 text-success" />
+      <span>{{ formatNumber(levelRequirement.uploads, { minimumFractionDigits: 0 }) }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.leeching"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.leeching')"
+    >
+      <FileDown class="size-3.5 shrink-0 text-destructive" />
+      <span>{{ formatNumber(levelRequirement.leeching, { minimumFractionDigits: 0 }) }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.snatches"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.snatches')"
+    >
+      <FileCheck class="size-3.5 shrink-0 text-warning" />
+      <span>{{ formatNumber(levelRequirement.snatches, { minimumFractionDigits: 0 }) }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.posts"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.posts')"
+    >
+      <FileText class="size-3.5 shrink-0 text-success" />
+      <span>{{ formatNumber(levelRequirement.posts, { minimumFractionDigits: 0 }) }}</span>
+    </span>
+
+    <span
+      v-if="levelRequirement.adoptions"
+      class="inline-flex items-center gap-0.5 whitespace-nowrap"
+      :title="t('levelRequirement.adoptions')"
+    >
+      <HandHelping class="size-3.5 shrink-0 text-success" />
+      <span>{{ formatNumber(levelRequirement.adoptions, { minimumFractionDigits: 0 }) }}</span>
+    </span>
+  </span>
 </template>
-
-<style scoped lang="scss"></style>

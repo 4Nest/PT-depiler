@@ -1,95 +1,243 @@
-<script lang="ts" setup>
-import { watch } from "vue";
+<script setup lang="ts">
+import { computed, type Component } from "vue";
 import { useI18n } from "vue-i18n";
-import { useDisplay } from "vuetify";
+import { useRoute, useRouter } from "vue-router";
+import { useMediaQuery } from "@vueuse/core";
+import {
+  Bug,
+  CloudUpload,
+  ExternalLink,
+  Globe,
+  HardDriveDownload,
+  Languages,
+  LayoutDashboard,
+  Layers,
+  ScrollText,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+} from "lucide-vue-next";
 
-import { routes } from "@/options/plugins/router";
+import { routes } from "@/options/plugins/router.ts";
+import { definedLangMetaData } from "@/options/plugins/i18n.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
-
 import { isDebug, REPO_URL } from "~/helper.ts";
+import { cn } from "~/lib/utils";
+import {
+  BrandLogo,
+  Badge,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Tooltip,
+} from "~/components/ui";
 
-const git = __GIT_VERSION__;
-const ext_version = __EXT_VERSION__;
+const emit = defineEmits<{
+  openReleaseNote: [];
+}>();
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
 const configStore = useConfigStore();
+const isMobile = useMediaQuery("(max-width: 767px)");
 
-const display = useDisplay();
-watch(display.mdAndUp, () => {
-  if (configStore.autoToggleNavBarOnDisplayChange) {
-    configStore.isNavBarOpen = display.mdAndUp.value;
+const extVersion = __EXT_VERSION__;
+const gitVersion = __GIT_VERSION__;
+
+const iconMap: Record<string, Component> = {
+  "layout-dashboard": LayoutDashboard,
+  search: Search,
+  globe: Globe,
+  "hard-drive-download": HardDriveDownload,
+  layers: Layers,
+  "cloud-upload": CloudUpload,
+  "sliders-horizontal": SlidersHorizontal,
+  "scroll-text": ScrollText,
+  bug: Bug,
+};
+
+const menuGroups = computed(() =>
+  routes
+    .filter((r) => r.meta?.isMainMenu)
+    .map((group) => ({
+      name: String(group.name),
+      label: t(`route.${String(group.name)}.default`),
+      items: (group.children ?? [])
+        .filter((c) => c.meta?.show !== false)
+        .map((c) => ({
+          name: String(c.name),
+          path: c.path,
+          label: t(`route.${String(group.name)}.${String(c.name)}`),
+          icon: iconMap[(c.meta?.icon as string) ?? ""] ?? LayoutDashboard,
+        })),
+    })),
+);
+
+function isItemActive(itemName: string, itemPath: string): boolean {
+  if (route.name === itemName) return true;
+  if (itemName === "SetBase" && String(route.name ?? "").startsWith("SetBase")) return true;
+  if (itemName === "MyData" && (route.name === "UserDataStatistic" || route.name === "UserDataTimeline")) return true;
+  return route.path === itemPath;
+}
+
+function navigateTo(name: string) {
+  router.push({ name });
+  if (isMobile.value) {
+    configStore.isNavBarOpen = false;
   }
-});
+}
 
-const menuOptions = routes
-  .filter((route) => route.meta?.isMainMenu)
-  .map((route) => {
-    return {
-      title: `route.${String(route.name)}.default`,
-      name: route.name,
-      icon: route.meta?.icon,
-      children: route
-        .children!.filter((childrenRoute) => !(childrenRoute.meta?.show === false))
-        .map((childrenRoute) => {
-          return {
-            title: `route.${String(route.name)}.${String(childrenRoute.name)}`,
-            name: childrenRoute.name,
-            icon: childrenRoute.meta?.icon,
-          };
-        }),
-    };
-  });
+function switchLang(code: any) {
+  configStore.lang = code;
+  configStore.$save();
+}
+
+const collapsed = computed(() => !isMobile.value && !configStore.isNavBarOpen);
 </script>
 
 <template>
-  <v-navigation-drawer
-    id="ptd-navigation"
-    v-model="configStore.isNavBarOpen"
-    :width="216"
-    color="surface"
-    border="e"
-    :temporary="display.smAndDown.value"
+  <!-- 移动端遮罩 -->
+  <div
+    v-if="isMobile && configStore.isNavBarOpen"
+    class="fixed inset-0 z-40 bg-black/50 backdrop-blur-[1px]"
+    @click="configStore.isNavBarOpen = false"
+  />
+
+  <aside
+    :class="
+      cn(
+        'z-40 flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200 select-none',
+        isMobile
+          ? ['fixed inset-y-0 left-0 w-60 shadow-xl', configStore.isNavBarOpen ? 'translate-x-0' : '-translate-x-full']
+          : ['sticky top-0 h-screen', collapsed ? 'w-14' : 'w-58'],
+      )
+    "
   >
-    <v-list density="compact" nav class="pa-2">
-      <template v-for="(group, groupIndex) in menuOptions" :key="groupIndex">
-        <v-list-subheader class="text-caption font-weight-semibold text-medium-emphasis mt-1">
-          {{ t(group.title) }}
-        </v-list-subheader>
-        <v-list-item
-          v-for="(nav, navIndex) in group.children"
-          :key="`${groupIndex}-${navIndex}`"
-          :prepend-icon="nav.icon! as string"
-          :to="{ name: nav.name }"
-          :value="nav"
-          color="primary"
-          rounded="lg"
-          class="list-item-half-spacer mb-1"
-        >
-          {{ t(nav.title) }}
-        </v-list-item>
-      </template>
-    </v-list>
-
-    <template #append>
-      <div class="pa-3 border-t d-flex align-center justify-space-between text-caption text-medium-emphasis">
-        <div class="d-flex align-center ga-1">
-          <a :href="`${REPO_URL}${git.long ? `/commit/${git.long}` : ''}`" target="_blank" class="text-medium-emphasis">
-            {{ ext_version }}
-          </a>
-          <v-chip v-if="isDebug" color="warning" variant="tonal" label size="x-small">
-            {{ t("common.test") }}
-          </v-chip>
+    <!-- Sidebar Header / Brand -->
+    <div
+      :class="
+        cn(
+          'flex h-14 shrink-0 items-center border-b border-sidebar-border',
+          collapsed ? 'justify-center px-2' : 'justify-between px-4',
+        )
+      "
+    >
+      <button
+        type="button"
+        class="flex items-center gap-2.5 text-left focus:outline-none"
+        @click="navigateTo('MyData')"
+      >
+        <BrandLogo :size="28" class="shadow-xs rounded-lg" />
+        <div v-if="!collapsed" class="flex items-center gap-1.5 overflow-hidden">
+          <span class="truncate text-sm font-semibold tracking-tight text-foreground">PT Depiler</span>
+          <Badge variant="secondary" class="h-4.5 px-1.5 text-[10px] font-semibold">Lite</Badge>
         </div>
-        <v-btn
-          :to="{ name: 'Logger' }"
-          icon="mdi-text-box-search-outline"
-          size="x-small"
-          variant="text"
-          :title="t('route.About.Logger')"
-        />
-      </div>
-    </template>
-  </v-navigation-drawer>
-</template>
+      </button>
+    </div>
 
-<style lang="scss" scoped></style>
+    <!-- Sidebar Menu -->
+    <nav class="flex-1 space-y-5 overflow-y-auto px-2.5 py-4">
+      <div v-for="group in menuGroups" :key="group.name" class="space-y-1">
+        <div
+          v-if="!collapsed"
+          class="px-2.5 pb-1 text-[11px] font-medium tracking-wider text-muted-foreground/80 uppercase"
+        >
+          {{ group.label }}
+        </div>
+
+        <template v-for="item in group.items" :key="item.name">
+          <Tooltip :content="item.label" side="right" :disabled="!collapsed">
+            <button
+              type="button"
+              :class="
+                cn(
+                  'group relative flex w-full items-center rounded-lg text-[13px] font-medium transition-colors',
+                  collapsed ? 'h-9 justify-center px-0' : 'h-8.5 gap-2.5 px-2.5',
+                  isItemActive(item.name, item.path)
+                    ? 'bg-primary/12 text-primary font-semibold'
+                    : 'text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground',
+                )
+              "
+              @click="navigateTo(item.name)"
+            >
+              <span
+                v-if="isItemActive(item.name, item.path)"
+                class="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-primary"
+              />
+              <component
+                :is="item.icon"
+                :class="
+                  cn(
+                    'size-4 shrink-0 transition-colors',
+                    isItemActive(item.name, item.path)
+                      ? 'text-primary'
+                      : 'text-muted-foreground group-hover:text-foreground',
+                  )
+                "
+              />
+              <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
+            </button>
+          </Tooltip>
+        </template>
+      </div>
+    </nav>
+
+    <!-- Sidebar Footer -->
+    <div class="shrink-0 border-t border-sidebar-border p-2.5">
+      <div v-if="!collapsed" class="flex items-center justify-between gap-1 rounded-lg bg-muted/45 px-2.5 py-2">
+        <div class="min-w-0">
+          <button
+            type="button"
+            class="flex items-center gap-1 truncate text-xs font-medium text-foreground hover:text-primary"
+            :title="gitVersion.short"
+            @click="emit('openReleaseNote')"
+          >
+            <Sparkles class="size-3 text-primary" />
+            <span class="truncate tabular-nums">{{ extVersion }}</span>
+          </button>
+          <span v-if="isDebug" class="mt-0.5 inline-block text-[10px] text-warning">DEV MODE</span>
+        </div>
+
+        <div class="flex shrink-0 items-center gap-0.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button variant="ghost" size="icon-xs" title="Language">
+                <Languages class="size-3.5 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem v-for="lang in definedLangMetaData" :key="lang.value" @click="switchLang(lang.value)">
+                <span :class="configStore.lang === lang.value ? 'font-semibold text-primary' : ''">
+                  {{ lang.title }}
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            as="a"
+            :href="REPO_URL"
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="ghost"
+            size="icon-xs"
+            title="GitHub"
+          >
+            <ExternalLink class="size-3.5 text-muted-foreground" />
+          </Button>
+        </div>
+      </div>
+
+      <div v-else class="flex flex-col items-center gap-1">
+        <Tooltip :content="extVersion" side="right">
+          <Button variant="ghost" size="icon-sm" @click="emit('openReleaseNote')">
+            <Sparkles class="size-4 text-muted-foreground" />
+          </Button>
+        </Tooltip>
+      </div>
+    </div>
+  </aside>
+</template>

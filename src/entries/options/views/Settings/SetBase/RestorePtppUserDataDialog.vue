@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { computed, ref, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { omit } from "es-toolkit";
 import { isEmpty } from "es-toolkit/compat";
-import { computed, ref, shallowRef } from "vue";
 import {
   definitionList,
   EResultParseStatus,
@@ -13,18 +13,32 @@ import {
   type TSiteHost,
   type TSiteID,
 } from "@ptd/site";
+import { Check, Database, HelpCircle, Loader2, Upload, X } from "lucide-vue-next";
 
 import { sendMessage } from "@/messages.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
 import type { IPtppDumpUserInfo, IPtppUserInfo, TUserInfoStorageSchema } from "@/shared/types.ts";
+import {
+  Alert,
+  Badge,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Switch,
+} from "~/components/ui";
+import { cn } from "~/lib/utils";
 
 import SiteName from "@/options/components/SiteName.vue";
 import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 import CheckSwitchButton from "@/options/components/CheckSwitchButton.vue";
 
-const showDialog = defineModel<boolean>();
+const showDialog = defineModel<boolean>({ default: false });
 const { ptppUserData } = defineProps<{
   ptppUserData: IPtppDumpUserInfo;
 }>();
@@ -34,29 +48,18 @@ const configStore = useConfigStore();
 const metadataStore = useMetadataStore();
 const runtimeStore = useRuntimeStore();
 
-const parsePtppSize = (v: any) => (typeof v == "string" ? parseSizeString(v) : v);
+const parsePtppSize = (v: unknown) => (typeof v === "string" ? parseSizeString(v) : v);
 
-type TUserInfoTransferFull = { key: keyof IUserInfo; format?: (v: any) => any };
+type TUserInfoTransferFull = { key: keyof IUserInfo; format?: (v: unknown) => unknown };
+type TUserInfoTransfer = false | undefined | keyof IUserInfo | TUserInfoTransferFull;
 
-type TUserInfoTransfer =
-  | false // 不导入
-  | undefined // 按照原 key 导入
-  | keyof IUserInfo // 按新的 key 导入
-  | TUserInfoTransferFull; // 导入到新的 key 中，并使用 format 对原始数据进行转换
-
-/**
- * 这个 映射表是用来将 ptpp 的用户信息转换为我们需要的格式，未列出的字段的字段会 按照原 key 导入
- */
 const userInfoTransferMap = {
   trueDownloaded: { key: "trueDownloaded", format: parsePtppSize },
   totalTraffic: { key: "totalTraffic", format: parsePtppSize },
-  // seedingList?: string[]; // 做种列表
   seedingPoints: "seedingBonus",
   averageSeedtime: "averageSeedingTime",
-  // totalSeedtime?: number; // 总保种时间
   bonusPage: false,
   unsatisfiedsPage: false,
-  // classPoints?: number; // 等级积分
   unsatisfieds: { key: "hnrUnsatisfied", format: (v) => Number(v) },
   prewarn: "hnrPreWarning",
   lastUpdateTime: "updateAt",
@@ -67,14 +70,12 @@ const userInfoTransferMap = {
   isLogged: false,
   isLoading: false,
   lastErrorMsg: false,
-  // uniqueGroups?: number; // 独特分组
-  // perfectFLAC?: number; // “完美”FLAC
   joinTime: {
     key: "joinTime",
-    format: (v: any) => {
+    format: (v: unknown) => {
       if (typeof v === "number") {
-        if (v > 1e12) return v; // 13位时间戳
-        if (v > 1e9) return v * 1000; // 10位时间戳转13位
+        if (v > 1e12) return v;
+        if (v > 1e9) return v * 1000;
       }
       if (typeof v === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(v)) {
         return parseValidTimeString(v);
@@ -86,39 +87,48 @@ const userInfoTransferMap = {
 
 const isImporting = ref<boolean>(false);
 const toImportSite = ref<string[]>([]);
-
-// 这里我们自己维护一个站点列表，而不是用 metadataStore.siteHostMap （因为 siteHostMap 只考虑了已添加的站点，无未添加的站点）
 const allSupportedSiteHostMap = shallowRef<Record<TSiteHost, TSiteID>>({});
 
 const allSupportedSiteHost = computed(() =>
-  Object.keys(ptppUserData)
+  Object.keys(ptppUserData ?? {})
     .map((x) => ({ site: allSupportedSiteHostMap.value[x], host: x }))
     .filter((x) => !!x.site)
     .map((x) => x.host),
 );
 const overwriteExistUserInfo = ref<boolean>(false);
 
-const statusIconPropComputed = (host: string) =>
-  computed(() => {
-    let progressIcon = "progress-helper"; // 默认
-    let progressColor = "grey";
-    let progressTitle = "";
-    if (!allSupportedSiteHost.value.includes(host)) {
-      progressIcon = "progress-close";
-      progressColor = "purple";
-      progressTitle = t("ptppSettings.RestorePtppUserDataDialog.notSupported");
-    } else if (toImportSite.value.includes(host)) {
-      progressIcon = "progress-pencil"; // 已选择
-      progressColor = "";
-      progressTitle = t("ptppSettings.RestorePtppUserDataDialog.selected");
+function toggleImportHost(host: string, checked: boolean | "indeterminate") {
+  if (!allSupportedSiteHost.value.includes(host)) return;
+  if (checked === true) {
+    if (!toImportSite.value.includes(host)) {
+      toImportSite.value = [...toImportSite.value, host];
     }
+  } else {
+    toImportSite.value = toImportSite.value.filter((h) => h !== host);
+  }
+}
 
+function getHostStatus(host: string) {
+  if (!allSupportedSiteHost.value.includes(host)) {
     return {
-      "prepend-icon": `mdi-${progressIcon}`,
-      color: progressColor,
-      title: progressTitle,
+      variant: "outline" as const,
+      icon: X,
+      title: t("ptppSettings.RestorePtppUserDataDialog.notSupported"),
     };
-  });
+  }
+  if (toImportSite.value.includes(host)) {
+    return {
+      variant: "success" as const,
+      icon: Check,
+      title: t("ptppSettings.RestorePtppUserDataDialog.selected"),
+    };
+  }
+  return {
+    variant: "secondary" as const,
+    icon: HelpCircle,
+    title: "",
+  };
+}
 
 function transferUserInfo(userInfo: IPtppUserInfo) {
   const newUserInfo = {} as IUserInfo;
@@ -132,8 +142,8 @@ function transferUserInfo(userInfo: IPtppUserInfo) {
       } else if (typeof transfer === "string") {
         newUserInfo[transfer] = value;
       } else {
-        const { key, format = undefined } = transfer as TUserInfoTransferFull;
-        newUserInfo[key as keyof IPtppUserInfo] = format ? format(value) : value;
+        const { key: targetKey, format = undefined } = transfer as TUserInfoTransferFull;
+        newUserInfo[targetKey as keyof IPtppUserInfo] = format ? format(value) : value;
       }
     } else {
       newUserInfo[key] = value;
@@ -151,8 +161,6 @@ async function doImport() {
   }
 
   isImporting.value = true;
-
-  // 暂停后端刷新数据的任务
   const autoReflushStatus = configStore.userInfo.autoReflush.enabled;
 
   try {
@@ -161,16 +169,13 @@ async function doImport() {
       await configStore.$save();
     }
 
-    // 读出目前所有的 userInfo
     const userInfoStorage = ((await sendMessage("getExtStorage", "userInfo")) as TUserInfoStorageSchema) ?? {};
 
-    // 开始转换数据
     for (const [host, data] of Object.entries(ptppUserData)) {
       if (toImportSite.value.includes(host)) {
         const siteId = allSupportedSiteHostMap.value[host];
         userInfoStorage[siteId] ??= {};
 
-        // 首先处理 latest，注意我们仅处理 lastUpdateStatus 为 success ，且历史时间大于当前存储的时间（这样可以帮助我们导入 isDead 的站点）
         const latestUserInfo = data.latest ?? {};
         if (
           overwriteExistUserInfo.value &&
@@ -188,43 +193,33 @@ async function doImport() {
       }
     }
 
-    // 更新 userInfo
     await sendMessage("setExtStorage", { key: "userInfo", value: userInfoStorage });
     await metadataStore.$save();
 
-    runtimeStore.showSnackbar(t("ptppSettings.RestorePtppUserDataDialog.importSuccess"));
-
-    setTimeout(() => (showDialog.value = false), 5e3);
+    runtimeStore.showSnackbar(t("ptppSettings.RestorePtppUserDataDialog.importSuccess"), { color: "success" });
+    setTimeout(() => (showDialog.value = false), 5000);
   } catch (e) {
     console.error("导入失败", e);
     runtimeStore.showSnackbar(t("ptppSettings.RestorePtppUserDataDialog.importFailure"), { color: "error" });
   } finally {
-    // 恢复自动刷新的状态
     configStore.userInfo.autoReflush.enabled = autoReflushStatus;
     await configStore.$save();
-
     isImporting.value = false;
   }
 }
 
 async function entryDialog() {
-  // 构造 allSupportedSiteHostMap
   const siteHostMap: Record<TSiteHost, TSiteID> = {};
   for (const siteId of definitionList) {
-    // 用户自定义的 url
     if (metadataStore.sites[siteId]?.url) {
       siteHostMap[getHostFromUrl(metadataStore.sites[siteId].url)] = siteId;
     }
-
-    // 站点定义中的 urls
     const urls = await metadataStore.getSiteMergedMetadata(siteId, "urls", []);
     if (urls.length > 0) {
       for (const url of urls) {
         siteHostMap[getHostFromUrl(url)] = siteId;
       }
     }
-
-    // 站点定义中的 legacyUrls
     const legacyUrls = (await metadataStore.getSiteMergedMetadata(siteId, "legacyUrls", []))!;
     if (legacyUrls.length > 0) {
       for (const url of legacyUrls) {
@@ -234,103 +229,90 @@ async function entryDialog() {
   }
 
   allSupportedSiteHostMap.value = siteHostMap;
-
   toImportSite.value = allSupportedSiteHost.value;
 }
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" :persistent="isImporting" max-width="800" scrollable @after-enter="entryDialog">
-    <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>{{ t("ptppSettings.RestorePtppUserDataDialog.title") }}</v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <v-alert class="mb-1 py-2" :title="t('ptppSettings.RestorePtppUserDataDialog.pendingImportData')">
-          <template #append>
-            <CheckSwitchButton
-              v-model="toImportSite"
-              :all="allSupportedSiteHost"
-              :size="undefined"
-              :disabled="isImporting"
-            />
-          </template>
-        </v-alert>
-        <v-list>
-          <v-container class="pa-0">
-            <v-row no-gutters>
-              <v-col v-for="(data, host) in ptppUserData" :key="host" class="pa-1" cols="12" md="6">
-                <v-list-item border class="bg-grey-lighten-4">
-                  <template #prepend>
-                    <v-checkbox
-                      v-model="toImportSite"
-                      :disabled="!allSupportedSiteHost.includes(host as string)"
-                      :indeterminate="!allSupportedSiteHost.includes(host as string)"
-                      :value="host"
-                      hide-details
-                      indeterminate-icon="mdi-close"
-                    />
-                  </template>
+  <Dialog v-model="showDialog" @after-open="entryDialog">
+    <DialogContent class="max-w-3xl" :prevent-outside-close="isImporting" :hide-close="isImporting">
+      <DialogHeader>
+        <DialogTitle>
+          <Database class="size-4 text-primary" />
+          <span>{{ t("ptppSettings.RestorePtppUserDataDialog.title") }}</span>
+        </DialogTitle>
+      </DialogHeader>
 
-                  <template #title>
-                    <v-list-item-title class="d-inline-flex align-center">
-                      {{ host }}
-                      <template v-if="allSupportedSiteHost.includes(host as string)">
-                        ->
-                        <SiteFavicon :site-id="allSupportedSiteHostMap[host as string]" class="mx-1" />
-                        <SiteName
-                          :site-id="allSupportedSiteHostMap[host as string]"
-                          class="text-no-wrap font-weight-bold"
-                          tag="span"
-                        />
-                      </template>
-                    </v-list-item-title>
-                  </template>
+      <div class="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+        <Alert variant="info">
+          <span>{{ t("ptppSettings.RestorePtppUserDataDialog.pendingImportData") }}</span>
+          <template #action>
+            <CheckSwitchButton v-model="toImportSite" :all="allSupportedSiteHost" :disabled="isImporting" />
+          </template>
+        </Alert>
 
-                  <template #append>
-                    <v-chip label v-bind="statusIconPropComputed(host as string).value">
-                      {{ t("ptppSettings.RestorePtppUserDataDialog.recordCount", [Object.keys(data).length - 1]) }}
-                    </v-chip>
-                  </template>
-                </v-list-item>
-              </v-col>
-            </v-row>
-          </v-container>
-        </v-list>
-      </v-card-text>
-      <v-divider />
-      <v-card-actions>
-        <v-switch
-          color="success"
-          v-model="overwriteExistUserInfo"
-          :label="t('ptppSettings.RestorePtppUserDataDialog.overwriteExisting')"
-          :disabled="isImporting"
-          hide-details
-          density="compact"
-          class="ml-5"
-        ></v-switch>
-        <v-spacer />
-        <v-btn
-          color="error"
-          prepend-icon="mdi-close-circle"
-          variant="text"
-          :disabled="isImporting"
-          @click="showDialog = false"
-        >
-          {{ t("common.dialog.cancel") }}
-        </v-btn>
-        <v-btn color="green" prepend-icon="mdi-import" variant="text" :disabled="isImporting" @click="doImport">
-          {{ t("common.import") }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div
+            v-for="(data, host) in ptppUserData"
+            :key="host"
+            :class="
+              cn(
+                'flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/25 px-3 py-2.5',
+                !allSupportedSiteHost.includes(String(host)) && 'opacity-55',
+              )
+            "
+          >
+            <div class="flex min-w-0 items-center gap-2.5">
+              <Checkbox
+                :model-value="
+                  !allSupportedSiteHost.includes(String(host)) ? 'indeterminate' : toImportSite.includes(String(host))
+                "
+                :disabled="!allSupportedSiteHost.includes(String(host)) || isImporting"
+                @update:model-value="(v) => toggleImportHost(String(host), v)"
+              />
+              <div class="flex min-w-0 flex-wrap items-center gap-1 text-xs">
+                <span class="truncate font-mono text-muted-foreground">{{ host }}</span>
+                <template v-if="allSupportedSiteHost.includes(String(host))">
+                  <span class="text-muted-foreground">→</span>
+                  <SiteFavicon :site-id="allSupportedSiteHostMap[String(host)]" :size="16" />
+                  <SiteName
+                    :site-id="allSupportedSiteHostMap[String(host)]"
+                    tag="span"
+                    class="font-semibold text-foreground"
+                  />
+                </template>
+              </div>
+            </div>
+
+            <Badge
+              :variant="getHostStatus(String(host)).variant"
+              :title="getHostStatus(String(host)).title"
+              class="shrink-0 gap-1 tabular-nums"
+            >
+              <component :is="getHostStatus(String(host)).icon" class="size-3" />
+              {{ t("ptppSettings.RestorePtppUserDataDialog.recordCount", [Object.keys(data).length - 1]) }}
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      <DialogFooter class="sm:justify-between">
+        <label class="flex cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
+          <Switch v-model="overwriteExistUserInfo" :disabled="isImporting" />
+          <span>{{ t("ptppSettings.RestorePtppUserDataDialog.overwriteExisting") }}</span>
+        </label>
+
+        <div class="flex items-center gap-2">
+          <Button variant="outline" :disabled="isImporting" @click="showDialog = false">
+            {{ t("common.dialog.cancel") }}
+          </Button>
+          <Button :disabled="isImporting || toImportSite.length === 0" @click="doImport">
+            <Loader2 v-if="isImporting" class="size-4 animate-spin" />
+            <Upload v-else class="size-4" />
+            {{ t("common.import") }}
+          </Button>
+        </div>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped lang="scss"></style>

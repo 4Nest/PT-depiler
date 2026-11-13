@@ -86,15 +86,23 @@ export function sendTorrentToDownloader(
       .then((status) => {
         if (status.length > 0) {
           const pendingCount = status.filter((x) => x?.downloadStatus === "pending").length;
-          const failedCount = status.filter((x) => x?.downloadStatus === "failed").length;
-          const color = failedCount > 0 ? "warning" : "success";
+          const failedItems = status.filter((x) => x?.downloadStatus === "failed");
+          const failedCount = failedItems.length;
+          const firstErr = failedItems.find((x) => x?.errorMessage)?.errorMessage;
 
-          runtimeStore.showSnackbar(
-            `成功发送 ${status.length - failedCount} 个任务到下载器` +
-              (pendingCount > 0 ? `（${pendingCount}在下载队列中）` : "") +
-              (failedCount > 0 ? `，有 ${failedCount} 个任务发送失败` : ""),
-            { color },
-          );
+          if (failedCount > 0 && failedCount === status.length) {
+            runtimeStore.showSnackbar(`推送到下载器失败（${failedCount} 个任务）${firstErr ? `：${firstErr}` : ""}`, {
+              color: "error",
+            });
+          } else {
+            const color = failedCount > 0 ? "warning" : "success";
+            runtimeStore.showSnackbar(
+              `成功发送 ${status.length - failedCount} 个任务到下载器` +
+                (pendingCount > 0 ? `（${pendingCount} 个在队列中）` : "") +
+                (failedCount > 0 ? `，${failedCount} 个失败${firstErr ? `（${firstErr}）` : ""}` : ""),
+              { color },
+            );
+          }
         } else {
           runtimeStore.showSnackbar("似乎并没有任务发送到下载器", { color: "warning" });
         }

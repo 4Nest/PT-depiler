@@ -165,6 +165,11 @@ export const siteMetadata: ISiteMetadata = {
       },
       subTitle: {
         selector: ["div > span:eq(0)"],
+        elementProcess: (element: HTMLElement) => {
+          const clone = element.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll("a[href*='tag_'], span.tags, span.tag, img").forEach((el) => el.remove());
+          return clone.textContent?.trim() ?? "";
+        },
       },
 
       ext_imdb: { selector: ["a span[data-imdbid]:first"], data: "imdbid", filters: [{ name: "extImdbId" }] },

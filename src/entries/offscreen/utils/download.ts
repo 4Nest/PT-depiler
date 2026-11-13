@@ -133,9 +133,8 @@ async function downloadTorrent(downloadOption: IDownloadTorrentOption): Promise<
   let downloadStatus: TTorrentDownloadStatus = "pending";
   let errorMessage: string | undefined;
 
-  // 2. 构建下载链接的请求配置
-  let downloadRequestConfig: AxiosRequestConfig = { url: torrent.link, method: "GET", timeout: 30e3 };
-
+  // 2. 构建下载链接的请求配置（蓝光原盘大体积 .torrent 动态生成可能耗时 20~60s+，默认放宽至 120s）
+  let downloadRequestConfig: AxiosRequestConfig = { url: torrent.link, method: "GET", timeout: 120e3 };
   if (torrent.site) {
     const siteInstance = await getSiteInstance<"public">(torrent.site);
 

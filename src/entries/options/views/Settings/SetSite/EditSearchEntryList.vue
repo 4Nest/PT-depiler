@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { reactive, onMounted } from "vue";
-import { TSiteID, ISiteUserConfig } from "@ptd/site";
+import { useI18n } from "vue-i18n";
+import type { TSiteID, ISiteUserConfig } from "@ptd/site";
 import type { ISiteMetadataIndexEntry } from "@ptd/site/metadataIndex";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
+import { Label, Switch } from "~/components/ui";
 
 const { item } = defineProps<{
   item: {
@@ -13,6 +15,7 @@ const { item } = defineProps<{
   };
 }>();
 
+const { t } = useI18n();
 const metadataStore = useMetadataStore();
 
 const searchEntryEnabledStatus = reactive<Record<string, boolean>>({});
@@ -30,25 +33,33 @@ onMounted(() => {
     searchEntryEnabledStatus[entryKey] = entryEnabledStatus;
   }
 });
+
+function toggleEntry(entryKey: string, value: boolean) {
+  searchEntryEnabledStatus[entryKey] = value;
+  metadataStore.simplePatch("sites", item.id, `merge.searchEntry.${entryKey}.enabled`, value);
+}
 </script>
 
 <template>
-  <v-list>
-    <v-list-item v-for="(searchEntry, entryKey) in item.metadata.searchEntries" :key="entryKey" :value="entryKey">
-      <v-list-item-title>
-        <v-switch
-          v-model="searchEntryEnabledStatus[entryKey]"
-          :label="searchEntry.name"
-          class="mx-3"
-          color="success"
-          hide-details
-          @update:model-value="
-            (v) => metadataStore.simplePatch('sites', item.id, `merge.searchEntry.${entryKey}.enabled`, v as boolean)
-          "
-        ></v-switch>
-      </v-list-item-title>
-    </v-list-item>
-  </v-list>
+  <div class="space-y-2">
+    <div class="text-xs font-semibold text-foreground">
+      {{ t("SetSite.index.table.searchEntries") }}
+    </div>
+    <div class="max-h-64 space-y-1 overflow-y-auto pr-0.5">
+      <div
+        v-for="(searchEntry, entryKey) in item.metadata.searchEntries"
+        :key="entryKey"
+        class="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/60"
+      >
+        <Label :for="`entry-${item.id}-${entryKey}`" class="cursor-pointer text-xs font-normal text-foreground">
+          {{ searchEntry.name }}
+        </Label>
+        <Switch
+          :id="`entry-${item.id}-${entryKey}`"
+          :model-value="searchEntryEnabledStatus[entryKey]"
+          @update:model-value="(v) => toggleEntry(String(entryKey), v)"
+        />
+      </div>
+    </div>
+  </div>
 </template>
-
-<style scoped lang="scss"></style>

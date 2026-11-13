@@ -1,0 +1,210 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark, .dark *));
+
+/*
+ * shadcn-vue Design Tokens (Refined Slate-Zinc Neutral + Crisp Cobalt Primary)
+ * 同时声明在 :root 与 :host 上，使 Options 页面与 Content Script Shadow DOM 100% 共享设计令牌
+ */
+:root,
+:host {
+  --radius: 0.5rem;
+  --background: oklch(0.985 0.003 255);
+  --foreground: oklch(0.165 0.008 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.165 0.008 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.165 0.008 260);
+  --primary: oklch(0.546 0.205 260);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.958 0.005 260);
+  --secondary-foreground: oklch(0.22 0.008 260);
+  --muted: oklch(0.958 0.005 260);
+  --muted-foreground: oklch(0.5 0.015 260);
+  --accent: oklch(0.948 0.007 260);
+  --accent-foreground: oklch(0.2 0.008 260);
+  --destructive: oklch(0.577 0.235 27.33);
+  --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.58 0.165 150);
+  --success-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.67 0.16 68);
+  --warning-foreground: oklch(0.985 0 0);
+  --info: oklch(0.58 0.155 242);
+  --info-foreground: oklch(0.985 0 0);
+  --border: oklch(0.908 0.007 260);
+  --input: oklch(0.902 0.008 260);
+  --ring: oklch(0.546 0.205 260);
+  --sidebar: oklch(0.978 0.004 260);
+  --sidebar-foreground: oklch(0.22 0.008 260);
+  --sidebar-primary: oklch(0.546 0.205 260);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.942 0.009 260);
+  --sidebar-accent-foreground: oklch(0.165 0.008 260);
+  --sidebar-border: oklch(0.912 0.007 260);
+  --sidebar-ring: oklch(0.546 0.205 260);
+}
+
+/*
+ * 现代温润深岩灰暗色阶梯（告别死黑底与刺眼高反差，对标 Linear / GitHub Dimmed）
+ * 层次递进：sidebar (0.172) -> background (0.196) -> card (0.226) -> popover (0.248) -> muted (0.272)
+ */
+.dark,
+:host(.dark) {
+  --background: oklch(0.196 0.008 260);
+  --foreground: oklch(0.945 0.005 260);
+  --card: oklch(0.226 0.009 260);
+  --card-foreground: oklch(0.945 0.005 260);
+  --popover: oklch(0.248 0.01 260);
+  --popover-foreground: oklch(0.95 0.005 260);
+  --primary: oklch(0.66 0.165 255);
+  --primary-foreground: oklch(0.14 0.01 260);
+  --secondary: oklch(0.272 0.011 260);
+  --secondary-foreground: oklch(0.935 0.005 260);
+  --muted: oklch(0.268 0.01 260);
+  --muted-foreground: oklch(0.71 0.014 260);
+  --accent: oklch(0.292 0.013 260);
+  --accent-foreground: oklch(0.955 0.004 260);
+  --destructive: oklch(0.64 0.195 25);
+  --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.69 0.16 152);
+  --success-foreground: oklch(0.15 0.01 260);
+  --warning: oklch(0.76 0.15 74);
+  --warning-foreground: oklch(0.15 0.01 260);
+  --info: oklch(0.7 0.145 240);
+  --info-foreground: oklch(0.15 0.01 260);
+  --border: oklch(1 0 0 / 10.5%);
+  --input: oklch(1 0 0 / 13.5%);
+  --ring: oklch(0.66 0.165 255);
+  --sidebar: oklch(0.172 0.007 260);
+  --sidebar-foreground: oklch(0.92 0.006 260);
+  --sidebar-primary: oklch(0.66 0.165 255);
+  --sidebar-primary-foreground: oklch(0.14 0.01 260);
+  --sidebar-accent: oklch(0.255 0.011 260);
+  --sidebar-accent-foreground: oklch(0.96 0.004 260);
+  --sidebar-border: oklch(1 0 0 / 8.5%);
+  --sidebar-ring: oklch(0.66 0.165 255);
+}
+
+@theme inline {
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after,
+  :host {
+    @apply border-border outline-ring/50;
+    --tw-shadow: 0 0 #0000;
+    --tw-shadow-color: initial;
+    --tw-inset-shadow: 0 0 #0000;
+    --tw-inset-shadow-color: initial;
+    --tw-ring-color: initial;
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-inset-ring-color: initial;
+    --tw-inset-ring-shadow: 0 0 #0000;
+    --tw-ring-offset-width: 0px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-offset-shadow: 0 0 #0000;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans text-sm antialiased;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
+/* 等宽对齐数字（上传量、分享率、时魔、做种数、时间列） */
+.ptd-num,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* 站点自定义 RGB / Hex 标签自适应 Tonal 着色（浅色自动压深字色，暗色自动提亮字色，确保 100% 清晰可读） */
+.ptd-dynamic-tag {
+  background-color: color-mix(in oklab, var(--ptd-tag-color) 14%, transparent);
+  border-color: color-mix(in oklab, var(--ptd-tag-color) 36%, transparent);
+  color: color-mix(in oklab, var(--ptd-tag-color) 76%, black);
+}
+
+:is(.dark, .dark *) .ptd-dynamic-tag,
+:host(.dark) .ptd-dynamic-tag {
+  background-color: color-mix(in oklab, var(--ptd-tag-color) 20%, transparent);
+  border-color: color-mix(in oklab, var(--ptd-tag-color) 44%, transparent);
+  color: color-mix(in oklab, var(--ptd-tag-color) 62%, white);
+}
+
+/* 我的数据全局隐私高斯模糊打码（保留界面骨架与色相轮廓，屏蔽悬停提示与文本复制） */
+.ptd-privacy-blur {
+  filter: blur(6px);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* 极简现代滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 28%, transparent);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--muted-foreground) 48%, transparent);
+}

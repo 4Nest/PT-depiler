@@ -1,20 +1,49 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import { computed, ref, shallowRef, watch } from "vue";
-import { EResultParseStatus, ISiteUserConfig, TSiteID } from "@ptd/site";
+import { computed, reactive, ref, shallowRef, watch } from "vue";
+import { EResultParseStatus, type ISiteUserConfig, type TSiteID } from "@ptd/site";
 import type { TSiteMetadataIndexEntryWithId } from "@ptd/site/metadataIndex";
+import {
+  AlertCircle,
+  Ban,
+  CheckCircle2,
+  Clock,
+  Crosshair,
+  Download,
+  Globe,
+  HelpCircle,
+  Loader2,
+  Lock,
+  Search,
+  X,
+} from "lucide-vue-next";
 
 import { sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useResetableRef } from "@/options/directives/useResetableRef.ts";
+import { cn } from "~/lib/utils";
 
 import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 import CheckSwitchButton from "@/options/components/CheckSwitchButton.vue";
-
 import { getCanAddedSiteIndexEntries } from "./utils.ts";
+import {
+  Alert,
+  Badge,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Switch,
+  Tooltip,
+} from "~/components/ui";
 
-const showDialog = defineModel<boolean>();
+const showDialog = defineModel<boolean>({ default: false });
 
 interface IImportStatus {
   isWorking: boolean;
@@ -36,80 +65,128 @@ const { t } = useI18n();
 const runtimeStore = useRuntimeStore();
 const metadataStore = useMetadataStore();
 
-// 待添加的站点列表：数据来自构建期轻量索引（见 utils.ts），一次同步取全，不需要渐进加载
 const canAddSites = shallowRef<TSiteMetadataIndexEntryWithId[]>([]);
 
-// 卡片高度（两行 v-list-item + 边框），供 v-lazy 占位使用，避免懒加载过程中滚动条来回抖动
-const SITE_CARD_MIN_HEIGHT = 72;
+const visibleSiteMap = reactive<Record<TSiteID, boolean>>({});
+const vLazyVisible = {
+  mounted(el: HTMLElement, binding: { value: TSiteID }) {
+    const id = binding.value;
+    if (visibleSiteMap[id]) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          visibleSiteMap[id] = true;
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "120px" },
+    );
+    (el as any).__ptdObs = observer;
+    observer.observe(el);
+  },
+  unmounted(el: HTMLElement) {
+    (el as any).__ptdObs?.disconnect();
+  },
+};
 
 const siteMetadataById = computed(
   () => new Map<TSiteID, TSiteMetadataIndexEntryWithId>(canAddSites.value.map((site) => [site.id, site])),
 );
 
-// 是否把 public 站点也列出来（public 站点不经过搜索校验就会被直接添加，所以默认不列）
 const includePublicSite = ref<boolean>(false);
+const siteSearch = ref<string>("");
 
-// 开关直接决定列表里有没有 public 站点的卡片：不显示即不参与「全选」，也不参与导入
-const displayedSites = computed(() =>
-  includePublicSite.value ? canAddSites.value : canAddSites.value.filter((site) => site.type === "private"),
-);
+const displayedSites = computed(() => {
+  const base = includePublicSite.value
+    ? canAddSites.value
+    : canAddSites.value.filter((site) => site.type === "private");
+  const q = siteSearch.value.trim().toLowerCase();
+  if (!q) return base;
+  return base.filter(
+    (site) =>
+      site.id.toLowerCase().includes(q) ||
+      (site.name ?? "").toLowerCase().includes(q) ||
+      (site.schema ?? "").toLowerCase().includes(q),
+  );
+});
 
-// 供开关的 label 显示，否则这类站点被默认藏起来后完全看不出存在
 const publicSiteCount = computed(() => canAddSites.value.filter((site) => site.type === "public").length);
 
 watch(includePublicSite, (include) => {
   if (include) return;
-  // 关掉开关后 public 卡片会消失，已选中的也要一并移出「已选择」，避免看不见却被导入
   importStatus.value.toWork = importStatus.value.toWork.filter(
     (siteId) => siteMetadataById.value.get(siteId)?.type !== "public",
   );
 });
 
-// 把 3 个数组换成 3 个 Set：模板里每张卡片都要查「是否已选中/已成功/已失败」，
-// 用 Array.includes 是 O(n)，300+ 张卡片 × 每次状态变化会被重复扫描很多遍
 const toWorkSiteIds = computed(() => new Set(importStatus.value.toWork));
 const successSiteIds = computed(() => new Set(importStatus.value.success));
 const failedSiteIds = computed(() => new Set(importStatus.value.failed));
 
-// 「全选」的可选范围：当前列出的站点里，不需要手动录入、也还没导入成功的那些
 const selectableSiteIds = computed(() =>
   displayedSites.value
     .filter((site) => !site.hasUserInputSettingMeta && !successSiteIds.value.has(site.id))
     .map((site) => site.id),
 );
 
-// 普通函数即可：模板渲染函数会读取 importStatus/这些 Set，依赖收集照旧；
-// 原来写成 computed 会在每次渲染时给每个站点新建一个 computed 再丢掉
-function statusIconProp(site: TSiteMetadataIndexEntryWithId) {
-  let progressIcon = "progress-helper"; // 默认
-  let progressColor = "grey";
-  let progressTitle = "";
-  if (site.hasUserInputSettingMeta) {
-    progressIcon = "progress-close"; // 需要手动添加
-    progressColor = "purple";
-    progressTitle = t("SetSite.oneClickImportDialog.status.manual");
-  } else if (importStatus.value.working === site.id) {
-    progressIcon = "progress-wrench"; // 正在尝试中
-    progressColor = "blue";
-    progressTitle = t("SetSite.oneClickImportDialog.status.trying");
-  } else if (successSiteIds.value.has(site.id)) {
-    progressIcon = "progress-check"; // 已添加成功
-    progressColor = "green";
-    progressTitle = t("SetSite.oneClickImportDialog.status.success");
-  } else if (failedSiteIds.value.has(site.id)) {
-    progressIcon = "progress-alert"; // 添加失败
-    progressColor = "red";
-    progressTitle = t("SetSite.oneClickImportDialog.status.failed");
-  } else if (toWorkSiteIds.value.has(site.id)) {
-    progressIcon = "progress-pencil"; // 已选择
-    progressColor = "";
-    progressTitle = t("SetSite.oneClickImportDialog.status.selected");
-  }
+function isSiteDisabled(site: TSiteMetadataIndexEntryWithId): boolean {
+  return Boolean(site.hasUserInputSettingMeta) || importStatus.value.isWorking || successSiteIds.value.has(site.id);
+}
 
+function getSiteCheckboxState(site: TSiteMetadataIndexEntryWithId): boolean | "indeterminate" {
+  if (site.hasUserInputSettingMeta || successSiteIds.value.has(site.id)) return "indeterminate";
+  return toWorkSiteIds.value.has(site.id);
+}
+
+function toggleSiteSelection(site: TSiteMetadataIndexEntryWithId) {
+  if (isSiteDisabled(site)) return;
+  if (toWorkSiteIds.value.has(site.id)) {
+    importStatus.value.toWork = importStatus.value.toWork.filter((id) => id !== site.id);
+  } else {
+    importStatus.value.toWork = [...importStatus.value.toWork, site.id];
+  }
+}
+
+function getStatusMeta(site: TSiteMetadataIndexEntryWithId) {
+  if (site.hasUserInputSettingMeta) {
+    return {
+      key: "manual" as const,
+      title: t("SetSite.oneClickImportDialog.status.manual"),
+      colorClass: "text-muted-foreground",
+    };
+  }
+  if (importStatus.value.working === site.id) {
+    return {
+      key: "trying" as const,
+      title: t("SetSite.oneClickImportDialog.status.trying"),
+      colorClass: "text-primary",
+    };
+  }
+  if (successSiteIds.value.has(site.id)) {
+    return {
+      key: "success" as const,
+      title: t("SetSite.oneClickImportDialog.status.success"),
+      colorClass: "text-success",
+    };
+  }
+  if (failedSiteIds.value.has(site.id)) {
+    return {
+      key: "failed" as const,
+      title: t("SetSite.oneClickImportDialog.status.failed"),
+      colorClass: "text-destructive",
+    };
+  }
+  if (toWorkSiteIds.value.has(site.id)) {
+    return {
+      key: "selected" as const,
+      title: t("SetSite.oneClickImportDialog.status.selected"),
+      colorClass: "text-info",
+    };
+  }
   return {
-    icon: `mdi-${progressIcon}`,
-    color: progressColor,
-    title: progressTitle,
+    key: "idle" as const,
+    title: "",
+    colorClass: "text-muted-foreground/50",
   };
 }
 
@@ -117,35 +194,28 @@ async function doAutoImport() {
   importStatus.value.isWorking = true;
   importStatus.value.failed = [];
 
-  // 遍历所有需要添加的站点，在遍历过程中我们不更新 siteHostMap 和 siteNameMap
   for (const site of importStatus.value.toWork) {
     if (successSiteIds.value.has(site)) {
-      continue; // 如果已经添加成功，则跳过
+      continue;
     }
 
     importStatus.value.working = site;
 
     try {
       let isThisSiteSuccess = false;
-
-      // 索引条目里已经有 type 与 urls（导入本身由 offscreen 用完整定义去做）
       const siteMetadata = siteMetadataById.value.get(site) as TSiteMetadataIndexEntryWithId;
       const siteUserConfig = (await metadataStore.getSiteUserConfig(site, true)) as ISiteUserConfig;
 
-      // 对于 public 站点，不需要额外测试是否能够搜索
       if (siteMetadata.type === "public") {
-        // 直接将该站点设置存入 metadataStore
-        await metadataStore.addSite(site, siteUserConfig, { reBuildMap: false }); // 抑制 site{Name, Host}Map 更新
+        await metadataStore.addSite(site, siteUserConfig, { reBuildMap: false });
         isThisSiteSuccess = true;
       } else {
-        // 遍历所有 private site 预设的 urls ，找到用户实际使用的 url
         for (const siteUrl of siteMetadata.urls) {
           siteUserConfig.url = siteUrl;
-          // 临时将该设置存入 metadataStore
           await metadataStore.addSite(site, siteUserConfig, { reBuildMap: false });
           const { status: testStatus } = await sendMessage("getSiteSearchResult", { siteId: site });
           if (testStatus === EResultParseStatus.success) {
-            isThisSiteSuccess = true; // 如果搜索成功，说明该站点可以自动添加
+            isThisSiteSuccess = true;
             break;
           }
         }
@@ -155,10 +225,9 @@ async function doAutoImport() {
         importStatus.value.success.push(site);
       } else {
         importStatus.value.failed.push(site);
-        // 如果搜索失败，说明该站点不能自动添加，移除在 metadataStore 中临时添加的配置项
         await metadataStore.removeSite(site, { reBuildMap: false });
       }
-    } catch (e) {
+    } catch {
       importStatus.value.failed.push(site);
     }
   }
@@ -167,7 +236,6 @@ async function doAutoImport() {
   importStatus.value.isWorking = false;
   importStatus.value.toWork = [];
 
-  // 所有导入完成，重构 site{Host, Name}Map
   await metadataStore.buildSiteMapCache(true);
 
   runtimeStore.showSnackbar(
@@ -177,163 +245,196 @@ async function doAutoImport() {
 }
 
 function dialogEnter() {
-  resetImportStatus(); // 重置状态
+  resetImportStatus();
   includePublicSite.value = false;
-  // 轻量索引是一次同步取全的，所以这里不再需要「边读边渲染」那套（分批刷入 / token 作废）
-  canAddSites.value = getCanAddedSiteIndexEntries().filter((site) => !site.isDead); // 已离线的站点不参与导入
+  siteSearch.value = "";
+  canAddSites.value = getCanAddedSiteIndexEntries().filter((site) => !site.isDead);
 }
 </script>
 
 <template>
-  <v-dialog
-    v-model="showDialog"
-    max-width="1000"
-    scrollable
-    @after-enter="dialogEnter"
-    :persistent="importStatus.isWorking"
-  >
-    <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>{{ t("SetSite.oneClickImportDialog.title") }}</v-toolbar-title>
-          <template #append>
-            <v-btn
-              icon="mdi-close"
-              :title="t('common.dialog.close')"
-              @click="showDialog = false"
-              :disabled="importStatus.isWorking"
-            />
-          </template>
-        </v-toolbar>
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <v-alert class="mb-2" :title="t('SetSite.oneClickImportDialog.alert1')" type="warning" variant="tonal">
-        </v-alert>
+  <Dialog v-model="showDialog" @after-open="dialogEnter">
+    <DialogContent
+      class="max-w-5xl"
+      :prevent-outside-close="importStatus.isWorking"
+      :hide-close="importStatus.isWorking"
+    >
+      <DialogHeader>
+        <DialogTitle>
+          <Crosshair class="size-4 text-primary" />
+          <span>{{ t("SetSite.oneClickImportDialog.title") }}</span>
+        </DialogTitle>
+      </DialogHeader>
 
-        <v-alert class="mb-1 py-2" :title="t('SetSite.oneClickImportDialog.alert2')">
-          <template #text>
-            {{
-              t("SetSite.oneClickImportDialog.stats", {
-                count: importStatus.toWork.length,
-                success: importStatus.success.length,
-                failed: importStatus.failed.length,
-              })
-            }}
-            <span v-if="importStatus.isWorking">
-              {{ t("SetSite.oneClickImportDialog.trying", { name: siteMetadataById.get(importStatus.working)?.name }) }}
+      <div class="flex min-h-0 flex-1 flex-col gap-3 px-5 py-4">
+        <Alert variant="warning">
+          {{ t("SetSite.oneClickImportDialog.alert1") }}
+        </Alert>
+
+        <!-- 工具与统计栏 -->
+        <div
+          class="flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-border bg-muted/30 px-3.5 py-2.5"
+        >
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-medium text-foreground">
+              {{ t("SetSite.oneClickImportDialog.alert2") }}
             </span>
-          </template>
-          <template #append>
-            <v-switch
-              v-model="includePublicSite"
-              :disabled="importStatus.isWorking"
-              :label="t('SetSite.oneClickImportDialog.includePublicSite', { count: publicSiteCount })"
-              :title="t('SetSite.oneClickImportDialog.includePublicSiteHint')"
-              class="flex-grow-0 mr-2"
-              color="blue-lighten-1"
-              density="compact"
-              hide-details
-            />
+            <Badge variant="info" class="tabular-nums">
+              {{ t("SetSite.oneClickImportDialog.status.selected") }}: {{ importStatus.toWork.length }}
+            </Badge>
+            <Badge variant="success" class="tabular-nums">
+              {{ t("SetSite.oneClickImportDialog.status.success") }}: {{ importStatus.success.length }}
+            </Badge>
+            <Badge v-if="importStatus.failed.length > 0" variant="destructive" class="tabular-nums">
+              {{ t("SetSite.oneClickImportDialog.status.failed") }}: {{ importStatus.failed.length }}
+            </Badge>
+            <span
+              v-if="importStatus.isWorking"
+              class="inline-flex items-center gap-1.5 text-xs font-medium text-primary"
+            >
+              <Loader2 class="size-3.5 animate-spin" />
+              {{
+                t("SetSite.oneClickImportDialog.trying", {
+                  name: siteMetadataById.get(importStatus.working)?.name,
+                })
+              }}
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="relative w-48">
+              <Search
+                class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input v-model="siteSearch" :placeholder="t('common.search')" class="h-8 pl-8 pr-7 text-xs" />
+              <button
+                v-if="siteSearch"
+                type="button"
+                class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                @click="siteSearch = ''"
+              >
+                <X class="size-3" />
+              </button>
+            </div>
+
+            <Tooltip :content="t('SetSite.oneClickImportDialog.includePublicSiteHint')">
+              <div class="flex items-center gap-1.5">
+                <Switch id="import-include-public" v-model="includePublicSite" :disabled="importStatus.isWorking" />
+                <Label for="import-include-public" class="cursor-pointer text-xs font-normal text-muted-foreground">
+                  {{ t("SetSite.oneClickImportDialog.includePublicSite", { count: publicSiteCount }) }}
+                </Label>
+              </div>
+            </Tooltip>
+
             <CheckSwitchButton
               v-model="importStatus.toWork"
               :all="selectableSiteIds"
-              :size="undefined"
-              color="blue-lighten-1"
-              variant="tonal"
+              :disabled="importStatus.isWorking"
             />
-          </template>
-        </v-alert>
+          </div>
+        </div>
 
-        <v-skeleton-loader v-if="!displayedSites.length" type="image"> </v-skeleton-loader>
-        <v-list v-else class="overflow-x-hidden overflow-y-hidden px-3 pt-3">
-          <!-- Vuetify 4 的 v-row 默认 gap 为 24px，站点卡片间距由 v-col 的 pa-1 控制，需显式 gap="0" -->
-          <v-row gap="0">
-            <v-col v-for="site in displayedSites" :key="site.id" cols="12" md="4" sm="6" class="pa-1">
-              <!-- 300+ 张卡片一次性挂载，会连带触发 300+ 次 favicon 查询（未添加的站点基本都没缓存，
-                   会真的去请求站点首页抓 icon），所以只在卡片进入视口后才渲染 -->
-              <v-lazy :min-height="SITE_CARD_MIN_HEIGHT">
-                <v-list-item border class="bg-grey-lighten-4">
-                  <template #prepend>
-                    <v-checkbox
-                      v-model="importStatus.toWork"
-                      :indeterminate="!!site.hasUserInputSettingMeta || successSiteIds.has(site.id)"
-                      :indeterminate-icon="successSiteIds.has(site.id) ? 'mdi-check' : 'mdi-close'"
-                      :disabled="
-                        !!site.hasUserInputSettingMeta || importStatus.isWorking || successSiteIds.has(site.id)
-                      "
-                      :value="site.id"
-                      hide-details
-                      multiple
-                    />
-                    <SiteFavicon :site-id="site.id" class="mr-2" flush-on-click />
-                  </template>
+        <!-- 站点卡片网格 -->
+        <div class="-mx-1 min-h-[240px] flex-1 overflow-y-auto px-1 py-0.5">
+          <div
+            v-if="displayedSites.length === 0"
+            class="flex h-48 flex-col items-center justify-center gap-1.5 text-xs text-muted-foreground"
+          >
+            <Search class="size-6 opacity-40" />
+            <span>{{ t("common.noData") }}</span>
+          </div>
 
-                  <template #title>
-                    <v-list-item-title>
-                      <!-- 类型只用图标标在名字前面（不写文字、不用 chip）：锁 = 私有，地球 = 公开。
-                           文字放在 subtitle 行会跟 schema 挤在一起，窄卡片上会被压成一列一字。 -->
-                      <v-icon
-                        :color="site.type === 'private' ? 'primary' : 'secondary'"
-                        :icon="site.type === 'private' ? 'mdi-lock' : 'mdi-web'"
-                        :title="
-                          t(
-                            site.type === 'private'
-                              ? 'SetSite.oneClickImportDialog.siteTypePrivateTip'
-                              : 'SetSite.oneClickImportDialog.siteTypePublicTip',
-                          )
-                        "
-                        class="mr-1"
-                        size="14"
-                      />
-                      <b>{{ site.name ?? "" }}</b>
-                    </v-list-item-title>
-                  </template>
+          <div v-else class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              v-for="site in displayedSites"
+              :key="site.id"
+              v-lazy-visible="site.id"
+              :class="
+                cn(
+                  'flex items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors',
+                  isSiteDisabled(site) ? 'cursor-default opacity-80' : 'cursor-pointer hover:bg-muted/45',
+                  successSiteIds.has(site.id)
+                    ? 'border-success/40 bg-success/[0.06]'
+                    : failedSiteIds.has(site.id)
+                      ? 'border-destructive/40 bg-destructive/[0.05]'
+                      : toWorkSiteIds.has(site.id)
+                        ? 'border-primary/50 bg-primary/[0.05]'
+                        : 'border-border bg-card',
+                )
+              "
+              @click="toggleSiteSelection(site)"
+            >
+              <Checkbox
+                :model-value="getSiteCheckboxState(site)"
+                :disabled="isSiteDisabled(site)"
+                @click.stop
+                @update:model-value="toggleSiteSelection(site)"
+              />
 
-                  <template #subtitle>
-                    <v-chip :color="site.type === 'private' ? 'primary' : 'secondary'" label size="x-small">
-                      {{ site.schema ?? (site.type === "private" ? "AbstractPrivateSite" : "AbstractBittorrentSite") }}
-                    </v-chip>
-                  </template>
+              <div class="shrink-0" @click.stop>
+                <SiteFavicon v-if="visibleSiteMap[site.id]" :site-id="site.id" :size="20" flush-on-click />
+                <div v-else class="size-5 rounded-sm bg-muted/60" />
+              </div>
 
-                  <template #append>
-                    <v-list-item-action>
-                      <a :href="site.urls[0]" target="_blank" rel="noopener noreferrer nofollow">
-                        <v-icon v-bind="statusIconProp(site)" class="mr-2" size="x-large"></v-icon>
-                      </a>
-                    </v-list-item-action>
-                  </template>
-                </v-list-item>
-              </v-lazy>
-            </v-col>
-          </v-row>
-        </v-list>
-      </v-card-text>
-      <v-divider />
-      <v-card-actions>
-        <v-spacer />
-        <v-btn
-          :disabled="importStatus.isWorking"
-          color="error"
-          prepend-icon="mdi-close-circle"
-          variant="text"
-          @click="showDialog = false"
-        >
+              <div class="min-w-0 flex-1 space-y-0.5">
+                <div class="flex items-center gap-1.5">
+                  <Tooltip
+                    :content="
+                      t(
+                        site.type === 'private'
+                          ? 'SetSite.oneClickImportDialog.siteTypePrivateTip'
+                          : 'SetSite.oneClickImportDialog.siteTypePublicTip',
+                      )
+                    "
+                  >
+                    <Lock v-if="site.type === 'private'" class="size-3 shrink-0 text-primary" />
+                    <Globe v-else class="size-3 shrink-0 text-muted-foreground" />
+                  </Tooltip>
+                  <span class="truncate text-xs font-semibold text-foreground">
+                    {{ site.name ?? site.id }}
+                  </span>
+                </div>
+                <div>
+                  <Badge
+                    :variant="site.type === 'private' ? 'secondary' : 'outline'"
+                    class="max-w-full truncate px-1.5 py-0 text-[10px] font-normal"
+                  >
+                    {{ site.schema ?? (site.type === "private" ? "AbstractPrivateSite" : "AbstractBittorrentSite") }}
+                  </Badge>
+                </div>
+              </div>
+
+              <Tooltip :content="getStatusMeta(site).title" :disabled="!getStatusMeta(site).title">
+                <a
+                  :href="site.urls[0]"
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  :class="cn('shrink-0 rounded p-1 transition-colors hover:bg-accent', getStatusMeta(site).colorClass)"
+                  @click.stop
+                >
+                  <Ban v-if="getStatusMeta(site).key === 'manual'" class="size-4" />
+                  <Loader2 v-else-if="getStatusMeta(site).key === 'trying'" class="size-4 animate-spin" />
+                  <CheckCircle2 v-else-if="getStatusMeta(site).key === 'success'" class="size-4" />
+                  <AlertCircle v-else-if="getStatusMeta(site).key === 'failed'" class="size-4" />
+                  <Clock v-else-if="getStatusMeta(site).key === 'selected'" class="size-4" />
+                  <HelpCircle v-else class="size-4" />
+                </a>
+              </Tooltip>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" :disabled="importStatus.isWorking" @click="showDialog = false">
           {{ t("common.dialog.cancel") }}
-        </v-btn>
-
-        <v-btn
-          :disabled="importStatus.isWorking"
-          color="success"
-          prepend-icon="mdi-import"
-          variant="text"
-          @click="doAutoImport"
-        >
+        </Button>
+        <Button :disabled="importStatus.isWorking || importStatus.toWork.length === 0" @click="doAutoImport">
+          <Loader2 v-if="importStatus.isWorking" class="size-4 animate-spin" />
+          <Download v-else class="size-4" />
           {{ t("common.import") }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
-
-<style scoped lang="scss"></style>

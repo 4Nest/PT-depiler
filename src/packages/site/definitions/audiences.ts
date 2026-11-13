@@ -133,7 +133,23 @@ export const siteMetadata: ISiteMetadata = {
         filters: [{ name: "querystring", args: ["id"] }],
       },
       subTitle: {
-        selector: ["td.embedded:first > span:last"],
+        selector: [":self"],
+        elementProcess: (row: HTMLElement) => {
+          const desc = row.dataset?.description?.trim();
+          if (desc) return desc;
+          const target =
+            row.querySelector("td.embedded span.torrent-subtitle-text") ??
+            row.querySelector("td.embedded span.torrent-subtitle-line") ??
+            row.querySelector("td.embedded > span:last-of-type");
+          if (!target) return "";
+          const clone = target.cloneNode(true) as HTMLElement;
+          clone
+            .querySelectorAll(
+              ".torrent-subtitle-tags, span.tags, span[class*='tag'], span[style*='background'], a, img",
+            )
+            .forEach((el) => el.remove());
+          return clone.textContent?.trim() ?? "";
+        },
       },
       author: {
         selector: ["td.torrent-uploader-col"], // 发布者
@@ -183,10 +199,11 @@ export const siteMetadata: ISiteMetadata = {
       },
       tags: [
         ...SchemaMetadata.search.selectors!.tags!,
+        { name: "Free", selector: "span.tags.tpromotionfree", color: "blue" },
         { name: "官方", selector: "span.tags.tgf", color: "#06c" },
         { name: "原创", selector: "span.tags.tyc", color: "#085" },
         { name: "国语", selector: "span.tags.tgy", color: "#f96" },
-        { name: "粤语", selector: "span.tags.tyc", color: "#f66" },
+        { name: "粤语", selector: "span.tags.tyy", color: "#f66" },
         { name: "中字", selector: "span.tags.tzz", color: "#9c0" },
         { name: "官字组", selector: "span.tags.tgz", color: "#530" },
         { name: "DIY", selector: "span.tags.tdiy", color: "#993" },
@@ -206,6 +223,42 @@ export const siteMetadata: ISiteMetadata = {
         { name: "演唱会", selector: "span.tags.tconcert", color: "#3b64ff" },
         { name: "音乐专辑", selector: "span.tags.tyzj", color: "#87007e" },
       ],
+    },
+  },
+
+  detail: {
+    ...SchemaMetadata.detail,
+    selectors: {
+      ...SchemaMetadata.detail!.selectors,
+      title: {
+        selector: ["h1#top", "html > body > title"],
+        elementProcess: (el: HTMLElement) => {
+          if (el.tagName.toLowerCase() === "title") {
+            const match = (el.textContent ?? "").match(/"(.+)" - Powered by NexusPHP$/);
+            return match?.[1]?.trim() ?? (el.textContent ?? "").trim();
+          }
+          const clone = el.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll("b, font, span, img, a").forEach((n) => n.remove());
+          const cleaned = (clone.textContent ?? "").replace(/\u00a0+/g, " ").trim();
+          if (cleaned) return cleaned;
+          return (el.textContent ?? "").split(/\u00a0{2,}/)[0].trim();
+        },
+      },
+      link: {
+        selector: [
+          "input#passkeyDlUrl[value*='download.php']",
+          "#torrent_dl_url a[href*='download.php']",
+          "a[href*='download.php?id='][href*='downhash=']",
+          "a.index[href*='download.php?id=']",
+          ...(AudiencesBaseLinkQuery.selector as string[]),
+        ],
+        elementProcess: (el: HTMLElement) => {
+          if (el.tagName.toLowerCase() === "input") {
+            return (el as HTMLInputElement).value?.trim() || el.getAttribute("value")?.trim() || "";
+          }
+          return el.getAttribute("href")?.trim() || "";
+        },
+      },
     },
   },
 

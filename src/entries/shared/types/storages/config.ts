@@ -105,6 +105,8 @@ export interface IConfigPiniaStorageSchema {
 
     // 是否展示距离下一等级积分的时间（小时）
     showBonusNeededInterval: boolean;
+    // 一键高斯模糊打码隐私字段（用户名、UID、入站时间）
+    privacyBlur?: boolean;
   };
 
   userDataTimelineControl: {

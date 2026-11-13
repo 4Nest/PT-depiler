@@ -1,25 +1,32 @@
 /**
- * 在此处的注册的css会被content-script注入到启用的页面中。
- */
-
-/*noinspection CssUnknownTarget*/
-@import "../../shared/common.scss";
-
-#ptd-content-script-app,
-.v-overlay-container {
-  all: initial;
-  box-sizing: border-box;
-  word-break: normal;
-}
-
-/**
- * Vuetify 的静态基础样式里有一条 `:root{--v-theme-overlay-multiplier:1;--v-scrollbar-offset:0px}`，
- * 而 pt-depiler.css 里的 `:root` 在 shadow DOM 内**不会匹配**（shadow tree 没有 :root 元素），
- * 所有用到这两个变量的组件样式（overlay 遮罩不透明度、滚动条补偿）都会拿不到值。
- * 这里按 :host 补一份默认值，与文档根上的取值保持一致。
- * （content-script 不再内联整份 styles.scss，所以这两个变量必须在此显式给出，见 app/init.ts）
+ * Content Script Shadow DOM 基础样式隔离：
+ * 1. :host { all: initial } 阻断宿主站点的继承样式污染；
+ * 2. 因为 baseStyleElement 先于 pt-depiler.css 插入，pt-depiler.css 中的 :host / :host(.dark)
+ *    语义令牌变量会在其后正常生效并向下继承到 #ptd-content-script-app 与 #ptd-content-script-portal。
  */
 :host {
-  --v-theme-overlay-multiplier: 1;
-  --v-scrollbar-offset: 0px;
+  all: initial;
+  display: block;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#ptd-content-script-root,
+#ptd-content-script-app,
+#ptd-content-script-portal {
+  box-sizing: border-box;
+  word-break: normal;
+  color: var(--foreground);
 }

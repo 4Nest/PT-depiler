@@ -2,19 +2,29 @@
 import { useI18n } from "vue-i18n";
 import { computed, ref, shallowRef } from "vue";
 import type { IBackupFileInfo } from "@ptd/backupServer";
-import type { DataTableHeader } from "vuetify";
+import { CloudDownload, History, RefreshCw, Trash2 } from "lucide-vue-next";
 
 import { sendMessage } from "@/messages.ts";
 import { formatDate, formatSize } from "@/options/utils.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
-import { useTableColumnFit } from "@/options/directives/useTableColumnFit.ts";
+import {
+  Button,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Tooltip,
+  type DataTableColumn,
+  type DataTableSortItem,
+} from "~/components/ui";
 
 import DeleteDialog from "@/options/components/DeleteDialog.vue";
-import NavButton from "@/options/components/NavButton.vue";
 import RestoreDialog from "./RestoreDialog.vue";
 
-const showDialog = defineModel<boolean>();
+const showDialog = defineModel<boolean>({ default: false });
 const { backupServerId } = defineProps<{
   backupServerId: string;
 }>();
@@ -26,15 +36,13 @@ const runtimeStore = useRuntimeStore();
 const isLoading = ref<boolean>(false);
 const backupHistory = shallowRef<IBackupFileInfo[]>([]);
 
-const tableHeaders = computed(
-  () =>
-    [
-      { title: t("SetBackup.HistoryDialog.table.filename"), key: "filename", align: "start" },
-      { title: t("SetBackup.HistoryDialog.table.size"), key: "size", align: "end" },
-      { title: t("SetBackup.HistoryDialog.table.time"), key: "time", align: "start" },
-      { title: t("common.action"), key: "action", sortable: false },
-    ] as DataTableHeader[],
-);
+const tableColumns = computed<DataTableColumn<IBackupFileInfo>[]>(() => [
+  { title: t("SetBackup.HistoryDialog.table.filename"), key: "filename", align: "start", minWidth: 220 },
+  { title: t("SetBackup.HistoryDialog.table.size"), key: "size", align: "end", width: 110 },
+  { title: t("SetBackup.HistoryDialog.table.time"), key: "time", align: "start", width: 170 },
+  { title: t("common.action"), key: "action", align: "end", width: 96, sortable: false },
+]);
+const sortBy = ref<DataTableSortItem[]>([{ key: "time", order: "desc" }]);
 const tableSelected = ref<string[]>([]);
 
 const showRestoreDialog = ref<boolean>(false);
@@ -46,9 +54,9 @@ function restoreBackup(path: string) {
 
 const showDeleteDialog = ref<boolean>(false);
 const toDeleteBackupHistory = ref<string[]>([]);
-async function deleteBackupHistory(paths: string[]) {
-  showDeleteDialog.value = true;
+function deleteBackupHistory(paths: string[]) {
   toDeleteBackupHistory.value = paths;
+  showDeleteDialog.value = true;
 }
 
 async function confirmDeleteBackupHistory(toDeleteId: string) {
@@ -73,92 +81,100 @@ async function loadBackupHistory() {
   }
 }
 
-async function dialogEnter() {
-  // noinspection ES6MissingAwait
-  loadBackupHistory();
+function dialogEnter() {
+  void loadBackupHistory();
 }
 
-async function dialogLeave() {
+function dialogLeave() {
   backupHistory.value = [];
   tableSelected.value = [];
 }
-
-const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useTableColumnFit(tableHeaders);
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" max-width="1000" @after-enter="dialogEnter" @after-leave="dialogLeave">
-    <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>
+  <Dialog v-model="showDialog" @after-open="dialogEnter" @after-close="dialogLeave">
+    <DialogContent class="max-w-4xl">
+      <DialogHeader>
+        <DialogTitle>
+          <History class="size-4 text-primary" />
+          <span>
             {{
               t("SetBackup.HistoryDialog.title", {
-                name: metadataStore.backupServers[backupServerId].name ?? backupServerId,
+                name: metadataStore.backupServers[backupServerId]?.name ?? backupServerId,
               })
             }}
-          </v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <NavButton
-          :disabled="tableSelected.length === 0"
-          :text="t('common.remove')"
-          color="error"
-          icon="mdi-delete"
-          @click="deleteBackupHistory(tableSelected)"
-        />
+          </span>
+        </DialogTitle>
+        <DialogDescription> {{ backupHistory.length }} 条远端历史记录 </DialogDescription>
+      </DialogHeader>
 
-        <v-data-table
-          ref="fitTableRef"
-          :class="fitTableClass"
-          v-model="tableSelected"
-          :headers="fittedHeaders"
-          :items="backupHistory"
-          :sort-by="[{ key: 'time', order: 'desc' }]"
-          :loading="isLoading"
-          class="table-header-no-wrap table-stripe"
-          item-value="path"
-          must-sort
-          show-select
-        >
-          <template #item.size="{ item }">
-            <span class="text-no-wrap">
-              {{ item.size !== "N/A" ? formatSize(item.size) : item.size }}
-            </span>
-          </template>
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div class="flex items-center justify-between gap-2 border-b border-border px-5 py-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            :disabled="tableSelected.length === 0"
+            @click="deleteBackupHistory(tableSelected)"
+          >
+            <Trash2 class="size-3.5" />
+            {{ t("common.remove") }}
+          </Button>
+          <Button variant="ghost" size="sm" :disabled="isLoading" @click="loadBackupHistory">
+            <RefreshCw class="size-3.5" :class="{ 'animate-spin': isLoading }" />
+          </Button>
+        </div>
 
-          <template #item.time="{ item }">
-            <span class="text-no-wrap">{{ formatDate(item.time) }}</span>
-          </template>
+        <div class="flex-1 overflow-y-auto">
+          <DataTable
+            v-model:selected="tableSelected"
+            v-model:sort-by="sortBy"
+            :columns="tableColumns"
+            :items="backupHistory"
+            :loading="isLoading"
+            row-key="path"
+            selectable
+          >
+            <template #cell-filename="{ item }">
+              <span class="font-mono text-xs text-foreground">{{ item.filename }}</span>
+            </template>
 
-          <template #item.action="{ item }">
-            <v-btn-group class="table-action" density="compact" variant="plain">
-              <v-btn
-                :title="t('SetBackup.HistoryDialog.restore')"
-                color="blue"
-                icon="mdi-cloud-download"
-                size="small"
-                @click="restoreBackup(item.path)"
-              />
+            <template #cell-size="{ item }">
+              <span class="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                {{ item.size !== "N/A" ? formatSize(item.size) : item.size }}
+              </span>
+            </template>
 
-              <v-btn
-                :title="t('common.remove')"
-                color="error"
-                icon="mdi-delete"
-                size="small"
-                @click="deleteBackupHistory([item.path])"
-              />
-            </v-btn-group>
-          </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+            <template #cell-time="{ item }">
+              <span class="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                {{ formatDate(item.time) }}
+              </span>
+            </template>
+
+            <template #cell-action="{ item }">
+              <div class="inline-flex items-center justify-end gap-0.5">
+                <Tooltip :content="t('SetBackup.HistoryDialog.restore')" side="top">
+                  <Button variant="ghost" size="icon-xs" @click="restoreBackup(item.path)">
+                    <CloudDownload class="size-3.5 text-info" />
+                  </Button>
+                </Tooltip>
+                <Tooltip :content="t('common.remove')" side="top">
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    @click="deleteBackupHistory([item.path])"
+                  >
+                    <Trash2 class="size-3.5" />
+                  </Button>
+                </Tooltip>
+              </div>
+            </template>
+          </DataTable>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
 
   <RestoreDialog v-model="showRestoreDialog" :restore-metadata="restoreMetadata" />
   <DeleteDialog
@@ -168,5 +184,3 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
     @all-delete="loadBackupHistory"
   />
 </template>
-
-<style scoped lang="scss"></style>

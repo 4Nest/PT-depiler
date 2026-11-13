@@ -5,17 +5,42 @@ import { useI18n } from "vue-i18n";
 import { cloneDeep, isEqual } from "es-toolkit";
 import { find, isEmpty } from "es-toolkit/compat";
 import { refDebounced } from "@vueuse/core";
+import {
+  ArrowDownWideNarrow,
+  ArrowUpDown,
+  ArrowUpNarrowWide,
+  CheckCircle2,
+  ChevronDown,
+  Globe,
+  ListChecks,
+  Search,
+  X,
+} from "lucide-vue-next";
 
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import type { ISearchSolution, ISearchSolutionMetadata, TSolutionKey } from "@/shared/types.ts";
+import {
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Tooltip,
+} from "~/components/ui";
+import { cn } from "~/lib/utils";
 
 import SolutionLabel from "./SolutionLabel.vue";
 import SiteCategoryPanel from "./SiteCategoryPanel.vue";
 import SiteName from "@/options/components/SiteName.vue";
 import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 
-const showDialog = defineModel<boolean>();
+const showDialog = defineModel<boolean>({ default: false });
 const solutionId = defineModel<TSolutionKey>("solutionId");
 
 const { t } = useI18n();
@@ -35,14 +60,13 @@ const metadataStore = useMetadataStore();
 const runtimeStore = useRuntimeStore();
 
 const solution = ref<ISearchSolutionMetadata>(initSolution());
-const formValid = ref<boolean>(false);
+const formValid = computed(() => Boolean(solution.value.name?.trim()));
 
 const siteWaitFilter = ref("");
-const siteFilter = refDebounced(siteWaitFilter, 500); // 延迟搜索过滤词的生成
+const siteFilter = refDebounced(siteWaitFilter, 300);
 
 const addedSiteInfo = shallowRef<Array<{ siteId: string; isDead: boolean; siteName: string; siteUrl: string }>>([]);
 
-// 每个站点在当前方案右侧已添加的方案数（同一站点允许以不同参数多次添加）
 const addedCountBySite = computed<Record<string, number>>(() => {
   const counts: Record<string, number> = {};
   for (const s of solution.value.solutions) {
@@ -51,17 +75,21 @@ const addedCountBySite = computed<Record<string, number>>(() => {
   return counts;
 });
 
-// 已添加次数排序：asc（未添加在前）-> desc（添加多的在前）-> 无（保持默认次序）循环切换
 type TAddedCountSort = "asc" | "desc" | null;
 const addedCountSort = ref<TAddedCountSort>(null);
-
-// 左侧站点面板的展开状态（受控）。以 siteId 为 value，避免 Vuetify 组默认的
-// 「按索引取值」在列表重排 / 计数变化导致节点重建时错位——那会让别的站点的
-// 展开状态被错误地落到相邻面板上（#1679 反馈的「添加后上一个站点自动展开」bug）。
 const openSitePanels = ref<string[]>([]);
 
 function cycleAddedCountSort() {
   addedCountSort.value = addedCountSort.value === null ? "asc" : addedCountSort.value === "asc" ? "desc" : null;
+}
+
+function toggleSitePanel(siteId: string) {
+  if (metadataStore.sites[siteId]?.isOffline) return;
+  if (openSitePanels.value.includes(siteId)) {
+    openSitePanels.value = openSitePanels.value.filter((s) => s !== siteId);
+  } else {
+    openSitePanels.value = [...openSitePanels.value, siteId];
+  }
 }
 
 const filteredSite = computed(() => {
@@ -78,14 +106,12 @@ const filteredSite = computed(() => {
     .map((item) => item.siteId);
 
   if (addedCountSort.value) {
-    // 按已添加次数排序；次数相同时保持原有顺序（稳定排序）
     const dir = addedCountSort.value === "asc" ? 1 : -1;
     sites.sort((a, b) => ((addedCountBySite.value[a] ?? 0) - (addedCountBySite.value[b] ?? 0)) * dir);
   }
   return sites;
 });
 
-// 同一个筛选词也作用于右侧已添加方案列表：按站点 id / 名称 / URL 匹配（与左侧口径一致）
 const filteredSolutions = computed(() => {
   const filter = (siteFilter.value ?? "").toLowerCase();
   if (!filter) return solution.value.solutions;
@@ -99,14 +125,13 @@ const filteredSolutions = computed(() => {
   });
 });
 
-function addSolution(addSolution: ISearchSolution) {
-  // 基于 siteId 和 selectedCategories / name 判断是否已存在，如果存在则不添加
+function addSolution(toAdd: ISearchSolution) {
   if (
     find(solution.value.solutions, (item) => {
       return (
-        item.siteId === addSolution.siteId &&
-        ((!isEmpty(item.selectedCategories) && isEqual(item.selectedCategories, addSolution.selectedCategories)) ||
-          (typeof item.name !== "undefined" && item.name === addSolution.name))
+        item.siteId === toAdd.siteId &&
+        ((!isEmpty(item.selectedCategories) && isEqual(item.selectedCategories, toAdd.selectedCategories)) ||
+          (typeof item.name !== "undefined" && item.name === toAdd.name))
       );
     })
   ) {
@@ -114,23 +139,23 @@ function addSolution(addSolution: ISearchSolution) {
     return;
   }
 
-  solution.value.solutions.push(addSolution);
+  solution.value.solutions.push(toAdd);
 }
 
-function removeSolution(removeSolution: ISearchSolution) {
+function removeSolution(toRemove: ISearchSolution) {
   solution.value.solutions = solution.value.solutions.filter(
-    (x) => !(x.id == removeSolution.id && x.siteId == removeSolution.siteId),
+    (x) => !(x.id == toRemove.id && x.siteId == toRemove.siteId),
   );
 }
 
 function saveSolutionState() {
+  if (!formValid.value || solution.value.solutions.length === 0) return;
   metadataStore.addSearchSolution(solution.value);
   showDialog.value = false;
 }
 
 function dialogEnter() {
-  siteWaitFilter.value = ""; // 进入时清空筛选词，避免上次残留影响左右两侧显示
-  // 生成站点列表
+  siteWaitFilter.value = "";
   Promise.all(
     metadataStore.getAddedSiteIds
       .sort((a, b) => Number(metadataStore.sites[b].allowSearch) - Number(metadataStore.sites[a].allowSearch))
@@ -154,142 +179,182 @@ function dialogEnter() {
 
 function dialogLeave() {
   solution.value = initSolution();
-  openSitePanels.value = []; // 受控展开状态需在关闭时复位，避免下次打开残留
+  openSitePanels.value = [];
 }
 </script>
 
 <template>
-  <v-dialog v-model="showDialog" fullscreen @after-enter="dialogEnter" @after-leave="dialogLeave">
-    <v-card class="overflow-y-auto">
-      <v-card-title class="pa-0">
-        <v-toolbar :title="t('SetSearchSolution.edit.title')" color="blue-grey-darken-2">
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
-      </v-card-title>
-      <v-divider />
-      <v-card-text>
-        <v-form v-model="formValid">
-          <v-row>
-            <v-col>
-              <v-text-field
-                v-model="solution.name"
-                :label="t('common.name')"
-                :rules="['required']"
-                autofocus
-                required
-              />
-            </v-col>
-            <v-col cols="3">
-              <v-text-field v-model="solution.id" disabled label="ID" />
-            </v-col>
-            <v-col cols="2">
-              <v-text-field v-model="solution.sort" :label="t('common.sortIndex')" max="100" min="0" type="number" />
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="12" md="8">
-              <v-text-field
-                v-model="siteWaitFilter"
-                :placeholder="t('SetSearchSolution.edit.filterPlaceholder')"
-                append-inner-icon="mdi-magnify"
-                clearable
-                prepend-icon="mdi-sitemap"
+  <Dialog v-model="showDialog" @after-open="dialogEnter" @after-close="dialogLeave">
+    <DialogContent class="h-[88vh] max-w-6xl">
+      <DialogHeader>
+        <DialogTitle>
+          <ListChecks class="size-4 text-primary" />
+          <span>{{ t("SetSearchSolution.edit.title") }}</span>
+        </DialogTitle>
+        <DialogDescription>
+          {{ t("SetSearchSolution.edit.addCount", [solution.solutions.length]) }}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-5 py-4">
+        <!-- 顶部基础属性行 -->
+        <div class="grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-12">
+          <div class="space-y-1 sm:col-span-6">
+            <Label for="solution-name">{{ t("common.name") }}</Label>
+            <Input id="solution-name" v-model="solution.name" :placeholder="t('common.name')" />
+          </div>
+          <div class="space-y-1 sm:col-span-4">
+            <Label for="solution-id">ID</Label>
+            <Input id="solution-id" v-model="solution.id" disabled class="font-mono text-xs" />
+          </div>
+          <div class="space-y-1 sm:col-span-2">
+            <Label for="solution-sort">{{ t("common.sortIndex") }}</Label>
+            <Input
+              id="solution-sort"
+              v-model.number="solution.sort"
+              type="number"
+              :min="0"
+              :max="100"
+              class="tabular-nums"
+            />
+          </div>
+        </div>
+
+        <!-- 宽幅双栏构建器 -->
+        <div class="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-12">
+          <!-- 左栏：已添加站点与分类选择器 -->
+          <div class="flex min-h-0 flex-col gap-2.5 lg:col-span-8">
+            <div class="flex shrink-0 items-center gap-2">
+              <div class="relative flex-1">
+                <Search
+                  class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                  v-model="siteWaitFilter"
+                  :placeholder="t('SetSearchSolution.edit.filterPlaceholder')"
+                  class="pl-8 pr-8"
+                />
+                <button
+                  v-if="siteWaitFilter"
+                  type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  @click="siteWaitFilter = ''"
+                >
+                  <X class="size-3.5" />
+                </button>
+              </div>
+              <Tooltip :content="t('SetSearchSolution.edit.sortByAddedCount')" side="top">
+                <Button
+                  :variant="addedCountSort ? 'secondary' : 'outline'"
+                  size="icon"
+                  :class="addedCountSort ? 'border-primary/40 text-primary' : ''"
+                  @click="cycleAddedCountSort"
+                >
+                  <ArrowUpNarrowWide v-if="addedCountSort === 'asc'" class="size-4" />
+                  <ArrowDownWideNarrow v-else-if="addedCountSort === 'desc'" class="size-4" />
+                  <ArrowUpDown v-else class="size-4" />
+                </Button>
+              </Tooltip>
+            </div>
+
+            <div class="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-card">
+              <div
+                v-if="filteredSite.length === 0"
+                class="flex h-40 flex-col items-center justify-center gap-2 text-xs text-muted-foreground"
               >
-                <template #append>
-                  <v-btn
-                    :color="addedCountSort ? 'info' : undefined"
-                    :icon="
-                      addedCountSort === 'asc'
-                        ? 'mdi-sort-ascending'
-                        : addedCountSort === 'desc'
-                          ? 'mdi-sort-descending'
-                          : 'mdi-sort'
+                <Globe class="size-5 opacity-40" />
+                <span>{{ t("common.noData") }}</span>
+              </div>
+              <div v-else class="divide-y divide-border">
+                <div v-for="site in filteredSite" :key="site">
+                  <button
+                    type="button"
+                    :disabled="!!metadataStore.sites[site]?.isOffline"
+                    :class="
+                      cn(
+                        'flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left transition-colors',
+                        metadataStore.sites[site]?.isOffline ? 'cursor-not-allowed opacity-50' : 'hover:bg-muted/45',
+                        openSitePanels.includes(site) && 'bg-muted/35',
+                      )
                     "
-                    size="small"
-                    variant="text"
-                    :title="t('SetSearchSolution.edit.sortByAddedCount')"
-                    @click="cycleAddedCountSort"
-                  />
-                </template>
-              </v-text-field>
-
-              <v-card class="overflow-y-auto" height="calc(100vh - 340px)">
-                <v-expansion-panels v-model="openSitePanels" multiple>
-                  <v-expansion-panel
-                    v-for="site in filteredSite"
-                    :key="site"
-                    :disabled="!!metadataStore.sites[site].isOffline"
-                    :value="site"
+                    @click="toggleSitePanel(site)"
                   >
-                    <v-expansion-panel-title>
-                      <SiteFavicon :site-id="site" class="mr-2" inline />
+                    <div class="flex min-w-0 items-center gap-2.5">
+                      <SiteFavicon :site-id="site" :size="18" />
+                      <Badge :variant="addedCountBySite[site] ? 'success' : 'secondary'" class="max-w-full">
+                        <SiteName :site-id="site" tag="span" class="truncate" />
+                      </Badge>
+                    </div>
 
-                      <v-chip :color="addedCountBySite[site] ? 'green' : 'grey-lighten-1'" label>
-                        <SiteName :class="['text-no-wrap']" :site-id="site" />
-                      </v-chip>
-
-                      <template #actions>
-                        <v-chip
-                          v-if="addedCountBySite[site]"
-                          :color="addedCountBySite[site] === 1 ? 'success' : 'warning'"
-                          label
-                          :title="t('SetSearchSolution.edit.siteAddedCount', [addedCountBySite[site]])"
-                        >
+                    <div class="flex shrink-0 items-center gap-2">
+                      <Tooltip
+                        v-if="addedCountBySite[site]"
+                        :content="t('SetSearchSolution.edit.siteAddedCount', [addedCountBySite[site]])"
+                        side="left"
+                      >
+                        <Badge :variant="addedCountBySite[site] === 1 ? 'success' : 'warning'" class="tabular-nums">
                           ×{{ addedCountBySite[site] }}
-                        </v-chip>
-                      </template>
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text>
-                      <SiteCategoryPanel :site-id="site" @update:solution="addSolution" />
-                    </v-expansion-panel-text>
-                  </v-expansion-panel>
-                </v-expansion-panels>
-              </v-card>
-            </v-col>
-            <v-col cols="12" md="4">
-              <v-alert class="mb-2" type="success">
-                <v-alert-title>
-                  {{ t("SetSearchSolution.edit.addCount", [solution.solutions.length]) }}
-                </v-alert-title>
-              </v-alert>
+                        </Badge>
+                      </Tooltip>
+                      <ChevronDown
+                        :class="
+                          cn(
+                            'size-4 text-muted-foreground transition-transform duration-150',
+                            openSitePanels.includes(site) && 'rotate-180',
+                          )
+                        "
+                      />
+                    </div>
+                  </button>
 
-              <v-card class="overflow-y-auto" height="calc(100vh - 330px)">
-                <v-card-text class="pl-3 py-0 pr-1">
-                  <div v-if="siteFilter && filteredSolutions.length === 0 && solution.solutions.length > 0">
-                    {{ t("SetSearchSolution.edit.noMatchInFilteredSolutions") }}
+                  <div v-if="openSitePanels.includes(site)" class="border-t border-border/70 bg-muted/15 px-3.5 py-3">
+                    <SiteCategoryPanel :site-id="site" @update:solution="addSolution" />
                   </div>
-                  <SolutionLabel
-                    :group-props="{ column: true }"
-                    :solutions="filteredSolutions"
-                    closable
-                    @remove:solution="removeSolution"
-                  />
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
-        </v-form>
-      </v-card-text>
-      <v-divider />
-      <v-card-actions>
-        <v-spacer />
-        <v-btn color="error" prepend-icon="mdi-close-circle" variant="text" @click="showDialog = false">
-          {{ t("common.dialog.cancel") }}
-        </v-btn>
-        <v-btn
-          :disabled="!formValid || solution.solutions.length === 0"
-          color="success"
-          prepend-icon="mdi-check-circle-outline"
-          variant="text"
-          @click="saveSolutionState"
-        >
-          {{ t("common.dialog.ok") }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
-</template>
+                </div>
+              </div>
+            </div>
+          </div>
 
-<style scoped lang="scss"></style>
+          <!-- 右栏：当前方案已加入的搜索入口胶囊清单 -->
+          <div class="flex min-h-0 flex-col gap-2.5 lg:col-span-4">
+            <div
+              class="flex h-9 shrink-0 items-center justify-between rounded-lg border border-success/25 bg-success/8 px-3"
+            >
+              <span class="text-xs font-medium text-foreground">
+                {{ t("SetSearchSolution.edit.addCount", [solution.solutions.length]) }}
+              </span>
+              <Badge variant="success" class="tabular-nums">{{ solution.solutions.length }}</Badge>
+            </div>
+
+            <div class="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-card p-3">
+              <div
+                v-if="siteFilter && filteredSolutions.length === 0 && solution.solutions.length > 0"
+                class="py-6 text-center text-xs text-muted-foreground"
+              >
+                {{ t("SetSearchSolution.edit.noMatchInFilteredSolutions") }}
+              </div>
+              <div
+                v-else-if="solution.solutions.length === 0"
+                class="flex h-40 flex-col items-center justify-center gap-1.5 text-center text-xs text-muted-foreground"
+              >
+                <ListChecks class="size-5 opacity-40" />
+                <span>从左侧站点选择分类并添加到此处</span>
+              </div>
+              <SolutionLabel v-else column :solutions="filteredSolutions" closable @remove:solution="removeSolution" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" @click="showDialog = false">
+          {{ t("common.dialog.cancel") }}
+        </Button>
+        <Button :disabled="!formValid || solution.solutions.length === 0" @click="saveSolutionState">
+          <CheckCircle2 class="size-4" />
+          {{ t("common.dialog.ok") }}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+</template>

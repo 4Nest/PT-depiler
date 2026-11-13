@@ -256,7 +256,12 @@ export const siteMetadata: ISiteMetadata = {
         attr: "href",
       },
       subTitle: {
-        selector: ["div.torrent-smalldescr:first > span:not(.torrent-icon-fast)"],
+        selector: ["div.torrent-smalldescr:first"],
+        elementProcess: (element: HTMLElement) => {
+          const clone = element.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll("span[class*='torrent-'], span.tags, a, img").forEach((el) => el.remove());
+          return clone.textContent?.trim() ?? "";
+        },
       },
 
       progress: {

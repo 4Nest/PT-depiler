@@ -1,11 +1,5 @@
-/**
- * 此处放置一些其他数据，这些数据一般具有以下特征：
- * 1. 不需要persist
- * 2. 不需要跨tab共享的
- * 3. 可以在不同component中共享的
- */
-
 import { defineStore } from "pinia";
+import { toast } from "vue-sonner";
 import type { IRuntimePiniaStorageSchema, ISearchData, SnackbarMessageOptions } from "@/shared/types.ts";
 
 const initialSearchData: () => ISearchData = () => ({
@@ -21,7 +15,7 @@ const initialSearchData: () => ISearchData = () => ({
 export const useRuntimeStore = defineStore("runtime", {
   persist: {
     storage: sessionStorage,
-    key: "__ptd_runtime_store", // 由于 runtimeStore 可能会在 content-script 中注册，所以此处需要使用一个独特的 key
+    key: "__ptd_runtime_store",
   },
   persistWebExt: false,
   state: (): IRuntimePiniaStorageSchema => ({
@@ -61,8 +55,17 @@ export const useRuntimeStore = defineStore("runtime", {
     },
 
     showSnackbar(text: string, options: SnackbarMessageOptions = {}) {
-      // @ts-ignore
-      this.uiGlobalSnackbar.push({ text, ...options });
+      const duration = typeof options.timeout === "number" && options.timeout > 0 ? options.timeout : 3500;
+      const color = options.color ?? "info";
+      if (color === "success" || color === "green") {
+        toast.success(text, { duration });
+      } else if (color === "error" || color === "red" || color === "destructive") {
+        toast.error(text, { duration });
+      } else if (color === "warning" || color === "amber" || color === "orange") {
+        toast.warning(text, { duration });
+      } else {
+        toast.info(text, { duration });
+      }
     },
   },
 });

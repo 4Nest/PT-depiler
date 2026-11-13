@@ -1,60 +1,75 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { CheckCircle2, Loader2, Radio, XCircle } from "lucide-vue-next";
+import { cn } from "~/lib/utils";
+import { Button } from "~/components/ui";
 
-const { checkFn, resetTimeout } = defineProps<{
+const { checkFn, resetTimeout = 3500 } = defineProps<{
   checkFn: () => Promise<boolean>;
   resetTimeout?: number;
 }>();
+
 const emits = defineEmits<{
-  (e: "after:checkConnect"): void;
+  (e: "after:checkConnect", status: boolean): void;
 }>();
 
 const { t } = useI18n();
 
-enum connectStatus {
-  default = "default",
-  success = "success",
-  error = "error",
-}
+type ConnectState = "default" | "testing" | "success" | "error";
+const state = ref<ConnectState>("default");
+let resetTimer: ReturnType<typeof setTimeout> | null = null;
 
-const connectBtnMap: Record<connectStatus, { icon: string; color: string }> = {
-  [connectStatus.default]: { icon: "mdi-access-point", color: "info" },
-  [connectStatus.success]: { icon: "mdi-access-point-check", color: "success" },
-  [connectStatus.error]: { icon: "mdi-access-point-remove", color: "error" },
-};
+const buttonLabel = computed(() => {
+  if (state.value === "success") return t("connectCheck.success");
+  if (state.value === "error") return t("connectCheck.error");
+  return t("connectCheck.default");
+});
 
-const isTestingConnectRef = ref<boolean>(false);
-const connectStatusRef = ref<connectStatus>(connectStatus.default);
-
-async function checkConnect() {
-  isTestingConnectRef.value = true;
+async function runCheck() {
+  if (state.value === "testing") return;
+  if (resetTimer) {
+    clearTimeout(resetTimer);
+    resetTimer = null;
+  }
+  state.value = "testing";
+  let ok = false;
   try {
-    connectStatusRef.value = (await checkFn()) ? connectStatus.success : connectStatus.error;
-  } catch (e) {
-    connectStatusRef.value = connectStatus.error;
-    if (resetTimeout) {
-      setTimeout(() => (connectStatusRef.value = connectStatus.default), resetTimeout);
-    }
+    ok = Boolean(await checkFn());
+    state.value = ok ? "success" : "error";
+  } catch {
+    ok = false;
+    state.value = "error";
   } finally {
-    isTestingConnectRef.value = false;
-    emits("after:checkConnect");
+    emits("after:checkConnect", ok);
+    if (resetTimeout > 0) {
+      resetTimer = setTimeout(() => {
+        if (state.value !== "testing") state.value = "default";
+      }, resetTimeout);
+    }
   }
 }
 </script>
 
 <template>
-  <v-btn
-    :color="connectBtnMap[connectStatusRef]['color']"
-    :disabled="isTestingConnectRef"
-    :loading="isTestingConnectRef"
-    block
-    variant="text"
-    @click="checkConnect"
+  <Button
+    type="button"
+    variant="outline"
+    :disabled="state === 'testing'"
+    :class="
+      cn(
+        'w-full transition-colors',
+        state === 'success' && 'border-success/45 bg-success/12 text-success hover:bg-success/18 hover:text-success',
+        state === 'error' &&
+          'border-destructive/45 bg-destructive/12 text-destructive hover:bg-destructive/18 hover:text-destructive',
+      )
+    "
+    @click="runCheck"
   >
-    <v-icon :icon="connectBtnMap[connectStatusRef]['icon']" />
-    {{ t("connectCheck." + connectStatusRef) }}
-  </v-btn>
+    <Loader2 v-if="state === 'testing'" class="size-4 shrink-0 animate-spin text-primary" />
+    <CheckCircle2 v-else-if="state === 'success'" class="size-4 shrink-0" />
+    <XCircle v-else-if="state === 'error'" class="size-4 shrink-0" />
+    <Radio v-else class="size-4 shrink-0 text-primary" />
+    <span class="truncate">{{ buttonLabel }}</span>
+  </Button>
 </template>
-
-<style scoped lang="scss"></style>

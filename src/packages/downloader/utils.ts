@@ -1,9 +1,10 @@
-import axios, { AxiosRequestConfig } from "axios";
+import type { AxiosRequestConfig } from "axios";
 import parseTorrent, { Instance as TorrentInstance } from "parse-torrent";
 import isValidFilename from "valid-filename";
 import { decodePercent } from "@ptd/utils/url.ts";
+import { axios } from "./utils/adapter";
 
-export * from "./utils/adapter";
+export { axios };
 
 export interface ParsedTorrent {
   name: string;
@@ -32,11 +33,22 @@ export function extractMagnetHash(magnetUri: string): string | null {
 }
 
 export async function getRemoteTorrentFile(options: AxiosRequestConfig = {}): Promise<ParsedTorrent> {
-  const req = await axios.request({
+  const requestConfig: AxiosRequestConfig = {
+    timeout: 120e3,
+    withCredentials: true,
     ...options,
     responseType: "arraybuffer", // 统一以 ArrayBuffer 形式获取，方便后面转化
-  });
+  };
 
+  let req;
+  try {
+    req = await axios.request(requestConfig);
+  } catch (firstErr: any) {
+    const status = firstErr?.response?.status ?? 0;
+    const isRetryable = firstErr?.code === "ECONNABORTED" || !status || status >= 500;
+    if (!isRetryable) throw firstErr;
+    req = await axios.request(requestConfig);
+  }
   /**
    * 如果服务器设置了 content-type 响应头，
    * 但响应头值不是 application/x-bittorrent 或 application/octet-stream，
