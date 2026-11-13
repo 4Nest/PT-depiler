@@ -1,5 +1,4 @@
 import type { TSiteID } from "@ptd/site";
-import type { IFetchSocialSiteInformationConfig } from "@ptd/social";
 
 import type { TLangCode } from "@/options/plugins/i18n.ts";
 import type { ITimelineUserInfoField } from "@/options/views/Overview/MyData/UserDataTimeline/utils.ts";
@@ -8,7 +7,7 @@ import type { TLocalDownloadMethod } from "../common/download.ts";
 
 export const supportTheme = ["auto", "light", "dark"] as const;
 export type supportThemeType = (typeof supportTheme)[number];
-type UiTableBehaviorKey = "SetSite" | "SearchEntity" | "MyData" | "DownloadHistory" | "MyClient" | string;
+type UiTableBehaviorKey = "SetSite" | "SearchEntity" | "MyData" | "SetDownloader" | "SetSearchSolution" | string;
 interface UiTableBehaviorItem<T = string> {
   itemsPerPage?: number;
   columns?: T[];
@@ -38,29 +37,18 @@ export interface IConfigPiniaStorageSchema {
   // 用 timeline 和 statistic 等展示的用户名，如果为 "" 则由使用最多的站点决定（使用 configStore.getUserNames.perfName 获取）
   userName: string;
 
-  contextMenus: {
-    enabled: boolean; // 是否启用右键菜单
-    allowSelectionTextSearch: boolean; // 是否启用选择内容时搜索
-    allowSocialLinkSearch: boolean; // 是否启用社交链接（ douban, imdb ）搜索
-    allowLinkDownloadPush: boolean; // 是否允许链接推送
-  };
-
   contentScript: {
     enabled: boolean; // 是否启用 contentScript
-    enabledAtSocialSite: boolean; // 是否允许在社交站点  contentScript 中使用
     allowExceptionSites: boolean; // 是否允许在 contentScript 中排除站点（即站点不显示侧边栏）
 
     position: { x: number; y: number }; // 图标位置（运行时配置，用户不可以直接编辑）
 
     applyTheme: boolean; // 是否响应主题样式
     defaultOpenSpeedDial: boolean; // 是否默认打开按钮
-    stackedButtons: boolean; // 是否使用堆叠按钮
     fadeEnterStyle: boolean; // 是否启用淡入效果（即默认半透明，当鼠标移入时不透明）
 
     doubleConfirmAction: boolean; // 进行批量操作时，是否需要二步确认（避免误操作）
     dragLinkOnSpeedDial: boolean; // 是否允许拖拽链接到 SpeedDial 上
-
-    socialSiteSearchBy: "id" | "title" | "imdb" | "chosen"; // 社交站点搜索方式，id: 使用 id 进行搜索，title: 使用主标题进行搜索，IMDb: 使用 IMDb 编号进行搜索，chosen: 使用用户选择的方式进行搜索
   };
 
   // 对 MyData 页面 v-data-table 展示的额外控制项
@@ -145,11 +133,7 @@ export interface IConfigPiniaStorageSchema {
     selectedSites: TSiteID[]; // 需要展示的站点
   };
 
-  /**
-   * 注意：
-   * showTorrentTag, showTorrentSubtitle, showSocialInformation, socialInformationSearchTargetBlank
-   * 这四个选项同时影响下载历史中的展示
-   */
+  // 对 SearchEntity 页面 v-data-table 展示的额外控制项
   searchEntifyControl: {
     // 是否展示站点名称
     showSiteName: boolean;
@@ -161,10 +145,6 @@ export interface IConfigPiniaStorageSchema {
     showTorrentSubtitle: boolean;
     // 是否展示种子自带的封面图片（需要该种子提供 cover 信息）
     showTorrentCover: boolean;
-    // 是否展示种子额外的媒体评分信息（需要该种子提供 ext_{imdb, douban} 信息）
-    showSocialInformation: boolean;
-    // 对种子额外的媒体评分信息中 “搜索” 是另开窗口还是当前窗口 （需要 showSocialInformation 为 true 才有实际效果）
-    socialInformationSearchOnNewTab: boolean;
     // 是否使用 time_alive(过去时间) 来展示，如果不使用，则使用 time_added(发生时间) 来展示，默认不使用
     uploadAtFormatAsAlive: boolean;
     // 是否限制种子标题列的最大宽度，防止过长导致表格布局混乱
@@ -197,18 +177,12 @@ export interface IConfigPiniaStorageSchema {
   };
 
   download: {
-    // 是否保存下载记录
-    saveDownloadHistory: boolean;
-
     allowDownloaderFilterForSite: boolean; // 是否启用站点过滤器，启用后可在下载器设置中配置每个下载器可使用的站点
 
     // 当使用本地方法下载时，如何下载种子
     localDownloadMethod: TLocalDownloadMethod;
     // 当使用本地方法下载时，是否忽略站点的下载间隔设置；
     ignoreSiteDownloadIntervalWhenLocalDownload: boolean;
-
-    // 在我的下载器页面，进入时即刷新下载器
-    initDownloaderTorrentOnEnter: boolean;
 
     // 是否保存上一次使用的下载器
     saveLastDownloader: boolean;
@@ -236,20 +210,6 @@ export interface IConfigPiniaStorageSchema {
 
     // 是否启用快速站点过滤功能
     quickSiteFilter: boolean;
-    // 是否在搜索框中展示热门推荐按钮
-    showHotRecommendations: boolean;
-  };
-
-  // 配置同样在 searchEntity 页面（偷懒下）
-  mediaServerEntity: {
-    // 搜索时的最大并发数
-    queueConcurrency: number;
-    // 单次搜索的最大数量
-    searchLimit: number;
-    // 是否在 onMount 时自动搜索
-    autoSearchWhenMount: boolean;
-    // 是否在搜索结果中自动加载更多
-    autoSearchMoreWhenScroll: boolean;
   };
 
   backup: {
@@ -259,8 +219,6 @@ export interface IConfigPiniaStorageSchema {
     // TODO 是否开启自动备份
     enabledAutoBackup: boolean;
   };
-
-  socialSiteInformation: IFetchSocialSiteInformationConfig;
 
   autoExtendCookies: {
     enabled: boolean; // 功能开关，默认 false

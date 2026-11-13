@@ -44,28 +44,23 @@ async function save() {
 
 <template>
   <v-card>
-    <v-tabs v-model="activeTab" align-tabs="center" bg-color="primary" show-arrows stacked>
-      <v-tab v-for="tab in setBaseTabs" :key="tab.key as string" :value="tab.route">
-        <v-icon :icon="tab.icon as string" />
+    <v-tabs v-model="activeTab" color="primary" density="comfortable" class="border-b px-2" show-arrows>
+      <v-tab v-for="tab in setBaseTabs" :key="tab.key as string" :value="tab.route" :prepend-icon="tab.icon as string">
         {{ t(`SetBase.tab.${tab.key}`) }}
       </v-tab>
     </v-tabs>
     <v-window v-model="activeTab">
-      <v-card>
-        <v-card-text>
-          <router-view v-slot="{ Component }">
-            <component :is="Component" ref="setTabRef" />
-          </router-view>
-        </v-card-text>
-        <v-divider v-if="showSaveButton" />
-        <v-card-actions v-if="showSaveButton">
-          <v-row class="ml-2 my-1">
-            <v-btn color="green" prepend-icon="mdi-check-circle-outline" variant="elevated" @click="save">
-              {{ t("common.save") }}
-            </v-btn>
-          </v-row>
-        </v-card-actions>
-      </v-card>
+      <v-card-text class="pa-4 pa-md-6">
+        <router-view v-slot="{ Component }">
+          <component :is="Component" ref="setTabRef" />
+        </router-view>
+      </v-card-text>
+      <v-divider v-if="showSaveButton" />
+      <v-card-actions v-if="showSaveButton" class="pa-4">
+        <v-btn color="primary" prepend-icon="mdi-check-circle-outline" variant="flat" @click="save">
+          {{ t("common.save") }}
+        </v-btn>
+      </v-card-actions>
     </v-window>
   </v-card>
 </template>

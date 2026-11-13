@@ -12,7 +12,6 @@ import { siteMetadataIndex } from "@ptd/site/metadataIndex";
 import { REPO_URL } from "~/helper";
 import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 import SiteName from "@/options/components/SiteName.vue";
-import RecommendationMenu from "./RecommendationMenu.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -23,35 +22,19 @@ const configStore = useConfigStore();
 const metadataStore = useMetadataStore();
 const runtimeStore = useRuntimeStore();
 
-const appendMenu = computed<Array<{ title: string; icon: string; [str: string]: any }>>(() => [
-  { title: t("layout.header.home"), icon: "mdi-home", href: REPO_URL },
-  { title: t("layout.header.wiki"), icon: "mdi-help-circle", href: `${REPO_URL}/wiki` },
-  { title: "Ask AI", icon: "mdi-chat-question", href: `https://deepwiki.com/pt-plugins/PT-depiler` },
-]);
-
 const searchKey = ref<string>("");
 const searchPlanKey = ref<string>("default");
 
 const searchPlans = computed(() =>
   metadataStore.getSearchSolutions
-    .filter((x) => !!x.enabled) // 过滤掉未启用的搜索方案
-    .sort((a, b) => b.sort - a.sort) // 按照 sort 降序排序
+    .filter((x) => !!x.enabled)
+    .sort((a, b) => b.sort - a.sort)
     .map((x) => ({
       id: x.id,
       name: x.name,
     })),
 );
 
-/**
- * 单个站点搜索方案中可搜索的站点ID列表。
- * 过滤条件为 allowSearch 开启 且 非 isOffline 且 站点定义非 isDead，
- * 与 getSiteDefaultSearchSolution 的过滤条件（isOffline || isDead 不返回搜索方案）相比，
- * 额外排除了未开启搜索的站点（与原菜单项的 allowSearch 判断保持一致）。
- * refs: https://github.com/pt-plugins/PT-depiler/issues/1083
- *
- * 只需要 isDead，所以直接查构建期轻量索引：这里是 immediate + deep watch，
- * 原来每触发一次就要为每个已添加站点解析一遍完整站点定义。
- */
 const singleSearchSiteIds = ref<string[]>([]);
 
 function refreshSingleSearchSiteIds() {
@@ -61,7 +44,6 @@ function refreshSingleSearchSiteIds() {
     .map((siteUserConfig) => siteUserConfig.id);
 }
 
-// 监听整个已添加站点配置（而非仅ID列表），使站点编辑器中切换 allowSearch/isOffline 后菜单同步刷新
 watch(() => metadataStore.getAddedSites, refreshSingleSearchSiteIds, { immediate: true, deep: true });
 
 function startSearchEntity() {
@@ -73,11 +55,6 @@ function startSearchEntity() {
       flush: 1,
     },
   });
-}
-
-function searchRecommendation(title: string) {
-  searchKey.value = title;
-  startSearchEntity();
 }
 
 watch(
@@ -96,192 +73,185 @@ function updateNavBarOpenStatus() {
   configStore.isNavBarOpen = !configStore.isNavBarOpen;
   configStore.$save();
 }
+
+const themeOrder = ["light", "dark", "auto"] as const;
+const themeIconMap = {
+  light: "mdi-weather-sunny",
+  dark: "mdi-weather-night",
+  auto: "mdi-theme-light-dark",
+} as const;
+
+const currentThemeIcon = computed(() => themeIconMap[configStore.theme] ?? "mdi-weather-sunny");
+const currentThemeTooltip = computed(() =>
+  t("layout.header.themeSwitchTip", { mode: t(`SetBase.ui.theme.${configStore.theme}`) }),
+);
+
+function cycleTheme() {
+  const idx = themeOrder.indexOf(configStore.theme);
+  configStore.theme = themeOrder[(idx + 1) % themeOrder.length];
+  configStore.$save();
+}
 </script>
 
 <template>
-  <v-app-bar id="ptd-topbar" color="amber">
+  <v-app-bar id="ptd-topbar" color="surface" elevation="0" border="b" height="60">
     <template #prepend>
-      <v-app-bar-nav-icon :title="t('layout.header.navBarTip')" variant="text" @click="updateNavBarOpenStatus">
-        <template v-if="display.smAndUp.value">
-          <v-icon icon="$menu"></v-icon>
-        </template>
-        <template v-else>
-          <v-img inline src="/icons/logo/64.png" width="24"></v-img>
-        </template>
-      </v-app-bar-nav-icon>
+      <v-app-bar-nav-icon :title="t('layout.header.navBarTip')" variant="text" @click="updateNavBarOpenStatus" />
+      <div class="d-flex align-center ga-2 mr-2 cursor-pointer" @click="router.push({ name: 'MyData' })">
+        <v-img src="/icons/logo/64.png" width="24" height="24" />
+        <span v-if="display.smAndUp.value" class="text-subtitle-1 font-weight-bold text-no-wrap">PT Depiler</span>
+        <v-chip v-if="display.smAndUp.value" size="x-small" color="primary" variant="tonal" label>Lite</v-chip>
+      </div>
     </template>
 
-    <v-app-bar-title v-show="display.smAndUp.value" ref="titleTarget" style="min-width: 120px; max-width: 160px">
-      <v-img inline src="/icons/logo/64.png" width="24"></v-img>
-      {{ t("manifest.extName") }}
-    </v-app-bar-title>
-
-    <!-- 搜索输入框 -->
-    <v-combobox
-      v-model="searchKey"
-      :placeholder="t('layout.header.searchTip')"
-      class="ptd-search-input pl-2"
-      clearable
-      enterkeyhint="search"
-      hide-details
-      style="width: 300px"
-      type="search"
-      @keyup.enter="startSearchEntity"
-    >
-      <template #append>
-        <!-- 搜索按键 -->
-        <v-btn
-          :disabled="runtimeStore.search.isSearching"
-          icon="mdi-magnify"
-          :title="t('common.search')"
-          @click="startSearchEntity"
-        />
-      </template>
-
-      <template #append-inner>
-        <RecommendationMenu
-          v-if="configStore.searchEntity.showHotRecommendations"
-          :disabled="runtimeStore.search.isSearching"
-          @search="searchRecommendation"
-        />
-      </template>
-
-      <template #prepend-inner>
-        <!-- 搜索方案选择框 -->
-        <v-menu>
-          <template v-slot:activator="{ props }">
-            <v-btn v-bind="props" color="primary">
-              {{
-                searchPlanKey == "default"
-                  ? t("layout.header.searchPlan.default")
-                  : metadataStore.getSearchSolutionName(searchPlanKey)
-              }}
-            </v-btn>
-          </template>
-          <v-list>
-            <!-- 默认搜索方案 -->
-            <v-list-item
-              :subtitle="
-                '<' +
-                (metadataStore.defaultSolutionId !== 'default'
-                  ? metadataStore.getSearchSolutionName(metadataStore.defaultSolutionId)
-                  : t('layout.header.searchPlan.all')) +
-                '>'
-              "
-              :title="t('layout.header.searchPlan.default')"
-              @click="() => (searchPlanKey = 'default')"
-            />
-
-            <!-- 全部站点搜索方案（仅当默认搜索不是全部站点时出现） -->
-            <template v-if="metadataStore.defaultSolutionId !== 'default'">
-              <v-list-item
-                :title="t('layout.header.searchPlan.all')"
-                @click="() => (searchPlanKey = 'all')"
-              ></v-list-item>
-            </template>
-
-            <!-- 单个站点搜索方案 -->
-            <v-list-item
-              v-if="configStore.searchEntity.allowSingleSiteSearch"
-              :title="t('layout.header.searchPlan.singleSite')"
-            >
-              <template v-slot:append>
-                <v-icon icon="mdi-menu-right" size="x-small"></v-icon>
+    <!-- 一体化高可读聚合搜索框 -->
+    <div class="d-flex justify-center flex-grow-1 px-2">
+      <div class="ptd-search-bar" style="max-width: 640px; width: 100%">
+        <v-text-field
+          v-model="searchKey"
+          :placeholder="t('layout.header.searchTip')"
+          class="ptd-search-input"
+          clearable
+          enterkeyhint="search"
+          hide-details
+          single-line
+          type="search"
+          bg-color="surface-variant"
+          @keyup.enter="startSearchEntity"
+        >
+          <template #prepend-inner>
+            <v-menu>
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  color="primary"
+                  variant="tonal"
+                  size="small"
+                  class="mr-1 text-no-wrap"
+                  append-icon="mdi-menu-down"
+                >
+                  {{
+                    searchPlanKey == "default"
+                      ? t("layout.header.searchPlan.default")
+                      : metadataStore.getSearchSolutionName(searchPlanKey)
+                  }}
+                </v-btn>
               </template>
+              <v-list density="compact">
+                <v-list-item
+                  :subtitle="
+                    '<' +
+                    (metadataStore.defaultSolutionId !== 'default'
+                      ? metadataStore.getSearchSolutionName(metadataStore.defaultSolutionId)
+                      : t('layout.header.searchPlan.all')) +
+                    '>'
+                  "
+                  :title="t('layout.header.searchPlan.default')"
+                  @click="() => (searchPlanKey = 'default')"
+                />
 
-              <v-menu
-                :open-on-focus="false"
-                open-on-hover
-                :open-on-click="display.mobile.value"
-                activator="parent"
-                submenu
-              >
-                <v-list>
-                  <template v-for="siteMetadata in metadataStore.getSortedAddedSites" :key="siteMetadata.id">
-                    <v-list-item
-                      v-if="singleSearchSiteIds.includes(siteMetadata.id)"
-                      @click="() => (searchPlanKey = `site:${siteMetadata.id}`)"
-                    >
-                      <template #prepend>
-                        <SiteFavicon :site-id="siteMetadata.id" />
-                      </template>
-                      <SiteName :class="['v-list-item-title', 'ml-2']" :site-id="siteMetadata.id" tag="span" />
-                    </v-list-item>
+                <template v-if="metadataStore.defaultSolutionId !== 'default'">
+                  <v-list-item :title="t('layout.header.searchPlan.all')" @click="() => (searchPlanKey = 'all')" />
+                </template>
+
+                <v-list-item
+                  v-if="configStore.searchEntity.allowSingleSiteSearch"
+                  :title="t('layout.header.searchPlan.singleSite')"
+                >
+                  <template #append>
+                    <v-icon icon="mdi-menu-right" size="x-small" />
                   </template>
-                </v-list>
-              </v-menu>
-            </v-list-item>
 
-            <v-divider />
+                  <v-menu
+                    :open-on-focus="false"
+                    open-on-hover
+                    :open-on-click="display.mobile.value"
+                    activator="parent"
+                    submenu
+                  >
+                    <v-list density="compact">
+                      <template v-for="siteMetadata in metadataStore.getSortedAddedSites" :key="siteMetadata.id">
+                        <v-list-item
+                          v-if="singleSearchSiteIds.includes(siteMetadata.id)"
+                          @click="() => (searchPlanKey = `site:${siteMetadata.id}`)"
+                        >
+                          <template #prepend>
+                            <SiteFavicon :site-id="siteMetadata.id" />
+                          </template>
+                          <SiteName :class="['v-list-item-title', 'ml-2']" :site-id="siteMetadata.id" tag="span" />
+                        </v-list-item>
+                      </template>
+                    </v-list>
+                  </v-menu>
+                </v-list-item>
 
-            <!-- 用户自定义的搜索方案列表 -->
-            <v-list-item
-              v-for="(item, index) in searchPlans"
-              :key="index"
-              :value="index"
-              @click="() => (searchPlanKey = item.id)"
-            >
-              <v-list-item-title>{{ metadataStore.getSearchSolutionName(item.id) }}</v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-menu>
-      </template>
-    </v-combobox>
+                <v-divider v-if="searchPlans.length > 0" class="my-1" />
 
-    <v-spacer v-if="display.smAndUp.value" />
+                <v-list-item
+                  v-for="(item, index) in searchPlans"
+                  :key="index"
+                  :value="index"
+                  @click="() => (searchPlanKey = item.id)"
+                >
+                  <v-list-item-title>{{ metadataStore.getSearchSolutionName(item.id) }}</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </template>
+
+          <template #append-inner>
+            <v-btn
+              :loading="runtimeStore.search.isSearching"
+              color="primary"
+              variant="flat"
+              size="small"
+              icon="mdi-magnify"
+              :title="t('common.search')"
+              @click="startSearchEntity"
+            />
+          </template>
+        </v-text-field>
+      </div>
+    </div>
 
     <template #append>
-      <template v-if="!display.mdAndDown.value">
-        <!-- 处于大屏幕，完整显示所有btn -->
-        <v-btn
-          v-for="(append, index) in appendMenu"
-          :key="index"
-          v-bind.prop="append.prop"
-          :append-icon="append.icon"
-          :href="append.href"
-          :title="append.title"
-          rel="noopener noreferrer nofollow"
-          size="large"
-          target="_blank"
-          variant="text"
-        >
-          <span class="ml-1">{{ append.title }}</span>
-        </v-btn>
-      </template>
-
-      <template v-else>
-        <!-- 处于小屏幕，只显示点，btn以menu列表形式展示 -->
-        <v-menu>
+      <div class="d-flex align-center ga-1 pr-2">
+        <v-tooltip location="bottom" :text="currentThemeTooltip">
           <template #activator="{ props }">
-            <v-btn :title="t('layout.header.expand')" v-bind="props" icon="mdi-dots-vertical" variant="text" />
+            <v-btn v-bind="props" :icon="currentThemeIcon" variant="text" @click="cycleTheme" />
           </template>
+        </v-tooltip>
 
-          <v-list>
-            <v-list-item
-              v-for="(item, index) in appendMenu"
-              :key="index"
-              :href="item.href"
-              :prepend-icon="item.icon"
-              :title="item.title"
-              variant="text"
+        <v-tooltip location="bottom" :text="t('layout.header.home')">
+          <template #activator="{ props }">
+            <v-btn
+              v-bind="props"
+              :href="REPO_URL"
+              icon="mdi-github"
               rel="noopener noreferrer nofollow"
-              size="large"
-              class="menu-item list-item-none-spacer"
               target="_blank"
+              variant="text"
             />
-          </v-list>
-        </v-menu>
-      </template>
+          </template>
+        </v-tooltip>
+      </div>
     </template>
   </v-app-bar>
 </template>
 
 <style scoped lang="scss">
-.menu-item:deep(.v-list-item__prepend > .v-icon) {
-  margin-inline-end: 16px;
+.ptd-search-input :deep(.v-field) {
+  padding-inline-start: 6px;
+  padding-inline-end: 6px;
+  border: 1px solid rgba(var(--v-border-color), 0.14);
 }
 
-.ptd-search-input:deep(.v-input__append) {
-  padding-top: 4px;
+.ptd-search-input :deep(input) {
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.ptd-search-input :deep(input::placeholder) {
+  color: rgba(var(--v-theme-on-surface), 0.55) !important;
+  opacity: 1;
 }
 </style>

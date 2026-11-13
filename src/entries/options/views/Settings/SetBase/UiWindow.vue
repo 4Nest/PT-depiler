@@ -186,13 +186,6 @@ defineExpose({
               :label="t('SetBase.ui.allowExceptionSites')"
             />
 
-            <v-switch
-              v-model="configStore.contentScript.enabledAtSocialSite"
-              color="success"
-              hide-details
-              :label="t('SetBase.ui.enableOnSocialSite')"
-            />
-
             <v-divider />
           </v-col>
         </v-row>
@@ -214,12 +207,6 @@ defineExpose({
               color="success"
               hide-details
               :label="t('SetBase.ui.expandByDefault')"
-            />
-            <v-switch
-              v-model="configStore.contentScript.stackedButtons"
-              color="success"
-              hide-details
-              :label="t('SetBase.ui.useLargeIcon')"
             />
             <v-switch
               v-model="configStore.contentScript.fadeEnterStyle"
@@ -258,53 +245,8 @@ defineExpose({
                 </v-tooltip>
               </template>
             </v-switch>
-
-            <v-select
-              v-model="configStore.contentScript.socialSiteSearchBy"
-              :disabled="!configStore.contentScript.enabledAtSocialSite"
-              :items="['id', 'title', 'imdb', 'chosen']"
-              :item-title="(item) => t('SetBase.ui.socialSiteSearchBy.' + item)"
-              :item-value="(item) => item"
-              :label="t('SetBase.ui.socialSiteSearchLabel')"
-            />
           </v-col>
         </v-row>
-      </template>
-
-      <v-divider />
-    </v-col>
-  </v-row>
-
-  <v-row>
-    <v-col md="10" lg="8">
-      <div class="d-flex align-center">
-        <v-label>{{ t("SetBase.ui.contextMenu") }}</v-label>
-        <v-spacer />
-        <v-switch v-model="configStore.contextMenus.enabled" color="success" hide-details :label="t('common.enable')" />
-      </div>
-
-      <template v-if="configStore.contextMenus.enabled">
-        <v-switch
-          v-model="configStore.contextMenus.allowSelectionTextSearch"
-          color="success"
-          hide-details
-          :label="t('SetBase.ui.contextMenuTextSearch')"
-        />
-
-        <v-switch
-          v-model="configStore.contextMenus.allowSocialLinkSearch"
-          color="success"
-          hide-details
-          :label="t('SetBase.ui.contextMenuSocialSearch')"
-        />
-
-        <v-switch
-          v-model="configStore.contextMenus.allowLinkDownloadPush"
-          :disabled="metadataStore.getEnabledDownloaders.length === 0"
-          color="success"
-          hide-details
-          :label="t('SetBase.ui.contextMenuLinkPush')"
-        />
       </template>
     </v-col>
   </v-row>

@@ -22,10 +22,15 @@ function dialogEnter() {
 <template>
   <v-dialog v-model="showDialog" max-width="600" @after-enter="dialogEnter">
     <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>{{ t("SetBackup.LocalExportConfirmDialog.title") }}</v-toolbar-title>
-        </v-toolbar>
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <span class="text-subtitle-1 font-weight-bold">{{ t("SetBackup.LocalExportConfirmDialog.title") }}</span>
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          :title="t('common.dialog.close')"
+          @click="showDialog = false"
+        />
       </v-card-title>
       <v-divider />
       <v-card-text>
@@ -42,14 +47,14 @@ function dialogEnter() {
         </v-row>
       </v-card-text>
       <v-divider />
-      <v-card-actions>
+      <v-card-actions class="pa-4">
         <v-spacer />
-        <v-btn color="error" prepend-icon="mdi-close-circle" variant="text" @click="showDialog = false">
+        <v-btn variant="text" @click="showDialog = false">
           {{ t("common.dialog.cancel") }}
         </v-btn>
-        <v-btn color="success" prepend-icon="mdi-export" variant="text" @click="() => doLocalExport()">{{
-          t("common.export")
-        }}</v-btn>
+        <v-btn color="primary" prepend-icon="mdi-export" variant="flat" @click="() => doLocalExport()">
+          {{ t("common.export") }}
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

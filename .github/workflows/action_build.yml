@@ -5,24 +5,17 @@ on:
     branches: ["master"]
   pull_request:
     branches: ["master"]
-  workflow_call:
-    outputs:
-      version:
-        value: ${{ jobs.build.outputs.version }}
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.zip_chrome.outputs.extensionVersion }}
 
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: ${{ github.event_name == 'pull_request' && '1' || '0' }} # 根据事件类型动态设置 fetch-depth
+          fetch-depth: 0
 
-      # pnpm 版本取自 package.json 的 packageManager 字段（当前为 pnpm@12.10.1），此处不要再用 version 输入指定
-      # 注意：安装 pnpm v12 需要 pnpm/action-setup >= v6.1.0（当前 v6 浮动标签已指向 v6.1.0）
       - uses: pnpm/action-setup@v6
 
       - name: Setup Node
@@ -34,28 +27,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: vue-tsc check
+      - name: Type & resource check
         run: pnpm check
-        continue-on-error: ${{ github.event_name == 'push' }}
 
       - name: Build Output
         run: |
           pnpm build:dist
           pnpm build:dist-firefox
-
-      - name: Upload Chrome Built to action
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-dist-chrome
-          path: dist-chrome
-
-      - name: Upload Firefox Built to action
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-dist-firefox
-          path: dist-firefox
-
-      - run: mkdir -p build-zip
 
       - id: zip_chrome
         name: Build Zip For Chrome
@@ -76,28 +54,3 @@ jobs:
         with:
           name: build-zip-${{ steps.zip_chrome.outputs.extensionVersion }}
           path: build/*.zip
-
-      - name: Build Self-Sign Crx For Chrome
-        uses: cardinalby/webext-buildtools-chrome-crx-action@v2
-        env:
-          CHROME_SELF_SIGN_CRX_PRIVATE_KEY: ${{ secrets.CHROME_SELF_SIGN_CRX_PRIVATE_KEY }}
-        if: ${{ env.CHROME_SELF_SIGN_CRX_PRIVATE_KEY != ''  }}
-        with:
-          zipFilePath: "build/extension-chrome.zip"
-          crxFilePath: "build/extension.crx"
-          privateKey: "${{ secrets.CHROME_SELF_SIGN_CRX_PRIVATE_KEY }}"
-
-      - name: Upload Built Crx to action
-        uses: actions/upload-artifact@v7
-        with:
-          path: build/extension.crx
-          name: build-crx-${{ steps.zip_chrome.outputs.extensionVersion }}
-
-      - name: Upload build folder to Telegram Channel
-        env:
-          BUILD_VERSION: ${{ steps.zip_chrome.outputs.extensionVersion }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
-        run: pnpm action:upload_telegram
-        continue-on-error: true

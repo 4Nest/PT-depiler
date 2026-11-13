@@ -27,22 +27,10 @@ export const setBaseChildren: RouteRecordRaw[] = [
     component: () => import("../views/Settings/SetBase/UserInfoWindow.vue"),
   },
   {
-    path: "native-bridge",
-    name: "SetBaseNativeBridge",
-    meta: { icon: "mdi-connection", usesGlobalSave: false },
-    component: () => import("../views/Settings/SetBase/NativeBridgeWindow.vue"),
-  },
-  {
     path: "backup",
     name: "SetBaseBackup",
     meta: { icon: "mdi-backup-restore" },
     component: () => import("../views/Settings/SetBase/BackupWindow.vue"),
-  },
-  {
-    path: "social-information",
-    name: "SetBaseSocialInformation",
-    meta: { icon: "mdi-multimedia" },
-    component: () => import("../views/Settings/SetBase/SocialInformationWindow.vue"),
   },
 ] as const;
 
@@ -56,7 +44,7 @@ export const routes: RouteRecordRaw[] = [
         path: "/my-data",
         name: "MyData",
         alias: "",
-        meta: { icon: "mdi-view-dashboard" },
+        meta: { icon: "mdi-view-dashboard-outline" },
         component: () => import("../views/Overview/MyData/Index.vue"),
       },
       {
@@ -65,62 +53,25 @@ export const routes: RouteRecordRaw[] = [
         meta: { icon: "mdi-magnify" },
         component: () => import("../views/Overview/SearchEntity/Index.vue"),
       },
-      {
-        path: "/search-result-snapshot",
-        name: "SearchResultSnapshot",
-        meta: { icon: "mdi-camera-plus" },
-        component: () => import("../views/Overview/SearchResultSnapshot/Index.vue"),
-      },
-      {
-        path: "/my-collection",
-        name: "MyCollection",
-        meta: { icon: "mdi-star" },
-        component: () => import("../views/Overview/MyCollection/Index.vue"),
-      },
-      {
-        path: "/media-server-entity",
-        name: "MediaServerEntity",
-        meta: { icon: "mdi-play-network" },
-        component: () => import("../views/Overview/MediaServerEntity/Index.vue"),
-      },
-      {
-        path: "/my-client",
-        name: "MyClient",
-        meta: { icon: "mdi-download-network" },
-        component: () => import("../views/Overview/MyClient/Index.vue"),
-      },
-      {
-        path: "/download-history",
-        name: "DownloadHistory",
-        meta: { icon: "mdi-history" },
-        component: () => import("../views/Overview/DownloadHistory/Index.vue"),
-      },
-      {
-        path: "/keep-upload-task",
-        name: "KeepUploadTask",
-        meta: { icon: "mdi-merge" },
-        component: () => import("../views/Overview/KeepUploadTask/Index.vue"),
-      },
     ],
   },
   {
     path: "/settings",
     name: "Settings",
-    redirect: "/set-base",
+    redirect: "/set-site",
     meta: { isMainMenu: true },
     children: [
-      {
-        path: "/set-base",
-        name: "SetBase",
-        meta: { icon: "mdi-cog" },
-        component: () => import("../views/Settings/SetBase/Index.vue"),
-        children: setBaseChildren,
-      },
       {
         path: "/set-site",
         name: "SetSite",
         meta: { icon: "mdi-earth" },
         component: () => import("../views/Settings/SetSite/Index.vue"),
+      },
+      {
+        path: "/set-downloader",
+        name: "SetDownloader",
+        meta: { icon: "mdi-cloud-download-outline" },
+        component: () => import("../views/Settings/SetDownloader/Index.vue"),
       },
       {
         path: "/set-search-solution",
@@ -129,22 +80,17 @@ export const routes: RouteRecordRaw[] = [
         component: () => import("../views/Settings/SetSearchSolution/Index.vue"),
       },
       {
-        path: "/set-downloader",
-        name: "SetDownloader",
-        meta: { icon: "mdi-cloud-download" },
-        component: () => import("../views/Settings/SetDownloader/Index.vue"),
-      },
-      {
-        path: "/set-media-server",
-        name: "SetMediaServer",
-        meta: { icon: "mdi-video-input-svideo" },
-        component: () => import("../views/Settings/SetMediaServer/Index.vue"),
-      },
-      {
         path: "/set-backup",
         name: "SetBackup",
         meta: { icon: "mdi-backup-restore" },
         component: () => import("../views/Settings/SetBackup/Index.vue"),
+      },
+      {
+        path: "/set-base",
+        name: "SetBase",
+        meta: { icon: "mdi-cog-outline" },
+        component: () => import("../views/Settings/SetBase/Index.vue"),
+        children: setBaseChildren,
       },
     ],
   },
@@ -154,21 +100,9 @@ export const routes: RouteRecordRaw[] = [
     meta: { isMainMenu: true, keepAlive: true },
     children: [
       {
-        path: "/technology-stack",
-        name: "TechnologyStack",
-        meta: { icon: "mdi-developer-board" },
-        component: () => import("../views/About/TechnologyStack.vue"),
-      },
-      {
-        path: "/special-thank",
-        name: "SpecialThank",
-        meta: { icon: "mdi-account-multiple" },
-        component: () => import("../views/About/SpecialThank.vue"),
-      },
-      {
         path: "/logger",
         name: "Logger",
-        meta: { icon: "mdi-text-box-search" },
+        meta: { icon: "mdi-text-box-search-outline" },
         component: () => import("../views/About/Logger.vue"),
       },
     ],
@@ -200,13 +134,6 @@ export const routes: RouteRecordRaw[] = [
     name: "UserDataStatistic",
     meta: { isMainMenu: false },
     component: () => import("../views/Overview/MyData/UserDataStatistic/Index.vue"),
-  },
-
-  {
-    path: "/link-push",
-    name: "ContextMenuLinkPush",
-    meta: { isMainMenu: false },
-    component: () => import("../views/ContextMenuLinkPush.vue"),
   },
 
   { path: "/:pathMatch(.*)*", name: "NotFound", redirect: "/" },

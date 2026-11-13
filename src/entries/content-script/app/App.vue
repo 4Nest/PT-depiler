@@ -232,50 +232,57 @@ function openOptions() {
       ref="el"
       :style="style"
       style="position: fixed; z-index: 9999999"
+      class="ptd-floating-root"
       :class="{
-        'ptd-fade-enter': configStore.contentScript.fadeEnterStyle,
+        'ptd-fade-enter': configStore.contentScript.fadeEnterStyle && !openSpeedDial,
       }"
     >
-      <v-speed-dial
-        v-model="openSpeedDial"
-        :close-on-content-click="false"
-        disable-initial-focus
-        no-click-animation
-        persistent
-      >
-        <template v-slot:activator="{ props: activatorProps }">
-          <v-fab
-            v-bind="activatorProps"
-            color="amber"
-            icon
-            size="x-large"
-            @click="updatePageType(ptdData)"
-            @mouseleave.prevent="isDragging = false"
-            @dragleave.prevent="isDragging = false"
-            v-on="dropAction"
+      <div class="d-flex flex-column align-end ga-2">
+        <v-scale-transition origin="bottom right">
+          <v-sheet
+            v-show="openSpeedDial"
+            class="ptd-capsule-panel pa-2 d-flex flex-column ga-1 rounded-xl"
+            elevation="10"
+            border
           >
-            <v-avatar :class="{ 'ptd-fab-loading': isDragging }" :image="ptdIcon" color="transparent" rounded="0" />
-          </v-fab>
-        </template>
+            <!-- 这里根据 pageType 来决定显示哪些按钮 -->
+            <component :is="currentView" :key="pageType" />
 
-        <!-- 这里根据 pageType 来决定显示哪些按钮 -->
-        <component :is="currentView" :key="pageType" />
+            <v-divider class="my-1" />
 
-        <SpeedDialBtn
-          key="home"
-          color="amber"
-          icon="mdi-home"
-          :title="t('contentScript.openPTD')"
-          @click="openOptions"
-        />
-      </v-speed-dial>
+            <SpeedDialBtn
+              key="home"
+              color="primary"
+              icon="mdi-home"
+              :title="t('contentScript.openPTD')"
+              @click="openOptions"
+            />
+          </v-sheet>
+        </v-scale-transition>
+
+        <v-btn
+          class="ptd-fab-trigger"
+          color="primary"
+          elevation="8"
+          icon
+          size="large"
+          @click="
+            openSpeedDial = !openSpeedDial;
+            if (openSpeedDial) updatePageType(ptdData);
+          "
+          @mouseleave.prevent="isDragging = false"
+          @dragleave.prevent="isDragging = false"
+          v-on="dropAction"
+        >
+          <v-avatar :class="{ 'ptd-fab-loading': isDragging }" :image="ptdIcon" color="transparent" size="32" />
+        </v-btn>
+      </div>
     </div>
 
     <v-snackbar-queue v-model="runtimeStore.uiGlobalSnackbar" closable :attach="true" />
 
     <SentToDownloaderDialog
       v-model="remoteDownloadDialogData.show"
-      :content-class="['bg-white']"
       :torrent-items="remoteDownloadDialogData.torrents"
       :is-default-send="remoteDownloadDialogData.isDefaultSend"
     />
@@ -291,5 +298,17 @@ function openOptions() {
 
 .ptd-fab-loading {
   animation: onFABLoading 1.9s linear infinite running;
+}
+
+.ptd-capsule-panel {
+  min-width: 176px;
+  max-width: 220px;
+  background: rgba(var(--v-theme-surface), 0.96);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
+}
+
+.ptd-fab-trigger {
+  border: 2px solid rgba(255, 255, 255, 0.25);
 }
 </style>

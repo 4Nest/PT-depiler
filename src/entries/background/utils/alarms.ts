@@ -209,7 +209,7 @@ onMessage("reDownloadTorrent", async ({ data }) => {
   if (data.leftInterval < 30 * 1000) {
     await sleep(data.leftInterval);
     doReDownloadTorrent(data)().catch(() => {
-      sendMessage("setDownloadHistoryStatus", { downloadId: data.downloadId, status: "failed" }).catch();
+      sendMessage("logger", { level: "error", msg: `reDownloadTorrent failed for #${data.downloadId}` }).catch();
     });
   } else {
     jobs
@@ -220,7 +220,7 @@ onMessage("reDownloadTorrent", async ({ data }) => {
         execute: doReDownloadTorrent(data),
       })
       .catch(() => {
-        sendMessage("setDownloadHistoryStatus", { downloadId: data.downloadId, status: "failed" }).catch();
+        sendMessage("logger", { level: "error", msg: `reDownloadTorrent failed for #${data.downloadId}` }).catch();
       });
   }
 });

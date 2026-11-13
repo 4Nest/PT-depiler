@@ -89,15 +89,17 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
 <template>
   <v-dialog v-model="showDialog" width="1200" @after-enter="afterEnter" @after-leave="() => (siteHistoryData = [])">
     <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>
-            {{ t("MyData.HistoryDataView.title") }} @ <SiteName :site-id="siteId!" class="" tag="span" />
-          </v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <span class="text-subtitle-1 font-weight-bold">
+          {{ t("MyData.HistoryDataView.title") }} · <SiteName :site-id="siteId!" tag="span" />
+        </span>
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          :title="t('common.dialog.close')"
+          @click="showDialog = false"
+        />
       </v-card-title>
       <v-divider />
       <v-card-text>
@@ -134,20 +136,16 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
           <template #item.uploaded="{ item }">
             <!-- Vuetify 4 的 v-container 自带 16px 内衬、v-row 默认 24px flex gap（相邻两个 v-row 还会再叠一条等宽的 margin-top），
                  故与 MyData/Index.vue 一致用 py-0 pr-0 + gap="0" 还原紧凑两行；v-icon 的 small 属性在 v4 已移除，需显式写 size="small" -->
-            <v-container class="py-0 pr-0">
-              <v-row gap="0" class="justify-end flex-nowrap">
-                <span class="text-no-wrap">
-                  {{ typeof item.uploaded !== "undefined" ? formatSize(item.uploaded) : "-" }}
-                </span>
-                <v-icon color="green-darken-4" icon="mdi-chevron-up" size="small"></v-icon>
-              </v-row>
-              <v-row gap="0" class="justify-end flex-nowrap">
-                <span class="text-no-wrap">
-                  {{ typeof item.downloaded !== "undefined" ? formatSize(item.downloaded) : "-" }}
-                </span>
-                <v-icon color="red-darken-4" icon="mdi-chevron-down" size="small"></v-icon>
-              </v-row>
-            </v-container>
+            <div class="d-flex flex-column align-end ptd-num">
+              <div class="d-flex align-center ga-1 text-success font-weight-medium text-no-wrap">
+                <span>{{ typeof item.uploaded !== "undefined" ? formatSize(item.uploaded) : "-" }}</span>
+                <v-icon icon="mdi-arrow-up" size="14" />
+              </div>
+              <div class="d-flex align-center ga-1 text-medium-emphasis text-caption text-no-wrap">
+                <span>{{ typeof item.downloaded !== "undefined" ? formatSize(item.downloaded) : "-" }}</span>
+                <v-icon icon="mdi-arrow-down" size="13" />
+              </div>
+            </div>
           </template>
 
           <!-- 分享率 -->

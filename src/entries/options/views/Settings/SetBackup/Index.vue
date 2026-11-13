@@ -117,11 +117,16 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
 </script>
 
 <template>
-  <v-alert :title="t('route.Settings.SetBackup')" type="info" />
   <v-card class="set-backup">
-    <v-card-title>
-      <v-row gap="0" class="ma-0">
-        <NavButton :text="t('common.btn.add')" color="success" icon="mdi-plus" @click="showAddDialog = true" />
+    <v-card-title class="pa-4 border-b">
+      <div class="d-flex flex-wrap align-center ga-2">
+        <NavButton
+          :text="t('common.btn.add')"
+          color="primary"
+          variant="flat"
+          icon="mdi-plus"
+          @click="showAddDialog = true"
+        />
         <NavButton
           :disabled="tableSelected.length === 0"
           :text="t('common.remove')"
@@ -130,17 +135,17 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
           @click="deleteBackupServer(tableSelected)"
         />
 
-        <v-divider class="mx-2" inset vertical />
+        <v-divider class="mx-1" vertical />
 
         <NavButton
           :loading="doBackupStatus[localBackup]"
-          color="success"
+          color="secondary"
           icon="mdi-database-export"
           :text="t('SetBackup.localExport')"
           @click="doBackup(localBackup)"
         />
         <NavButton
-          color="blue"
+          color="secondary"
           icon="mdi-database-import"
           :text="t('SetBackup.localImport')"
           @click="() => (showRestoreDialog = true)"
@@ -149,9 +154,8 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
         <v-spacer />
 
         <v-text-field clearable density="compact" hide-details label="Search" max-width="500" single-line />
-      </v-row>
+      </div>
     </v-card-title>
-
     <v-data-table
       ref="fitTableRef"
       :class="fitTableClass"

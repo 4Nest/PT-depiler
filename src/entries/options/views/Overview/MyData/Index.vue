@@ -48,7 +48,7 @@ const fullTableHeader = computed(
       {
         title: t("common.site"),
         key: "siteUserConfig.sortIndex",
-        align: "center",
+        align: "start",
         props: { disabled: true },
       },
       { title: t("common.username"), key: "name", align: "center" },
@@ -231,19 +231,194 @@ function viewStatistic() {
 
 const showExportDialog = ref(false);
 
+const hasAddedSites = computed(() => metadataStore.getAddedSiteIds.length > 0);
+
+const kpiSummary = computed(() => {
+  let totalUploaded = 0;
+  let totalDownloaded = 0;
+  let totalSeedingSize = 0;
+  let totalSeedingCount = 0;
+  let totalBonusPerHour = 0;
+  let sitesWithBonusCount = 0;
+  let successSiteCount = 0;
+  let errorSiteCount = 0;
+  let unreadMessageSiteCount = 0;
+
+  for (const item of tableData.value) {
+    if (typeof item.uploaded === "number" && item.uploaded > 0) totalUploaded += item.uploaded;
+    if (typeof item.downloaded === "number" && item.downloaded > 0) totalDownloaded += item.downloaded;
+    if (typeof item.seedingSize === "number" && item.seedingSize > 0) totalSeedingSize += item.seedingSize;
+    if (typeof item.seeding === "number" && item.seeding > 0) totalSeedingCount += item.seeding;
+    if (typeof item.bonusPerHour === "number" && item.bonusPerHour > 0) {
+      totalBonusPerHour += item.bonusPerHour;
+      sitesWithBonusCount++;
+    }
+    if (item.status === EResultParseStatus.success) {
+      successSiteCount++;
+    } else if (lastUpdateErrorStatuses.includes(String(item.status))) {
+      errorSiteCount++;
+    }
+    if ((item.messageCount ?? 0) > 0) {
+      unreadMessageSiteCount++;
+    }
+  }
+
+  const overallRatio = totalDownloaded > 0 ? (totalUploaded / totalDownloaded).toFixed(2) : "∞";
+  return {
+    totalUploaded,
+    totalDownloaded,
+    overallRatio,
+    totalSeedingSize,
+    totalSeedingCount,
+    totalBonusPerHour,
+    sitesWithBonusCount,
+    successSiteCount,
+    errorSiteCount,
+    unreadMessageSiteCount,
+  };
+});
+
+function getSiteUrlSync(siteId: TSiteID): string {
+  return metadataStore.sites[siteId]?.url || siteMetadataIndex[siteId]?.urls?.[0] || "#";
+}
+
+function filterErrorSites() {
+  advanceFilterDictRef.value.status.required = lastUpdateErrorStatuses;
+  updateTableFilterValueFn();
+}
+
+function filterUnreadSites() {
+  advanceFilterDictRef.value.messageCount = [1, " "];
+  updateTableFilterValueFn();
+}
+
 const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useTableColumnFit(tableHeader);
 </script>
 
 <template>
-  <v-alert :title="t('route.Overview.MyData')" type="info" />
-  <v-card>
-    <v-card-title>
-      <v-row gap="0" class="ma-0">
+  <!-- 全局指标汇总卡片 -->
+  <v-row v-if="hasAddedSites" dense class="mb-4">
+    <v-col cols="12" sm="6" lg="3">
+      <v-card class="pa-4 h-100 d-flex flex-column justify-space-between">
+        <div class="d-flex align-center justify-space-between mb-2">
+          <span class="text-body-2 text-medium-emphasis font-weight-medium">{{ t("MyData.kpi.totalUploaded") }}</span>
+          <v-avatar color="success" variant="tonal" size="34" rounded="lg">
+            <v-icon icon="mdi-swap-vertical" size="20" />
+          </v-avatar>
+        </div>
+        <div class="text-h5 font-weight-bold ptd-num">{{ formatSize(kpiSummary.totalUploaded) }}</div>
+        <div class="text-caption text-medium-emphasis mt-1 ptd-num">
+          {{
+            t("MyData.kpi.downloadAndRatio", {
+              downloaded: formatSize(kpiSummary.totalDownloaded),
+              ratio: kpiSummary.overallRatio,
+            })
+          }}
+        </div>
+      </v-card>
+    </v-col>
+
+    <v-col cols="12" sm="6" lg="3">
+      <v-card class="pa-4 h-100 d-flex flex-column justify-space-between">
+        <div class="d-flex align-center justify-space-between mb-2">
+          <span class="text-body-2 text-medium-emphasis font-weight-medium">{{
+            t("MyData.kpi.totalSeedingSize")
+          }}</span>
+          <v-avatar color="primary" variant="tonal" size="34" rounded="lg">
+            <v-icon icon="mdi-harddisk" size="20" />
+          </v-avatar>
+        </div>
+        <div class="text-h5 font-weight-bold ptd-num">{{ formatSize(kpiSummary.totalSeedingSize) }}</div>
+        <div class="text-caption text-medium-emphasis mt-1 ptd-num">
+          {{ t("MyData.kpi.totalSeedingCount", { count: kpiSummary.totalSeedingCount }) }}
+        </div>
+      </v-card>
+    </v-col>
+
+    <v-col cols="12" sm="6" lg="3">
+      <v-card class="pa-4 h-100 d-flex flex-column justify-space-between">
+        <div class="d-flex align-center justify-space-between mb-2">
+          <span class="text-body-2 text-medium-emphasis font-weight-medium">{{
+            t("MyData.kpi.totalBonusPerHour")
+          }}</span>
+          <v-avatar color="warning" variant="tonal" size="34" rounded="lg">
+            <v-icon icon="mdi-lightning-bolt" size="20" />
+          </v-avatar>
+        </div>
+        <div class="text-h5 font-weight-bold ptd-num">+{{ kpiSummary.totalBonusPerHour.toFixed(2) }} / h</div>
+        <div class="text-caption text-medium-emphasis mt-1 ptd-num">
+          {{ t("MyData.kpi.sitesWithBonus", { count: kpiSummary.sitesWithBonusCount }) }}
+        </div>
+      </v-card>
+    </v-col>
+
+    <v-col cols="12" sm="6" lg="3">
+      <v-card class="pa-4 h-100 d-flex flex-column justify-space-between">
+        <div class="d-flex align-center justify-space-between mb-2">
+          <span class="text-body-2 text-medium-emphasis font-weight-medium">{{ t("MyData.kpi.siteHealth") }}</span>
+          <v-avatar :color="kpiSummary.errorSiteCount > 0 ? 'error' : 'info'" variant="tonal" size="34" rounded="lg">
+            <v-icon
+              :icon="kpiSummary.errorSiteCount > 0 ? 'mdi-alert-circle-outline' : 'mdi-check-circle-outline'"
+              size="20"
+            />
+          </v-avatar>
+        </div>
+        <div class="text-h5 font-weight-bold ptd-num">
+          {{ t("MyData.kpi.healthRatio", { success: kpiSummary.successSiteCount, total: tableData.length }) }}
+        </div>
+        <div class="d-flex align-center flex-wrap ga-1 mt-1">
+          <v-chip
+            v-if="kpiSummary.unreadMessageSiteCount > 0"
+            size="x-small"
+            color="info"
+            variant="tonal"
+            class="cursor-pointer"
+            @click="filterUnreadSites"
+          >
+            {{ t("MyData.kpi.unreadSites", { count: kpiSummary.unreadMessageSiteCount }) }}
+          </v-chip>
+          <v-chip
+            v-if="kpiSummary.errorSiteCount > 0"
+            size="x-small"
+            color="error"
+            variant="tonal"
+            class="cursor-pointer"
+            @click="filterErrorSites"
+          >
+            {{ t("MyData.kpi.errorSites", { count: kpiSummary.errorSiteCount }) }}
+          </v-chip>
+          <span
+            v-if="kpiSummary.unreadMessageSiteCount === 0 && kpiSummary.errorSiteCount === 0"
+            class="text-caption text-medium-emphasis"
+          >
+            {{ t("MyData.kpi.allHealthy") }}
+          </span>
+        </div>
+      </v-card>
+    </v-col>
+  </v-row>
+
+  <!-- 空状态引导 -->
+  <v-card v-if="!hasAddedSites" class="pa-8 text-center">
+    <v-avatar color="primary" variant="tonal" size="56" class="mb-3">
+      <v-icon icon="mdi-earth" size="28" />
+    </v-avatar>
+    <div class="text-h6 font-weight-bold mb-1">{{ t("MyData.empty.title") }}</div>
+    <div class="text-body-2 text-medium-emphasis mb-5">{{ t("MyData.empty.subtitle") }}</div>
+    <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" @click="router.push({ name: 'SetSite' })">
+      {{ t("MyData.empty.addSiteBtn") }}
+    </v-btn>
+  </v-card>
+
+  <v-card v-else>
+    <v-card-title class="pa-4 border-b">
+      <div class="d-flex flex-wrap align-center ga-2">
         <!-- 刷新，取消刷新 -->
         <NavButton
           v-if="runtimeStore.isUserInfoFlush"
           :text="t('MyData.index.flushCancel')"
-          color="red"
+          color="error"
+          variant="tonal"
           icon="mdi-cancel"
           @click="cancelFlushSiteLastUserInfo"
         />
@@ -251,44 +426,49 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
         <NavButton
           v-else
           :text="t('MyData.index.flushSelectSite')"
-          color="green"
+          color="primary"
+          variant="flat"
           icon="mdi-cached"
           @click="multiFlush"
         />
 
         <NavButton
           :disabled="tableData.length === 0"
-          color="indigo"
+          color="secondary"
           icon="mdi-open-in-new"
           :text="t('MyData.index.multiOpen')"
           @click="multiOpen"
         />
 
-        <v-divider class="mx-2" vertical />
+        <v-divider class="mx-1" vertical />
 
         <NavButton
-          color="green"
+          color="secondary"
           icon="mdi-chart-timeline-variant"
           :text="t('MyData.index.viewTimeline')"
           @click="viewTimeline"
         />
-        <NavButton color="green" icon="mdi-equalizer" :text="t('MyData.index.viewStatistic')" @click="viewStatistic" />
+        <NavButton
+          color="secondary"
+          icon="mdi-equalizer"
+          :text="t('MyData.index.viewStatistic')"
+          @click="viewStatistic"
+        />
 
-        <v-divider class="mx-2" vertical />
+        <v-divider class="mx-1" vertical />
 
         <!-- 导出按钮 -->
         <NavButton
-          color="orange-darken-3"
+          color="secondary"
           icon="mdi-export"
           :text="t('MyData.index.exportData')"
           @click="showExportDialog = true"
         />
 
-        <v-divider class="mx-2" vertical />
-
+        <v-divider class="mx-1" vertical />
         <v-menu :close-on-content-click="false">
           <template v-slot:activator="{ props }">
-            <NavButton color="blue" icon="mdi-cog" :text="t('MyData.index.setting')" class="mr-1" v-bind="props" />
+            <NavButton color="secondary" icon="mdi-cog-outline" :text="t('MyData.index.setting')" v-bind="props" />
           </template>
           <v-list>
             <!-- 入站时间显示 -->
@@ -442,7 +622,7 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
             </v-menu>
           </template>
         </v-text-field>
-      </v-row>
+      </div>
     </v-card-title>
     <v-data-table
       ref="fitTableRef"
@@ -467,28 +647,31 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
     >
       <!-- 站点信息 -->
       <template #item.siteUserConfig.sortIndex="{ item }">
-        <div class="d-flex flex-column align-center">
-          <v-badge
-            :model-value="configStore.myDataTableControl.showUnreadMessage && (item.messageCount ?? 0) > 0"
-            :content="(item.messageCount ?? 0) > 10 ? undefined : item.messageCount"
-            color="error"
+        <div class="d-flex align-center ga-2">
+          <div class="favicon-hover-wrapper favicon-hover-bg" @click="() => flushSiteLastUserInfo([item.site])">
+            <SiteFavicon :site-id="item.site" :size="20" />
+          </div>
+          <a
+            v-if="configStore.myDataTableControl.showSiteName"
+            :href="getSiteUrlSync(item.site)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-body-2 font-weight-medium text-high-emphasis text-no-wrap"
           >
-            <div class="favicon-hover-wrapper favicon-hover-bg">
-              <SiteFavicon
-                :site-id="item.site"
-                :size="configStore.myDataTableControl.showSiteName ? 18 : 24"
-                @click="() => flushSiteLastUserInfo([item.site])"
-              />
-            </div>
-          </v-badge>
-
-          <SiteName v-if="configStore.myDataTableControl.showSiteName" :site-id="item.site" />
+            <SiteName :site-id="item.site" tag="span" />
+          </a>
+          <v-badge
+            v-if="configStore.myDataTableControl.showUnreadMessage && (item.messageCount ?? 0) > 0"
+            :content="(item.messageCount ?? 0) > 99 ? '99+' : item.messageCount"
+            color="error"
+            inline
+          />
         </div>
       </template>
 
       <!-- 用户名，用户ID -->
       <template #item.name="{ item }">
-        <span :title="item.id as string" class="text-no-wrap">
+        <span :title="item.id as string" class="text-no-wrap text-body-2">
           {{ configStore.myDataTableControl.showUserName ? (item.name ?? "-") : "******" }}
         </span>
       </template>
@@ -500,50 +683,57 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
 
       <!-- 上传、下载 -->
       <template #item.uploaded="{ item }">
-        <v-container class="py-0 pr-0">
-          <v-row gap="0" class="justify-end flex-nowrap">
-            <span class="text-no-wrap">
-              {{ typeof item.uploaded !== "undefined" ? formatSize(item.uploaded) : "-" }}
-            </span>
-            <v-icon color="green-darken-4" icon="mdi-chevron-up" size="small"></v-icon>
-          </v-row>
-          <v-row gap="0" class="justify-end flex-nowrap">
-            <span class="text-no-wrap">
-              {{ typeof item.downloaded !== "undefined" ? formatSize(item.downloaded) : "-" }}
-            </span>
-            <v-icon color="red-darken-4" icon="mdi-chevron-down" size="small"></v-icon>
-          </v-row>
-        </v-container>
+        <div class="d-flex flex-column align-end ptd-num">
+          <div class="d-flex align-center ga-1 text-success font-weight-medium text-no-wrap">
+            <span>{{ typeof item.uploaded !== "undefined" ? formatSize(item.uploaded) : "-" }}</span>
+            <v-icon icon="mdi-arrow-up" size="14" />
+          </div>
+          <div class="d-flex align-center ga-1 text-medium-emphasis text-caption text-no-wrap">
+            <span>{{ typeof item.downloaded !== "undefined" ? formatSize(item.downloaded) : "-" }}</span>
+            <v-icon icon="mdi-arrow-down" size="13" />
+          </div>
+        </div>
       </template>
 
       <!-- 真实上传、下载 -->
       <template #item.trueUploaded="{ item }">
-        <v-container class="py-0 pr-0">
-          <v-row gap="0" class="justify-end flex-nowrap">
-            <span class="text-no-wrap">
-              {{ typeof item.trueUploaded !== "undefined" ? formatSize(item.trueUploaded) : "-" }}
-            </span>
-            <v-icon color="green-darken-4" icon="mdi-chevron-up" size="small"></v-icon>
-          </v-row>
-          <v-row gap="0" class="justify-end flex-nowrap">
-            <span class="text-no-wrap">
-              {{ typeof item.trueDownloaded !== "undefined" ? formatSize(item.trueDownloaded) : "-" }}
-            </span>
-            <v-icon color="red-darken-4" icon="mdi-chevron-down" size="small"></v-icon>
-          </v-row>
-        </v-container>
+        <div class="d-flex flex-column align-end ptd-num">
+          <div class="d-flex align-center ga-1 text-success font-weight-medium text-no-wrap">
+            <span>{{ typeof item.trueUploaded !== "undefined" ? formatSize(item.trueUploaded) : "-" }}</span>
+            <v-icon icon="mdi-arrow-up" size="14" />
+          </div>
+          <div class="d-flex align-center ga-1 text-medium-emphasis text-caption text-no-wrap">
+            <span>{{ typeof item.trueDownloaded !== "undefined" ? formatSize(item.trueDownloaded) : "-" }}</span>
+            <v-icon icon="mdi-arrow-down" size="13" />
+          </div>
+        </div>
       </template>
 
       <!-- 分享率 -->
       <template #item.ratio="{ item }">
-        <span class="text-no-wrap">{{ formatRatio(item) }}</span>
+        <span
+          :class="[
+            'text-no-wrap ptd-num',
+            typeof item.ratio === 'number' && item.ratio >= 0 && item.ratio < 1 ? 'text-error font-weight-bold' : '',
+          ]"
+        >
+          {{ formatRatio(item) }}
+        </span>
       </template>
 
       <!-- 真实分享率 -->
       <template #item.trueRatio="{ item }">
-        <span class="text-no-wrap">{{ formatRatio(item, "trueRatio") }}</span>
+        <span
+          :class="[
+            'text-no-wrap ptd-num',
+            typeof item.trueRatio === 'number' && item.trueRatio >= 0 && item.trueRatio < 1
+              ? 'text-error font-weight-bold'
+              : '',
+          ]"
+        >
+          {{ formatRatio(item, "trueRatio") }}
+        </span>
       </template>
-
       <!-- 发布数 -->
       <template #item.uploads="{ item }">
         <span class="text-no-wrap">{{ item.uploads ?? "-" }}</span>
@@ -689,25 +879,26 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
 
       <!-- 操作 -->
       <template #item.action="{ item }">
-        <v-btn-group class="table-action" density="compact" variant="plain">
+        <div class="table-action d-flex align-center justify-center ga-1">
           <v-btn
             :title="t('MyData.table.action.viewHistoryData')"
-            color="blue"
+            color="secondary"
             icon="mdi-view-list"
             size="small"
+            variant="text"
             @click="() => viewHistoryData(item.site)"
-          >
-          </v-btn>
+          />
           <v-btn
             :disabled="runtimeStore.userInfo.flushPlan[item.site]"
             :loading="runtimeStore.userInfo.flushPlan[item.site]"
             :title="t('MyData.table.action.flushData')"
-            color="green"
+            color="primary"
             icon="mdi-cached"
             size="small"
+            variant="text"
             @click="() => flushSiteLastUserInfo([item.site])"
-          ></v-btn>
-        </v-btn-group>
+          />
+        </div>
       </template>
     </v-data-table>
   </v-card>

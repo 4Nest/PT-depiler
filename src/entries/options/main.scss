@@ -1,3 +1,15 @@
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: rgb(var(--v-theme-primary));
+  transition: color 0.15s ease;
+}
+
 a:not(:hover) {
   text-decoration: none;
 }
@@ -35,8 +47,6 @@ a:not(:hover) {
 .table-action {
   overflow: visible !important;
   white-space: nowrap;
-
-  /* 表格中 density-compact 的按钮组中添加间距 */
 
   .v-btn-group--density-compact > button:not(:last-child) {
     margin-right: 4px;

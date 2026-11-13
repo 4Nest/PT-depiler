@@ -480,21 +480,28 @@ function saveControl() {
       </v-col>
       <v-col>
         <v-row class="flex-nowrap mb-1">
-          <v-col class="d-flex">
-            <NavButton color="grey" icon="mdi-arrow-left" :text="t('common.back')" @click="() => router.back()" />
+          <v-col class="d-flex align-center ga-2">
+            <NavButton color="secondary" icon="mdi-arrow-left" :text="t('common.back')" @click="() => router.back()" />
             <v-spacer />
             <NavButton
-              color="info"
+              color="secondary"
               icon="mdi-file-export-outline"
               :text="t('common.exportImage')"
               @click="exportStatisticImg"
             />
-            <NavButton color="green" icon="mdi-content-save" :text="t('common.saveSettings')" @click="saveControl" />
+            <NavButton
+              color="primary"
+              variant="flat"
+              icon="mdi-content-save"
+              :text="t('common.saveSettings')"
+              @click="saveControl"
+            />
           </v-col>
         </v-row>
 
-        <v-alert :title="t('UserDataStatistic.chart.chartStyleSettings')" type="info" class="mb-2"> </v-alert>
-
+        <div class="text-subtitle-1 font-weight-bold pb-2 mb-3 border-b">
+          {{ t("UserDataStatistic.chart.chartStyleSettings") }}
+        </div>
         <v-row>
           <v-col class="align-self-center">
             <v-label>{{ t("common.username") }}</v-label>
@@ -612,11 +619,10 @@ function saveControl() {
           </v-col>
         </v-row>
 
-        <v-alert class="mt-4 mb-2" :title="t('UserDataStatistic.chart.displaySiteSettings')" type="info">
-          <template #append>
-            <CheckSwitchButton v-model="selectedSites" :all="allSites" color="grey" />
-          </template>
-        </v-alert>
+        <div class="d-flex align-center justify-space-between pt-4 pb-2 mb-2 border-b">
+          <span class="text-subtitle-1 font-weight-bold">{{ t("UserDataStatistic.chart.displaySiteSettings") }}</span>
+          <CheckSwitchButton v-model="selectedSites" :all="allSites" color="secondary" />
+        </div>
 
         <v-row gap="0" class="my-2">
           <v-col v-for="siteId in allSites" :key="siteId" class="py-0" cols="6" sm="3">

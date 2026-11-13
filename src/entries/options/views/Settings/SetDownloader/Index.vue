@@ -2,14 +2,13 @@
 import { computed, ref } from "vue";
 import { computedAsync } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
-import { useRouter } from "vue-router";
 import { countBy } from "es-toolkit";
 import type { DataTableHeader } from "vuetify";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
-
+import { sendMessage } from "@/messages.ts";
 import type { TDownloaderKey } from "@/shared/types.ts";
 import { getDownloaderIcon, getDownloaderMetaData, type TorrentClientMetaData } from "@ptd/downloader";
 import { useTableCustomFilter } from "@/options/directives/useAdvanceFilter.ts";
@@ -25,7 +24,6 @@ import DeleteDialog from "@/options/components/DeleteDialog.vue";
 import NavButton from "@/options/components/NavButton.vue";
 
 const { t } = useI18n();
-const router = useRouter();
 const metadataStore = useMetadataStore();
 const configStore = useConfigStore();
 const runtimeStore = useRuntimeStore();
@@ -94,9 +92,23 @@ function editDownloader(downloaderId: TDownloaderKey) {
   showEditDialog.value = true;
 }
 
-function manageDownloader(downloaderId: TDownloaderKey) {
-  // 跳转到 MyClient 页面并预选该下载服务器，进行种子管理
-  void router.push({ path: "/my-client", query: { downloader: downloaderId } });
+const testingDownloaderId = ref<TDownloaderKey | null>(null);
+async function testDownloaderConnection(downloaderId: TDownloaderKey) {
+  testingDownloaderId.value = downloaderId;
+  try {
+    const version = await sendMessage("getDownloaderVersion", downloaderId);
+    if (version && version !== "unknown") {
+      runtimeStore.showSnackbar(`${metadataStore.downloaders[downloaderId]?.name ?? downloaderId}: ${version}`, {
+        color: "success",
+      });
+    } else {
+      runtimeStore.showSnackbar(t("SetDownloader.index.testFailed"), { color: "error" });
+    }
+  } catch (e) {
+    runtimeStore.showSnackbar(t("SetDownloader.index.testFailed"), { color: "error" });
+  } finally {
+    testingDownloaderId.value = null;
+  }
 }
 
 function editDownloaderPathAndTag(downloaderId: TDownloaderKey) {
@@ -131,11 +143,16 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
 </script>
 
 <template>
-  <v-alert :title="t('route.Settings.SetDownloader')" type="info" />
   <v-card class="set-downloader">
-    <v-card-title>
-      <v-row gap="0" class="ma-0">
-        <NavButton :text="t('common.btn.add')" color="success" icon="mdi-plus" @click="showAddDialog = true" />
+    <v-card-title class="pa-4 border-b">
+      <div class="d-flex flex-wrap align-center ga-2">
+        <NavButton
+          :text="t('common.btn.add')"
+          color="primary"
+          variant="flat"
+          icon="mdi-plus"
+          @click="showAddDialog = true"
+        />
 
         <NavButton
           :disabled="tableSelected.length === 0"
@@ -145,12 +162,12 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
           @click="deleteDownloader(tableSelected)"
         />
 
-        <v-divider class="mx-2" inset vertical />
+        <v-divider class="mx-1" vertical />
 
         <NavButton
           :disabled="metadataStore.getDownloaders.length == 0"
           :text="t('SetDownloader.index.editDefaultDownloaderBtn')"
-          color="indigo"
+          color="secondary"
           icon="mdi-auto-download"
           @click="showDefaultDownloaderEditDialog = true"
         />
@@ -208,9 +225,8 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
             </v-menu>
           </template>
         </v-text-field>
-      </v-row>
+      </div>
     </v-card-title>
-
     <v-data-table
       ref="fitTableRef"
       :class="fitTableClass"
@@ -235,15 +251,23 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
       </template>
 
       <template #item.name="{ item }">
-        <v-icon
-          v-if="item.id == metadataStore.defaultDownloader?.id"
-          icon="mdi-pin mdi-rotate-45"
-          color="indigo"
-          class="mr-1"
-        />
-        <span class="font-weight-bold" :class="{ 'text-indigo': item.id == metadataStore.defaultDownloader?.id }">
-          {{ item.name }}
-        </span>
+        <div class="d-flex align-center ga-2">
+          <span
+            class="font-weight-semibold"
+            :class="{ 'text-primary': item.id == metadataStore.defaultDownloader?.id }"
+          >
+            {{ item.name }}
+          </span>
+          <v-chip
+            v-if="item.id == metadataStore.defaultDownloader?.id"
+            size="x-small"
+            color="primary"
+            variant="tonal"
+            label
+          >
+            {{ t("SetDownloader.index.defaultBadge") }}
+          </v-chip>
+        </div>
       </template>
 
       <template #item.address="{ item }">
@@ -283,16 +307,16 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
       </template>
 
       <template #item.action="{ item }">
-        <v-btn-group class="table-action" density="compact" variant="plain">
+        <v-btn-group class="table-action" density="compact" variant="text">
           <v-btn
-            :disabled="!item.enabled /* 未启用的下载服务器无法获取状态 */"
-            :title="t('SetDownloader.index.table.action.status')"
-            color="green"
-            icon="mdi-information-outline"
+            :disabled="!item.enabled"
+            :loading="testingDownloaderId === item.id"
+            :title="t('SetDownloader.index.table.action.testConnection')"
+            color="success"
+            icon="mdi-connection"
             size="small"
-            @click="manageDownloader(item.id)"
+            @click="testDownloaderConnection(item.id)"
           />
-
           <v-btn
             :title="t('common.edit')"
             color="info"

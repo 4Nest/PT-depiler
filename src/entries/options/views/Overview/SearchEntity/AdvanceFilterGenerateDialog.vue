@@ -107,13 +107,15 @@ function enterDialog() {
 <template>
   <v-dialog v-model="showDialog" max-width="800" scrollable @after-enter="enterDialog">
     <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>{{ t("common.AdvanceFilterGenerateDialog.title") }}</v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <span class="text-subtitle-1 font-weight-bold">{{ t("common.AdvanceFilterGenerateDialog.title") }}</span>
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          :title="t('common.dialog.close')"
+          @click="showDialog = false"
+        />
       </v-card-title>
       <v-divider />
       <v-card-text>

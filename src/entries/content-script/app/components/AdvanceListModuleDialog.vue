@@ -25,10 +25,6 @@ const { torrentItems } = defineProps<{
   torrentItems: ITorrent[];
 }>();
 
-const emits = defineEmits<{
-  (e: "favorite", torrents: ITorrent[]): void;
-}>();
-
 const runtimeStore = useRuntimeStore();
 const metadataStore = useMetadataStore();
 
@@ -90,11 +86,6 @@ function handleRemoteDownloadMulti(isDefaultSend = false) {
   remoteDownloadDialogData.show = true;
 }
 
-// 收藏勾选的种子（由外层 SiteListPage 打开收藏对话框，避免对话框嵌套）
-function handleFavoriteMulti() {
-  emits("favorite", selectedTorrents.value);
-}
-
 function handleSelectSeeders() {
   selectedTorrentIds.value = torrentItems.filter((item) => item.seeders).map((x) => x.id);
 }
@@ -116,15 +107,17 @@ function enterDialog() {
 <template>
   <v-dialog v-model="showDialog" max-width="1200" scrollable @after-enter="enterDialog">
     <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>{{
-            t("contentScript.AdvanceListModuleDialog.title", [torrentItems.length])
-          }}</v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <span class="text-subtitle-1 font-weight-bold">
+          {{ t("contentScript.AdvanceListModuleDialog.title", [torrentItems.length]) }}
+        </span>
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          :title="t('common.dialog.close')"
+          @click="showDialog = false"
+        />
       </v-card-title>
       <v-card-text class="overflow-y-hidden">
         <NavButton
@@ -167,9 +160,9 @@ function enterDialog() {
         </v-data-table-virtual>
       </v-card-text>
       <v-divider />
-      <v-card-actions>
+      <v-card-actions class="pa-4 ga-2">
         <v-spacer />
-        <span v-show="hasSelectedTorrent">{{
+        <span v-show="hasSelectedTorrent" class="text-body-2 text-medium-emphasis mr-2">{{
           t("contentScript.AdvanceListModuleDialog.selectedInfo", [
             selectedTorrentsCount,
             formatSize(selectedTorrentsSize),
@@ -179,7 +172,7 @@ function enterDialog() {
         <NavButton
           :disabled="!hasSelectedTorrent"
           :loading="localDownloadMultiStatus"
-          color="light-blue"
+          color="secondary"
           icon="mdi-content-save-all"
           :text="t('downloaderLabel.localDownload')"
           @click="handleLocalDownloadMulti"
@@ -188,7 +181,7 @@ function enterDialog() {
         <NavButton
           :disabled="!hasSelectedTorrent"
           :loading="linkCopyMultiStatus"
-          color="light-blue"
+          color="secondary"
           icon="mdi-content-copy"
           :text="t('contentScript.copyLink')"
           @click="handleLinkCopyMulti"
@@ -197,7 +190,8 @@ function enterDialog() {
         <NavButton
           :disabled="!hasSelectedTorrent"
           key="remote_download_multi"
-          color="light-blue"
+          color="primary"
+          variant="flat"
           icon="mdi-cloud-download"
           :text="t('contentScript.pushTo')"
           @click="() => handleRemoteDownloadMulti()"
@@ -207,18 +201,11 @@ function enterDialog() {
           v-if="metadataStore.defaultDownloader?.id"
           key="remote_download_multi_default"
           :disabled="!hasSelectedTorrent"
-          color="light-blue"
+          color="success"
+          variant="flat"
           icon="mdi-download"
           :text="t('contentScript.pushToDefault')"
           @click="() => handleRemoteDownloadMulti(true)"
-        />
-
-        <NavButton
-          :disabled="!hasSelectedTorrent"
-          color="amber"
-          icon="mdi-star-plus"
-          :text="t('contentScript.favoriteTorrents')"
-          @click="handleFavoriteMulti"
         />
       </v-card-actions>
     </v-card>

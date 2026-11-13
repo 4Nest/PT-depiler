@@ -25,7 +25,6 @@ const permissions = [
   "activeTab",
   "alarms",
   "clipboardWrite",
-  "contextMenus",
   "cookies",
   "downloads",
   "declarativeNetRequest",
@@ -33,8 +32,6 @@ const permissions = [
   "unlimitedStorage",
   "notifications",
 ];
-
-const optionalPermissions = ["nativeMessaging"];
 
 const gitInfo = getGitInfo();
 const base_version = `${pkg.version}.${gitInfo.count}`;
@@ -111,7 +108,7 @@ export default defineConfig({
         name: "__MSG_extName__",
         description: "__MSG_extDesc__",
         default_locale: "en",
-        homepage_url: "https://github.com/pt-plugins/PT-depiler",
+        homepage_url: "https://github.com/4Nest/PT-depiler",
         icons: {
           "16": "icons/logo/16.png",
           "19": "icons/logo/19.png",
@@ -142,10 +139,6 @@ export default defineConfig({
           page: "src/entries/background/firefox_main.html",
         },
 
-        omnibox: {
-          keyword: "ptd",
-        },
-
         options_ui: {
           page: "src/entries/options/index.html",
           open_in_tab: true,
@@ -161,9 +154,7 @@ export default defineConfig({
 
         // 在 Chrome 中需要多注册一个 offscreen 权限
         "{{chrome}}.permissions": [...permissions, "offscreen"],
-        "{{chrome}}.optional_permissions": optionalPermissions,
         "{{firefox}}.permissions": permissions,
-        "{{firefox}}.optional_permissions": optionalPermissions,
         host_permissions: ["*://*/*"],
 
         "{{firefox}}.browser_specific_settings": {
@@ -273,9 +264,7 @@ export default defineConfig({
                   }
 
                   // 我们自己的 @pkg 下分包，使用 vendor/packages 前缀
-                  if (
-                    /[\\/]src[\\/]packages[\\/](downloader|backupServer|site|social|mediaServer).+\.ts/.test(chunkName)
-                  ) {
+                  if (/[\\/]src[\\/]packages[\\/](downloader|backupServer|site|social).+\.ts/.test(chunkName)) {
                     const name = chunkName.replace(/^.+?[\\/]src[\\/]/, "").replace(/\..+?$/, "");
                     return `vendor/${name}-[hash].js`;
                   }

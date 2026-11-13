@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useDisplay } from "vuetify/framework";
 
 import { getTorrentVolumeFactors } from "@ptd/site";
 
 import { useConfigStore } from "@/options/stores/config.ts";
+import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { formatSize } from "@/options/utils.ts";
 import type { ISearchResultTorrent } from "@/shared/types/storages/runtime.ts";
 
@@ -21,23 +22,37 @@ const { selectedTorrents } = defineProps<{
 
 const { t } = useI18n();
 const configStore = useConfigStore();
+const runtimeStore = useRuntimeStore();
 const display = useDisplay();
 
-const { advanceFilterDictRef, advanceItemPropsRef, updateTableFilterValueFn } = tableCustomFilter;
+const { advanceFilterDictRef, advanceItemPropsRef, tableFilterRef, updateTableFilterValueFn } = tableCustomFilter;
 
-const selectedSites = ref<string[]>([]);
+// 直接双向同步 advanceFilterDictRef.site.required，保证重置/高级筛选时 UI 永远一致
+const selectedSites = computed<string[]>({
+  get: () => advanceFilterDictRef.value.site.required ?? [],
+  set: (val: string[]) => {
+    advanceFilterDictRef.value.site.required = [...val];
+    advanceFilterDictRef.value.site.exclude = [];
+    updateTableFilterValueFn();
+  },
+});
 
-/** 「不显示」模式下连计费体积也一起隐藏（它同样是优惠系数的折算结果） */
+// 统计每个站点在当前搜索结果中的命中条数
+const siteResultCountMap = computed(() => {
+  const counts = new Map<string, number>();
+  for (const item of runtimeStore.search.searchResult) {
+    if (item.site) {
+      counts.set(item.site, (counts.get(item.site) ?? 0) + 1);
+    }
+  }
+  return counts;
+});
+
 const showBillableSize = computed(() => configStore.searchEntifyControl.promotionDisplay !== "none");
 
-// 优化后的选中种子信息计算：直接基于选中对象计算
 const selectedTorrentsInfo = computed(() => {
   const selectedObjects = selectedTorrents;
-
-  // 直接计算选中对象的总大小，避免遍历查找
   const totalSize = selectedObjects.reduce((sum, torrent) => sum + (torrent.size || 0), 0);
-
-  // 计费体积：按下载量系数折算（系数未知时按 1 计，即与总大小一致）
   const billableSize = selectedObjects.reduce((sum, torrent) => {
     const { downloadVolumeFactor } = getTorrentVolumeFactors(torrent);
     return sum + (torrent.size || 0) * (downloadVolumeFactor ?? 1);
@@ -50,37 +65,41 @@ const selectedTorrentsInfo = computed(() => {
   };
 });
 
-function updateQuickSiteFilter() {
-  advanceFilterDictRef.value.site.required = [...selectedSites.value];
-  advanceFilterDictRef.value.site.exclude = [];
-  updateTableFilterValueFn();
-}
+const shouldShowNoticeBar = computed(
+  () =>
+    (configStore.searchEntity.quickSiteFilter && advanceItemPropsRef.value.site.length > 0) ||
+    selectedTorrents.length > 0 ||
+    Boolean(tableFilterRef.value),
+);
 </script>
 
 <template>
-  <v-alert class="px-2 py-1 mb-0" color="info" density="compact" variant="tonal">
-    <div class="d-flex align-center">
-      <!-- 站点筛选器 -->
+  <div
+    v-if="shouldShowNoticeBar"
+    class="bg-surface-variant rounded-lg px-3 py-2 mb-3 d-flex flex-wrap align-center justify-space-between ga-2"
+  >
+    <!-- 站点筛选器（含各站命中条数） -->
+    <div class="flex-grow-1" style="min-width: 0">
       <FilterChips
-        v-if="configStore.searchEntity.quickSiteFilter"
+        v-if="configStore.searchEntity.quickSiteFilter && advanceItemPropsRef.site.length > 0"
         v-model="selectedSites"
         :all-label="t('SearchEntity.siteFilter.all')"
         :items="advanceItemPropsRef.site"
         mandatory
-        @update:model-value="updateQuickSiteFilter"
       >
-        <!-- 各站点选项 -->
         <template #chip="{ item }">
           <SiteFavicon :site-id="item" :size="14" class="mr-1" />
           <SiteName :site-id="item" tag="span" />
+          <span class="ml-1 text-caption text-medium-emphasis ptd-num">
+            ({{ siteResultCountMap.get(item) ?? 0 }})
+          </span>
         </template>
       </FilterChips>
+    </div>
 
-      <v-spacer />
-
-      <!-- 选中种子信息条 -->
-      <v-divider vertical inset class="mx-2" />
-      <v-chip class="my-2 chip_limit_width" color="primary" size="small" variant="outlined">
+    <!-- 已选种子统计徽章 -->
+    <div class="d-flex align-center flex-wrap ga-2 ptd-num">
+      <v-chip class="chip_limit_width" color="primary" size="small" variant="tonal">
         <v-icon icon="mdi-checkbox-marked-circle" start />
         {{
           display.smAndDown.value
@@ -99,7 +118,7 @@ function updateQuickSiteFilter() {
         </template>
       </v-chip>
     </div>
-  </v-alert>
+  </div>
 </template>
 
 <style lang="scss" scoped>

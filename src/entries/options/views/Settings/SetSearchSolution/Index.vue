@@ -172,13 +172,16 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
 </script>
 
 <template>
-  <v-alert type="info">
-    <v-alert-title> {{ t("route.Settings.SetSearchSolution") }} </v-alert-title>
-  </v-alert>
   <v-card>
-    <v-card-title>
-      <v-row gap="0" class="ma-0">
-        <NavButton :text="t('common.btn.add')" color="success" icon="mdi-plus" @click="addSearchSolution" />
+    <v-card-title class="pa-4 border-b">
+      <div class="d-flex flex-wrap align-center ga-2">
+        <NavButton
+          :text="t('common.btn.add')"
+          color="primary"
+          variant="flat"
+          icon="mdi-plus"
+          @click="addSearchSolution"
+        />
 
         <NavButton
           :disabled="tableSelected.length === 0"
@@ -188,7 +191,7 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
           @click="deleteSearchSolutions(tableSelected)"
         />
 
-        <v-divider class="mx-2" inset vertical />
+        <v-divider class="mx-1" vertical />
 
         <input
           ref="importFile"
@@ -200,22 +203,18 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
         />
 
         <NavButton
-          color="info"
+          color="secondary"
           icon="mdi-import"
           :text="t('common.import')"
           @click="() => importFileInputRef?.click()"
         />
         <NavButton
           :disabled="tableSelected.length === 0"
-          color="info"
+          color="secondary"
           icon="mdi-export"
           :text="t('common.export')"
           @click="() => exportSearchSolutions(tableSelected)"
         />
-
-        <v-divider class="mx-2" inset vertical />
-
-        <NavButton :text="t('common.howToUse')" color="light-blue" disabled icon="mdi-help-circle" />
 
         <v-spacer />
 
@@ -229,9 +228,8 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
           max-width="500"
           single-line
         />
-      </v-row>
+      </div>
     </v-card-title>
-
     <v-data-table
       ref="fitTableRef"
       :class="fitTableClass"

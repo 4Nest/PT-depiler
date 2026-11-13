@@ -47,10 +47,11 @@ function dialogLeave() {
 <template>
   <v-dialog v-model="showDialog" eager persistent width="600" @after-leave="dialogLeave">
     <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>{{ t("layout.releaseNote.title", { extName: t("manifest.extName") }) }}</v-toolbar-title>
-        </v-toolbar>
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <span class="text-subtitle-1 font-weight-bold">
+          {{ t("layout.releaseNote.title", { extName: t("manifest.extName") }) }}
+        </span>
+        <v-btn icon="mdi-close" size="small" variant="text" @click="showDialog = false" />
       </v-card-title>
 
       <v-card-text class="text-center d-flex">
@@ -82,8 +83,8 @@ function dialogLeave() {
         </v-container>
       </v-card-text>
 
-      <v-card-actions>
-        <v-btn block variant="elevated" color="green" @click="showDialog = false">{{
+      <v-card-actions class="pa-4 pt-2">
+        <v-btn block variant="flat" color="primary" @click="showDialog = false">{{
           t("layout.releaseNote.startUsing")
         }}</v-btn>
       </v-card-actions>

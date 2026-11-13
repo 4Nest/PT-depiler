@@ -162,7 +162,11 @@ export async function doSearchEntity(
       const newItems: ISearchResultTorrent[] = [];
 
       for (const item of searchResult) {
-        const itemUniqueId = `${item.site}-${item.id}`;
+        const rawId =
+          item.id !== undefined && item.id !== null && String(item.id).trim() !== ""
+            ? String(item.id)
+            : item.url || item.link || item.title || `${newItems.length}-${Math.random().toString(36).slice(2, 8)}`;
+        const itemUniqueId = `${item.site}-${rawId}`;
         if (!globalExistingIds.has(itemUniqueId)) {
           const searchResultItem = item as ISearchResultTorrent;
           searchResultItem.uniqueId = itemUniqueId;

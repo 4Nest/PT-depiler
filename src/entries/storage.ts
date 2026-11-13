@@ -1,13 +1,6 @@
 import { defineExtensionStorage } from "@webext-core/storage";
 
-import {
-  IConfigPiniaStorageSchema,
-  IMetadataPiniaStorageSchema,
-  TUserInfoStorageSchema,
-  TSearchResultSnapshotStorageSchema,
-  TKeepUploadTaskStorageSchema,
-  TTorrentFavoriteStorageSchema,
-} from "@/shared/types.ts";
+import { IConfigPiniaStorageSchema, IMetadataPiniaStorageSchema, TUserInfoStorageSchema } from "@/shared/types.ts";
 
 export interface IExtensionStorageSchema {
   // 既可以被 pinia 使用，也可以被其他地方使用
@@ -16,9 +9,6 @@ export interface IExtensionStorageSchema {
   metadata: IMetadataPiniaStorageSchema;
 
   userInfo: TUserInfoStorageSchema; // 用于存储用户信息
-  searchResultSnapshot: TSearchResultSnapshotStorageSchema; // 用于存储搜索结果快照
-  keepUploadTask: TKeepUploadTaskStorageSchema; // 用于存储辅种任务
-  torrentFavorite: TTorrentFavoriteStorageSchema; // 用于存储种子收藏
 }
 
 export type TExtensionStorageKey = keyof IExtensionStorageSchema;

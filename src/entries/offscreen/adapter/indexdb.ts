@@ -1,18 +1,20 @@
-import { openDB, type IDBPDatabase } from "idb";
-import { IPtdDBSchemaV1, IPtdDBSchema, IPtdDBSchemaV2 } from "@/shared/types.ts";
+import { openDB } from "idb";
+import { IPtdDBSchema } from "@/shared/types.ts";
 
-export const ptdIndexDb = openDB<IPtdDBSchema>("ptd", 3, {
-  upgrade(db, oldVersion) {
-    if (oldVersion < 1) {
-      const dbV1 = db as unknown as IDBPDatabase<IPtdDBSchemaV1>;
-      dbV1.createObjectStore("social_information");
-    }
-    if (oldVersion < 2) {
-      const dbV2 = db as unknown as IDBPDatabase<IPtdDBSchemaV2>;
-      dbV2.createObjectStore("download_history", { keyPath: "id", autoIncrement: true });
-    }
-    if (oldVersion < 3) {
+export const ptdIndexDb = openDB<IPtdDBSchema>("ptd", 4, {
+  upgrade(db) {
+    if (!db.objectStoreNames.contains("favicon")) {
       db.createObjectStore("favicon");
+    }
+    const deprecatedStores = ["social_information", "download_history"] as const;
+    const rawDb = db as unknown as {
+      objectStoreNames: DOMStringList;
+      deleteObjectStore: (name: string) => void;
+    };
+    for (const storeName of deprecatedStores) {
+      if (rawDb.objectStoreNames.contains(storeName)) {
+        rawDb.deleteObjectStore(storeName);
+      }
     }
   },
 });

@@ -8,7 +8,6 @@ import type {
 } from "@ptd/site";
 import type { TSelectSearchCategoryValue } from "@ptd/site";
 import type { CAddTorrentOptions, DownloaderBaseConfig } from "@ptd/downloader";
-import type { IMediaServerBaseConfig } from "@ptd/mediaServer";
 import type { IBackupConfig, IBackupRetention } from "@ptd/backupServer";
 
 export interface ISearchSolution {
@@ -32,14 +31,6 @@ export interface ISearchSolutionMetadata {
   isDefault: boolean;
   createdAt: number;
   solutions: ISearchSolution[];
-}
-
-export type TSearchSnapshotKey = string;
-export interface ISearchSnapshotMetadata {
-  id: TSearchSnapshotKey;
-  name: string; // [搜索方案] 搜索词 (搜索时间)
-  createdAt: number;
-  recordCount: number; // 记录数
 }
 
 export interface IStoredUserInfo extends IUserInfo {}
@@ -66,22 +57,11 @@ export interface IDefaultDownloaderConfig {
   tags?: string;
 }
 
-export type TMediaServerKey = string;
-export interface IMediaServerMetadata extends IMediaServerBaseConfig {
-  id: TMediaServerKey;
-  enabled: boolean;
-  [key: string]: any; // 其他配置项
-}
-
 export const BackupFields = [
   "cookies", // 备份已添加站点的Cookie
   "config", // 备份插件基本配置
-  "metadata", // 备份插件元数据（站点、搜索方案、下载器、媒体服务器等配置）
+  "metadata", // 备份插件元数据（站点、搜索方案、下载器等配置）
   "userInfo", // 备份插件历史获取的用户信息
-  "searchResultSnapshot", // 备份搜索结果快照
-  "keepUploadTask", // 备份辅种任务
-  "torrentFavorite", // 备份种子收藏
-  "downloadHistory", // 备份下载历史
 ] as const;
 export type TBackupFields = (typeof BackupFields)[number];
 
@@ -103,17 +83,8 @@ export interface IMetadataPiniaStorageSchema {
   // 搜索方案配置
   solutions: Record<TSolutionKey, ISearchSolutionMetadata>;
 
-  /**
-   * 搜索快照配置（元信息）
-   * 具体快照内容需要通过 getSearchResultSnapshotData() 方法获取
-   */
-  snapshots: Record<TSearchSnapshotKey, ISearchSnapshotMetadata>;
-
   // 下载器配置
   downloaders: Record<TDownloaderKey, IDownloaderMetadata>;
-
-  // 媒体服务器配置
-  mediaServers: Record<TMediaServerKey, IMediaServerMetadata>;
 
   // 备份服务器配置
   backupServers: Record<TBackupServerKey, IBackupServerMetadata>;
@@ -135,13 +106,6 @@ export interface IMetadataPiniaStorageSchema {
   lastDownloader?: {
     id?: TDownloaderKey;
     options?: Omit<CAddTorrentOptions, "localDownloadOption">;
-  };
-
-  // 上一次创建辅种任务时使用的下载设置（受 saveLastDownloader 配置控制）
-  lastKeepUpload?: {
-    downloaderId?: TDownloaderKey;
-    savePath?: string;
-    label?: string;
   };
 
   // 上一次自动刷新的时间戳

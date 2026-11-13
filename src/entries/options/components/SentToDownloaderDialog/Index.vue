@@ -173,13 +173,17 @@ function dialogLeave() {
     @after-leave="dialogLeave"
   >
     <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>{{ t("SentToDownloaderDialog.title", [torrentItems.length]) }}</v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <span class="text-subtitle-1 font-weight-bold">{{
+          t("SentToDownloaderDialog.title", [torrentItems.length])
+        }}</span>
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          :title="t('common.dialog.close')"
+          @click="showDialog = false"
+        />
       </v-card-title>
 
       <v-card-text>
@@ -324,32 +328,27 @@ function dialogLeave() {
         </v-form>
       </v-card-text>
       <v-divider />
-      <v-card-actions>
+      <v-card-actions class="pa-4">
         <v-btn
           :title="t('SentToDownloaderDialog.moreOptions')"
           icon="mdi-cards"
+          variant="text"
           @click="quickSendToClient = !quickSendToClient"
         />
 
         <v-spacer />
-        <v-btn
-          :disabled="isSending"
-          color="info"
-          prepend-icon="mdi-close-circle"
-          variant="text"
-          @click="showDialog = false"
-        >
-          <span class="ml-1">{{ t("common.dialog.cancel") }}</span>
+        <v-btn :disabled="isSending" variant="text" @click="showDialog = false">
+          {{ t("common.dialog.cancel") }}
         </v-btn>
         <v-btn
           :disabled="!selectedDownloader || quickSendToClient"
           :loading="isSending"
-          color="error"
-          variant="text"
+          color="primary"
+          prepend-icon="mdi-check-circle-outline"
+          variant="flat"
           @click="sendToDownloader"
         >
-          <v-icon icon="mdi-check-circle-outline" />
-          <span class="ml-1">{{ t("common.dialog.ok") }}</span>
+          {{ t("common.dialog.ok") }}
         </v-btn>
       </v-card-actions>
     </v-card>

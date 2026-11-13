@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.6",
   "type": "module",
-  "homepage": "https://github.com/pt-plugins/PT-depiler",
+  "homepage": "https://github.com/4Nest/PT-depiler",
   "packageManager": "pnpm@12.10.1",
   "author": {
     "name": "Pt-Plugins",
@@ -34,7 +34,6 @@
     "build:dist": "vite build && tsx vite/scripts/subsetMdiFont.ts dist-chrome",
     "build:dist-firefox": "cross-env TARGET=firefox vite build && tsx vite/scripts/subsetMdiFont.ts dist-firefox",
     "build:watch": "vite build --watch --mode development --minify false",
-    "action:upload_telegram": "tsx vite/scripts/sendToTgChannel.ts",
     "prepare": "husky"
   },
   "engines": {

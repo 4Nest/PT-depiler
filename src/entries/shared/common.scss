@@ -1,3 +1,9 @@
+.ptd-num,
+.v-data-table-column--align-end {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
 .table-header-no-wrap {
   .v-data-table-header__content {
     span {
@@ -6,50 +12,54 @@
   }
 }
 
+/* 现代高可读表格基线：柔和底边框、舒适行高与淡色悬停反馈 */
 .table-stripe {
-  /* 只按「数据行」计数：可展开的表格（如辅种任务）会在数据行之间插入展开行的 <tr>，
-   * 用 :nth-child(even) 时展开行本身也占一个位置，展开后其后的隔行底色会整体错位。
-   * `of .v-data-table__tr` 让序号只在数据行之间计算（Chromium 111+ / Firefox 113+）。 */
-  tr.v-data-table__tr:nth-child(even of .v-data-table__tr) {
-    background-color: #f1f1f1;
+  .v-data-table__thead > tr > th,
+  thead > tr > th {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgba(var(--v-theme-on-surface), 0.65);
+    height: 42px;
+    background-color: rgba(var(--v-theme-surface-variant), 0.45);
+    border-bottom: 1px solid rgba(var(--v-border-color), 0.12);
+  }
 
-    /* v-data-table 会为固定列（fixed / fixed-end）设置 surface 背景色，导致固定列不响应上面的隔行变色，
-     * 这里让固定列跟随所在行的背景色（inherit 会自动适配暗黑模式下的颜色）。 */
+  tr.v-data-table__tr {
+    transition: background-color 0.15s ease;
+
+    > td {
+      padding: 8px 12px;
+      min-height: 48px;
+      border-bottom: 1px solid rgba(var(--v-border-color), 0.08);
+    }
+
+    &:hover {
+      background-color: rgba(var(--v-theme-primary), 0.04) !important;
+    }
+
     > .v-data-table-column--fixed,
     > .v-data-table-column--fixed-end {
-      background-color: inherit;
+      background-color: rgb(var(--v-theme-surface));
     }
   }
 }
 
 .table-no-ext-padding {
   .v-data-table__td {
-    padding: 0 4px !important;
+    padding: 8px 12px !important;
   }
 }
 
 .ptd-fade-enter {
-  opacity: 0.3;
-  transition: opacity 0.3s ease;
+  opacity: 0.35;
+  transition: opacity 0.25s ease;
 
   &:hover {
     opacity: 1;
   }
 }
 
-/* 暗黑模式覆写 */
-.v-theme--dark {
-  .table-stripe {
-    tr.v-data-table__tr:nth-child(even of .v-data-table__tr) {
-      background-color: #2a2a2a;
-    }
-  }
-}
-
-/* Vuetify 4 移除了全局 CSS reset（v3 中 `* { padding: 0; margin: 0 }` 已不存在），
- * 项目模板中的原生 h1-h6 / p / ul 等元素会重新获得浏览器默认 margin/padding。
- * 此处按官方 Upgrade Guide 建议选择性恢复这些 reset，保持与 v3 一致的显示。
- * （放在 @layer vuetify-core.reset 中，不会覆盖组件样式。） */
+/* Vuetify 4 移除了全局 CSS reset，选择性恢复必要 reset */
 @layer vuetify-core.reset {
   ul,
   ol,
@@ -71,9 +81,7 @@
   }
 }
 
-/* 列宽适应内容（见 options/directives/useTableColumnFit.ts）：
- * 测量时让表格按内容的 max-content 排版，并隐藏跨列的行（展开行、分组行、无数据行），
- * 避免它们把宽度摊到各列上；适应后用 fixed 排版固定百分比列宽，放不下的内容裁剪。 */
+/* 列宽适应内容（见 options/directives/useTableColumnFit.ts） */
 .table-column-fit-measure > .v-table__wrapper > table {
   table-layout: auto !important;
   width: max-content !important;
@@ -95,8 +103,17 @@
 
   > thead > tr > th,
   > tbody > tr > td {
-    // 只裁剪横向：纵向溢出的内容（如站点图标上的未读消息徽标）不应被裁掉
     overflow-x: clip;
     text-overflow: ellipsis;
   }
+}
+
+/* 确保 VSwitch 未选中态在亮/暗色模式下均有明确轨道对比度 */
+.v-switch .v-selection-control:not(.v-selection-control--dirty) .v-switch__track {
+  background-color: rgba(var(--v-theme-on-surface), 0.24) !important;
+  opacity: 1 !important;
+}
+
+.v-switch .v-selection-control:not(.v-selection-control--dirty) .v-switch__thumb {
+  background-color: rgb(var(--v-theme-surface)) !important;
 }

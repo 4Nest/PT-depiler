@@ -18,13 +18,6 @@ const initialSearchData: () => ISearchData = () => ({
   searchResult: [],
 });
 
-const initialMediaServerSearchData = () => ({
-  isSearching: false,
-  searchKey: "",
-  searchStatus: {},
-  searchResult: [],
-});
-
 export const useRuntimeStore = defineStore("runtime", {
   persist: {
     storage: sessionStorage,
@@ -36,7 +29,6 @@ export const useRuntimeStore = defineStore("runtime", {
     userInfo: {
       flushPlan: {},
     },
-    mediaServerSearch: initialMediaServerSearchData(),
     uiGlobalSnackbar: [],
   }),
 
@@ -66,10 +58,6 @@ export const useRuntimeStore = defineStore("runtime", {
   actions: {
     resetSearchData() {
       this.search = initialSearchData();
-    },
-
-    resetMediaServerSearchData() {
-      this.mediaServerSearch = initialMediaServerSearchData();
     },
 
     showSnackbar(text: string, options: SnackbarMessageOptions = {}) {

@@ -8,14 +8,11 @@ import type { TBackupFields } from "./types/storages/metadata.ts";
 export * from "./types/extends.ts";
 export * from "./types/common/download.ts";
 export * from "./types/common/ptpp.ts";
-export * from "./types/common/nativeBridge.ts";
 export * from "./types/storages/config.ts";
 export * from "./types/storages/indexdb.ts";
 export * from "./types/storages/metadata.ts";
 export * from "./types/storages/runtime.ts";
 export * from "./types/storages/other.ts";
-export * from "./types/storages/keepUploadTask.ts";
-export * from "./types/storages/torrentFavorite.ts";
 
 export interface IRestoreOptions {
   fields?: TBackupFields[]; // 需要恢复的字段

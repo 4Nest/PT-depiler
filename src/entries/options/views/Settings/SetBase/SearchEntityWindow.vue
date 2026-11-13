@@ -76,13 +76,6 @@ const promotionDisplayOptions = computed(() => [
             </template>
           </v-switch>
 
-          <v-switch
-            v-model="configStore.searchEntity.showHotRecommendations"
-            :label="t('SetBase.searchEntity.showHotRecommendations')"
-            color="success"
-            hide-details
-          />
-
           <v-divider />
         </v-col>
       </v-row>
@@ -159,40 +152,6 @@ const promotionDisplayOptions = computed(() => [
           />
         </v-col>
       </v-row>
-    </v-col>
-  </v-row>
-
-  <v-row>
-    <v-col md="10" lg="8">
-      <v-label>{{ t("SetBase.searchEntity.mediaServerSearchConfig") }}</v-label>
-      <v-number-input
-        v-model="configStore.mediaServerEntity.queueConcurrency"
-        :label="t('SetBase.searchEntity.mediaQueueConcurrency')"
-        :max="25"
-        :min="1"
-        controlVariant="default"
-      />
-      <v-number-input
-        v-model="configStore.mediaServerEntity.searchLimit"
-        :label="t('SetBase.searchEntity.mediaSearchLimit')"
-        :max="500"
-        :messages="t('SetBase.searchEntity.mediaSearchLimitMessage')"
-        :min="1"
-        :step="configStore.mediaServerEntity.searchLimit >= 100 ? 10 : 1"
-        controlVariant="default"
-      />
-      <v-switch
-        v-model="configStore.mediaServerEntity.autoSearchWhenMount"
-        :label="t('SetBase.searchEntity.autoLoadInitialMediaWall')"
-        color="success"
-        hide-details
-      />
-      <v-switch
-        v-model="configStore.mediaServerEntity.autoSearchMoreWhenScroll"
-        :label="t('SetBase.searchEntity.autoLoadMoreMediaOnScroll')"
-        color="success"
-        hide-details
-      />
     </v-col>
   </v-row>
 </template>

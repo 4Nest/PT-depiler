@@ -16,16 +16,8 @@ import type {
 } from "@/shared/types.ts";
 
 import { logger } from "./logger.ts";
-import { ptdIndexDb } from "../adapter/indexdb.ts";
 
-export const storageKey = [
-  "config",
-  "metadata",
-  "userInfo",
-  "searchResultSnapshot",
-  "keepUploadTask",
-  "torrentFavorite",
-] as TExtensionStorageKey[];
+export const storageKey = ["config", "metadata", "userInfo"] as TExtensionStorageKey[];
 
 export async function createBackupData(backupFields: TBackupFields[] = []): Promise<IBackupData> {
   const metadataStore = (await sendMessage("getExtStorage", "metadata")) as IMetadataPiniaStorageSchema;
@@ -49,11 +41,6 @@ export async function createBackupData(backupFields: TBackupFields[] = []): Prom
     if (backupFields.includes(field as TBackupFields)) {
       backupData[field] = await sendMessage("getExtStorage", field);
     }
-  }
-
-  // 备份下载历史
-  if (backupFields.includes("downloadHistory")) {
-    backupData["downloadHistory"] = await (await ptdIndexDb).getAll("download_history");
   }
 
   backupData.manifest = {
@@ -183,15 +170,6 @@ export async function restoreBackupData(
 
   const restoreDataExistFields = Object.keys(restoreData.manifest?.files ?? {});
   const restoreFields = intersection(fields, restoreDataExistFields);
-
-  // 恢复下载历史
-  if (restoreFields.includes("downloadHistory")) {
-    const db = await ptdIndexDb;
-    await db.clear("download_history");
-    for (const downloadHistoryElement of restoreData.downloadHistory) {
-      await db.put("download_history", downloadHistoryElement);
-    }
-  }
 
   // 恢复直接从 chrome.storage.local 读取的字段
   for (const field of storageKey.toReversed()) {

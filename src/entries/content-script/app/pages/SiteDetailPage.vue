@@ -11,7 +11,6 @@ import type { IRemoteDownloadDialogData } from "../types.ts";
 import { copyTextToClipboard, doKeywordSearch, siteInstance, type IPtdData } from "../utils.ts";
 
 import SpeedDialBtn from "../components/SpeedDialBtn.vue";
-import TorrentFavoriteDialog from "@/options/components/TorrentFavoriteDialog.vue";
 
 const metadataStore = useMetadataStore();
 const runtimeStore = useRuntimeStore();
@@ -63,31 +62,12 @@ function handleSearch() {
     doKeywordSearch(torrent.title || "");
   });
 }
-
-// 收藏当前详情页种子
-const favoriteTorrents = shallowRef<ITorrent[]>([]);
-const showFavoriteDialog = ref<boolean>(false);
-
-function handleFavorite() {
-  parseDetailPage().then((torrent) => {
-    favoriteTorrents.value = [torrent];
-    showFavoriteDialog.value = true;
-  });
-}
 </script>
 
 <template>
-  <!-- 与种子列表页一致：收藏放在最下面（SpeedDial 中越靠前越靠近主按钮） -->
-  <SpeedDialBtn
-    key="favorite"
-    color="amber"
-    icon="mdi-star-plus"
-    :title="t('contentScript.favoriteTorrent')"
-    @click="handleFavorite"
-  />
   <SpeedDialBtn
     key="copy"
-    color="light-blue"
+    color="primary"
     icon="mdi-content-copy"
     :title="t('contentScript.copyLink')"
     @click="handleLinkCopy"
@@ -95,7 +75,7 @@ function handleFavorite() {
   <SpeedDialBtn
     key="download"
     :disabled="enabledDownloadersBySite.length === 0"
-    color="light-blue"
+    color="primary"
     icon="mdi-cloud-download"
     :title="t('contentScript.pushTo')"
     @click="() => handleRemoteDownload()"
@@ -104,20 +84,18 @@ function handleFavorite() {
     key="download_default"
     v-if="metadataStore.defaultDownloader?.id"
     :disabled="enabledDownloadersBySite.length === 0"
-    color="light-blue"
+    color="success"
     icon="mdi-download"
     :title="t('contentScript.pushToDefault')"
     @click="handleRemoteDownload(true)"
   />
   <SpeedDialBtn
     key="search"
-    color="indigo"
+    color="secondary"
     icon="mdi-home-search"
     :title="t('contentScript.quickSearch')"
     @click="handleSearch"
   />
-
-  <TorrentFavoriteDialog v-model="showFavoriteDialog" :torrent-items="favoriteTorrents" />
 </template>
 
 <style scoped lang="scss"></style>

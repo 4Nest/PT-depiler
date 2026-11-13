@@ -15,7 +15,7 @@ export const tableCustomFilter = useTableCustomFilter({
     keywords: ["site", "tags", "status"],
     ranges: ["time", "size", "seeders", "leechers", "completed", "downloadVolumeFactor", "uploadVolumeFactor"],
   },
-  titleFields: ["title", "subTitle"],
+  titleFields: ["title", "subTitle", "category", "ext_imdb", "ext_douban"],
   initialSearchValue: metadataStore.lastSearchFilter,
   initialItems: computed(() => runtimeStore.search.searchResult),
   format: {

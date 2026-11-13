@@ -632,22 +632,29 @@ function saveControl() {
       </v-col>
       <v-col cols="12" sm>
         <v-row class="flex-nowrap mb-1">
-          <v-col class="d-flex">
-            <NavButton color="grey" icon="mdi-arrow-left" :text="t('common.back')" @click="() => router.back()" />
+          <v-col class="d-flex align-center ga-2">
+            <NavButton color="secondary" icon="mdi-arrow-left" :text="t('common.back')" @click="() => router.back()" />
             <v-spacer />
             <NavButton
-              color="info"
+              color="secondary"
               icon="mdi-file-export-outline"
               :text="t('common.exportImage')"
               :loading="isExporting"
               @click="exportTimelineImg"
             />
-            <NavButton color="green" icon="mdi-content-save" :text="t('common.saveSettings')" @click="saveControl" />
+            <NavButton
+              color="primary"
+              variant="flat"
+              icon="mdi-content-save"
+              :text="t('common.saveSettings')"
+              @click="saveControl"
+            />
           </v-col>
         </v-row>
 
-        <v-alert :title="t('UserDataTimeline.controls.styleSettings')" type="info" class="mb-2"> </v-alert>
-
+        <div class="text-subtitle-1 font-weight-bold pb-2 mb-3 border-b">
+          {{ t("UserDataTimeline.controls.styleSettings") }}
+        </div>
         <v-label class="my-2">{{ t("UserDataTimeline.controls.usernameAndTitle") }}</v-label>
 
         <v-row>
@@ -832,16 +839,15 @@ function saveControl() {
           </v-col>
         </v-row>
 
-        <v-alert class="mt-4 mb-2" :title="t('UserDataTimeline.controls.displaySiteSettings')" type="info">
-          <template #append>
-            <CheckSwitchButton
-              v-model="selectedSites"
-              :all="realAllSite"
-              color="grey"
-              @update:model-value="resetTimelineDataWithControl"
-            />
-          </template>
-        </v-alert>
+        <div class="d-flex align-center justify-space-between pt-4 pb-2 mb-2 border-b">
+          <span class="text-subtitle-1 font-weight-bold">{{ t("UserDataTimeline.controls.displaySiteSettings") }}</span>
+          <CheckSwitchButton
+            v-model="selectedSites"
+            :all="realAllSite"
+            color="secondary"
+            @update:model-value="resetTimelineDataWithControl"
+          />
+        </div>
 
         <v-row gap="0" class="my-2">
           <v-col v-for="(site, siteId) in fixedLastUserInfo" :key="siteId" class="py-0" cols="6" sm="3">

@@ -35,25 +35,6 @@ export const useConfigStore = defineStore("config", {
         }
       }
 
-      // 清理基于 id 字段的 DownloadHistory 排序配置
-      if (state.tableBehavior?.DownloadHistory?.sortBy) {
-        const sortBy = state.tableBehavior.DownloadHistory.sortBy;
-        // 过滤掉基于 id 字段的排序项
-        const filteredSortBy = sortBy.filter((sort: any) => sort.key !== "id");
-
-        // 如果过滤后数组长度发生变化，说明移除了基于 id 的排序项
-        if (filteredSortBy.length !== sortBy.length) {
-          // 如果过滤后没有任何排序项，使用默认的 downloadAt 排序
-          if (filteredSortBy.length === 0) {
-            state.tableBehavior.DownloadHistory.sortBy = [{ key: "downloadAt", order: "desc" }];
-          } else {
-            // 否则保留其他有效的排序项
-            state.tableBehavior.DownloadHistory.sortBy = filteredSortBy;
-          }
-          needsSave = true;
-        }
-      }
-
       // 优惠信息展示形式只允许 tags / factor / both（防止旧版本/手工改动写入非法值）
       const promotionDisplay = state.searchEntifyControl?.promotionDisplay;
       if (promotionDisplay !== undefined && !["tags", "factor", "both", "none"].includes(promotionDisplay)) {
@@ -82,29 +63,18 @@ export const useConfigStore = defineStore("config", {
     tableActionColumnFixed: false,
     tableColumnFit: false,
 
-    contextMenus: {
-      enabled: true,
-      allowSelectionTextSearch: true,
-      allowSocialLinkSearch: true,
-      allowLinkDownloadPush: true,
-    },
-
     contentScript: {
       enabled: true,
-      enabledAtSocialSite: true,
       allowExceptionSites: false,
 
       position: { x: 0, y: 0 },
 
       applyTheme: false,
       defaultOpenSpeedDial: false,
-      stackedButtons: false,
       fadeEnterStyle: false,
 
       doubleConfirmAction: true,
       dragLinkOnSpeedDial: true,
-
-      socialSiteSearchBy: "chosen",
     },
 
     tableBehavior: {
@@ -128,56 +98,12 @@ export const useConfigStore = defineStore("config", {
       },
       SearchEntity: {
         itemsPerPage: 50,
-        columns: [
-          "site",
-          "title",
-          "category",
-          "size",
-          "seeders",
-          "leechers",
-          "completed",
-          "comments",
-          "time",
-          "action",
-        ],
-        sortBy: [{ key: "time", order: "desc" }],
-      },
-      DownloadHistory: {
-        itemsPerPage: 10,
-        sortBy: [{ key: "downloadAt", order: "desc" }],
-      },
-      SearchResultSnapshot: {
-        itemsPerPage: 25,
-        sortBy: [{ key: "createdAt", order: "desc" }],
-      },
-      MyCollection: {
-        itemsPerPage: 25,
-        sortBy: [{ key: "createdAt", order: "desc" }],
-      },
-      KeepUploadTask: {
-        itemsPerPage: 10,
+        columns: ["site", "title", "category", "size", "seeders", "leechers", "completed", "time", "action"],
         sortBy: [{ key: "time", order: "desc" }],
       },
       SetDownloader: {
         itemsPerPage: 10,
         sortBy: [{ key: "enabled", order: "desc" }],
-      },
-      MyClient: {
-        itemsPerPage: 25,
-        columns: [
-          "clientId",
-          "name",
-          "site",
-          "totalSize",
-          "progress",
-          "state",
-          "ratio",
-          "uploadSpeed",
-          "downloadSpeed",
-          "dateAdded",
-          "action",
-        ],
-        sortBy: [{ key: "dateAdded", order: "desc" }],
       },
       SetSearchSolution: {
         itemsPerPage: 10,
@@ -265,8 +191,6 @@ export const useConfigStore = defineStore("config", {
       promotionDisplay: "tags",
       showTorrentSubtitle: true,
       showTorrentCover: false,
-      showSocialInformation: true,
-      socialInformationSearchOnNewTab: true,
       uploadAtFormatAsAlive: false,
       highlightSameSizeTorrent: false,
       maxTagCountBeforeGroup: 0,
@@ -290,9 +214,7 @@ export const useConfigStore = defineStore("config", {
     },
 
     download: {
-      saveDownloadHistory: true,
       allowDownloaderFilterForSite: false,
-      initDownloaderTorrentOnEnter: false,
       saveLastDownloader: false,
       allowDirectSendToClient: false,
       localDownloadMethod: "browser",
@@ -311,33 +233,11 @@ export const useConfigStore = defineStore("config", {
       autoDetectOfficialGroupFromTitle: false,
 
       quickSiteFilter: true,
-      showHotRecommendations: true,
-    },
-
-    mediaServerEntity: {
-      queueConcurrency: 5,
-      searchLimit: 50,
-      autoSearchWhenMount: true,
-      autoSearchMoreWhenScroll: true,
     },
 
     backup: {
       encryptionKey: "",
       enabledAutoBackup: false,
-    },
-
-    socialSiteInformation: {
-      preferPtGen: true,
-      timeout: 10e3,
-      cacheDay: 7,
-      socialSite: {
-        anidb: {},
-        bangumi: {},
-        douban: {},
-        imdb: {},
-        tmdb: {},
-        tvmaze: {},
-      },
     },
 
     autoExtendCookies: {

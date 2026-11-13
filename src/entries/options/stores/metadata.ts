@@ -1,4 +1,3 @@
-import { nanoid } from "nanoid";
 import { defineStore } from "pinia";
 import { isEmpty, set } from "es-toolkit/compat";
 import {
@@ -18,22 +17,18 @@ import { siteMetadataIndex } from "@ptd/site/metadataIndex";
 import {
   IBackupServerMetadata,
   IDownloaderMetadata,
-  IMediaServerMetadata,
   IMetadataPiniaStorageSchema,
   ISearchSolution,
   TDownloaderKey,
-  TMediaServerKey,
-  TSearchSnapshotKey,
   TSolutionKey,
   ISearchSolutionMetadata,
 } from "@/shared/types.ts";
 import { sendMessage } from "@/messages.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
-import { useRuntimeStore } from "@/options/stores/runtime.ts";
 
 type TSimplePatchFieldKey = keyof Pick<
   IMetadataPiniaStorageSchema,
-  "sites" | "solutions" | "snapshots" | "downloaders" | "mediaServers" | "backupServers"
+  "sites" | "solutions" | "downloaders" | "backupServers"
 >;
 
 export const useMetadataStore = defineStore("metadata", {
@@ -41,9 +36,7 @@ export const useMetadataStore = defineStore("metadata", {
   state: (): IMetadataPiniaStorageSchema => ({
     sites: {},
     solutions: {},
-    snapshots: {},
     downloaders: {},
-    mediaServers: {},
     backupServers: {},
 
     defaultSolutionId: "default",
@@ -52,7 +45,6 @@ export const useMetadataStore = defineStore("metadata", {
     lastSearchFilter: "",
     lastUserInfo: {},
     lastDownloader: {},
-    lastKeepUpload: {},
     lastUserInfoAutoFlushAt: 0,
 
     siteHostMap: {},
@@ -293,23 +285,6 @@ export const useMetadataStore = defineStore("metadata", {
       };
     },
 
-    getSearchSnapshotList(state) {
-      return Object.values(state.snapshots);
-    },
-
-    getSearchSnapshotData(state) {
-      return async (id: TSearchSnapshotKey) => {
-        const snapshotInfo = state.snapshots[id];
-        if (snapshotInfo?.id) {
-          return await sendMessage("getSearchResultSnapshotData", id);
-        } else {
-          const runtimeStorage = useRuntimeStore();
-          runtimeStorage.showSnackbar("未找到该搜索快照...", { color: "error" });
-          return;
-        }
-      };
-    },
-
     getDownloaderIds(state) {
       return Object.keys(state.downloaders);
     },
@@ -344,18 +319,6 @@ export const useMetadataStore = defineStore("metadata", {
           return (b.sortIndex ?? 0) - (a.sortIndex ?? 0);
         });
       };
-    },
-
-    getMediaServerIds(state) {
-      return Object.keys(state.mediaServers);
-    },
-
-    getMediaServers(state) {
-      return Object.values(state.mediaServers);
-    },
-
-    getEnabledMediaServers(state) {
-      return Object.values(state.mediaServers).filter((mediaServer) => mediaServer.enabled);
     },
 
     getBackupServerIds(state) {
@@ -522,40 +485,6 @@ export const useMetadataStore = defineStore("metadata", {
       await this.$save();
     },
 
-    async saveSearchSnapshotData(name: string) {
-      const runtimeStorage = useRuntimeStore();
-      const searchSnapshotData = runtimeStorage.search;
-
-      if (searchSnapshotData.isSearching) {
-        runtimeStorage.showSnackbar("你不能创建一个正在搜索中的快照...", { color: "error" });
-        return;
-      }
-
-      const snapshotId = nanoid();
-      this.snapshots[snapshotId] = {
-        id: snapshotId,
-        name,
-        createdAt: Date.now(),
-        recordCount: searchSnapshotData.searchResult.length,
-      };
-
-      // 保存搜索快照数据
-      await sendMessage("saveSearchResultSnapshotData", { snapshotId, data: searchSnapshotData });
-
-      await this.$save();
-    },
-
-    async editSearchSnapshotDataName(id: TSearchSnapshotKey, name: string) {
-      this.snapshots[id].name = name;
-      await this.$save();
-    },
-
-    async removeSearchSnapshotData(id: TSearchSnapshotKey) {
-      delete this.snapshots[id]; // 删除搜索快照元数据
-      await sendMessage("removeSearchResultSnapshotData", id); // 删除搜索快照数据
-      await this.$save();
-    },
-
     async addDownloader(downloaderConfig: IDownloaderMetadata) {
       delete downloaderConfig.valid;
       this.downloaders[downloaderConfig.id] = downloaderConfig;
@@ -574,16 +503,6 @@ export const useMetadataStore = defineStore("metadata", {
 
     async setLastDownloader(downloader: IMetadataPiniaStorageSchema["lastDownloader"]) {
       this.lastDownloader = downloader;
-      await this.$save();
-    },
-
-    async addMediaServer(mediaServerConfig: IMediaServerMetadata) {
-      this.mediaServers[mediaServerConfig.id] = mediaServerConfig;
-      await this.$save();
-    },
-
-    async removeMediaServer(mediaServerId: TMediaServerKey) {
-      delete this.mediaServers[mediaServerId];
       await this.$save();
     },
 

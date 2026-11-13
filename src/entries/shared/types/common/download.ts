@@ -1,8 +1,5 @@
-import type { AxiosRequestConfig } from "axios";
-
 import type { ITorrent, TSiteID as TSiteKey } from "@ptd/site";
 import type { CAddTorrentOptions, CAddTorrentResult } from "@ptd/downloader";
-import type { TDownloaderKey } from "@/shared/types/storages/metadata.ts";
 
 export type TTorrentDownloadKey = number;
 export type TTorrentDownloadStatus = "pending" | "downloading" | "completed" | "failed";
@@ -33,21 +30,6 @@ export interface IDownloadTorrentOption {
 
   // 当下载到对应id的下载器中时
   addTorrentOptions?: CAddTorrentOptions;
-}
-
-export interface ITorrentDownloadMetadata extends Pick<ITorrent, "title" | "subTitle" | "url" | "link"> {
-  id?: TTorrentDownloadKey; // 每个下载任务生成的唯一id
-  siteId: TSiteKey; // 站点id
-  torrentId: ITorrent["id"]; // 种子id
-  downloaderId: TDownloaderKey | "local"; // 下载器id，注意 local 是一个特殊的关键词，表示本地下载
-  downloadAt: number; // 下载时间
-  downloadStatus: TTorrentDownloadStatus; // 下载状态
-  torrent: ITorrent; // 种子信息
-  addTorrentOptions: Partial<CAddTorrentOptions>;
-
-  downloadRequestConfig?: AxiosRequestConfig;
-  addTorrentResult?: CAddTorrentResult;
-  errorMessage?: string; // 失败时的错误信息（如推送失败原因），便于在下载历史中定位问题
 }
 
 export interface IDownloadTorrentResult {

@@ -22,15 +22,6 @@ sendMessage("getExtStorage", "config").then(async (data) => {
   const configStore = data as IConfigPiniaStorageSchema;
 
   if (configStore?.contentScript?.enabled ?? true) {
-    if (configStore?.contentScript?.enabledAtSocialSite ?? true) {
-      const socialSite = await sendMessage("matchSocialPage", window.location.href);
-      if (socialSite) {
-        console.debug(`[PTD] Social site detected: ${socialSite}, loading app...`);
-        await loadApp({ socialSite });
-        return; // 找到匹配的 social site 后，直接加载应用并退出
-      }
-    }
-
     // 这里不再把整份 metadata store 搬到页面上下文：只需要 host → siteId 一项判断，
     // 由 SW 侧完成（含 allowExceptionSites 的排除逻辑），回传一个极小的对象
     sendMessage("matchSitePage", window.location.href).then(async (siteMatch) => {

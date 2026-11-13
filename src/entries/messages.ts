@@ -8,62 +8,16 @@ import type {
   TSiteID,
   getFaviconMetadata,
 } from "@ptd/site";
-import type {
-  ISocialInformation,
-  ISocialRecommendationItem,
-  ISocialRecommendationsResult,
-  TSupportSocialSite$1,
-} from "@ptd/social";
-import type {
-  IMediaServerId,
-  IMediaServerItem,
-  IMediaServerOverview,
-  IMediaServerSearchOptions,
-  IMediaServerSearchResult,
-} from "@ptd/mediaServer";
 import type { IBackupData, IBackupFileInfo } from "@ptd/backupServer";
-import type {
-  CTorrent,
-  CTorrentFile,
-  CTorrentFileSelection,
-  CTorrentPeer,
-  CTorrentTracker,
-  TorrentClientMetaData,
-  TorrentClientStatus,
-  TorrentQueueDirection,
-  TorrentSpeedLimit,
-} from "@ptd/downloader";
-
-// 可序列化的种子信息，用于辅种检测
-export interface ITorrentInfoForVerification {
-  infoHash: string;
-  name: string;
-  length: number;
-  files: Array<{
-    path: string;
-    length: number;
-  }>;
-}
-
 import type { TExtensionStorageKey, IExtensionStorageSchema } from "@/storage.ts";
 import {
   ILoggerItem,
   IRestoreOptions,
-  ITorrentDownloadMetadata,
-  TTorrentDownloadKey,
   IDownloaderMetadata,
-  ISearchData,
-  TSearchSnapshotKey,
   TBackupFields,
-  TTorrentDownloadStatus,
   IDownloadTorrentOption,
   IDownloadTorrentResult,
   AugmentedRequired,
-  IKeepUploadTask,
-  TKeepUploadTaskKey,
-  ITorrentFavoriteItem,
-  TTorrentFavoriteKey,
-  BridgeStatus,
 } from "@/shared/types.ts";
 
 import { isDebug } from "~/helper.ts";
@@ -96,15 +50,6 @@ interface ProtocolMap extends TMessageMap {
   removeCookie(data: chrome.cookies.CookieDetails | chrome.cookies.SetDetails): chrome.cookies.CookieDetails;
   checkAndExtendCookies(url: string): void;
 
-  // （原 1.6 `showNotification` 已删除：声明之后从来没有 handler，且已无任何调用方 ——
-  //   真正要弹通知的地方直接调 chrome.notifications.create，见 background/utils/contextMenus.ts。
-  //   留着一个「声明了但没实现」的协议项，正是 §3.7(1) 那类静默 bug 的温床。）
-
-  // 1.7 chrome.contextMenus
-  addContextMenu(data: chrome.contextMenus.CreateProperties): string;
-  removeContextMenu(data: string): void;
-  clearContextMenus(): void;
-
   // 2. 在 offscreen 中注册，涉及页面解析等功能，主要供 options 使用
   logger(data: ILoggerItem): void;
   getLogger(): ILoggerItem[];
@@ -121,59 +66,11 @@ interface ProtocolMap extends TMessageMap {
     keyword?: string;
     searchEntry?: IAdvancedSearchRequestConfig;
   }): ISearchResult;
-  getMediaServerSearchResult(data: {
-    mediaServerId: IMediaServerId;
-    keywords?: string;
-    options?: IMediaServerSearchOptions;
-  }): IMediaServerSearchResult;
-  /** 调研 B12：详情弹窗按需拉取单条目的完整信息（含 People 等重字段） */
-  getMediaServerItemDetail(data: { mediaServerId: IMediaServerId; itemId: string }): IMediaServerItem | null;
-  /** 调研 C14 / C20：按需生成媒体库概览（整库遍历与聚合都在 offscreen 里完成，只回传统计结果） */
-  getMediaServerOverview(data: { mediaServerId: IMediaServerId; maxItems?: number }): IMediaServerOverview | null;
-  getSearchResultSnapshotData(snapshotId: TSearchSnapshotKey): ISearchData;
-  saveSearchResultSnapshotData(data: { snapshotId: TSearchSnapshotKey; data: ISearchData }): void;
-  removeSearchResultSnapshotData(snapshotId: TSearchSnapshotKey): void;
-
-  // 2.3 下载器、下载历史 ( utils/download )
+  // 2.3 下载器 ( utils/download )
   getDownloaderConfig(downloaderId: string): IDownloaderMetadata;
   getDownloaderVersion(downloaderId: string): string;
-  getDownloaderStatus(downloaderId: string): TorrentClientStatus;
   getTorrentDownloadLink(torrent: ITorrent): string;
-  getTorrentInfoForVerification(torrent: ITorrent): ITorrentInfoForVerification;
-
-  getClientTorrents(downloaderId: string): CTorrent[];
-  getClientTorrentTrackers(data: { downloaderId: string; torrent: CTorrent }): string[];
-  deleteClientTorrent(data: { downloaderId: string; id: any; removeData?: boolean }): boolean;
-  pauseClientTorrent(data: { downloaderId: string; id: any }): boolean;
-  resumeClientTorrent(data: { downloaderId: string; id: any }): boolean;
-  recheckClientTorrent(data: { downloaderId: string; id: any }): boolean;
-  moveClientTorrentInQueue(data: { downloaderId: string; id: any; direction: TorrentQueueDirection }): boolean;
-  setClientTorrentSpeedLimit(data: { downloaderId: string; id: any; limits: TorrentSpeedLimit }): boolean;
-  setClientTorrentLabel(data: { downloaderId: string; id: any; label: string }): boolean;
-
-  // 下载器能力元数据（feature 声明，UI 据此渲染文件/peers/tracker 面板）
-  getDownloaderMetaData(downloaderId: string): TorrentClientMetaData | undefined;
-
-  // 文件级 / peers / tracker 管理
-  getClientTorrentFiles(data: { downloaderId: string; torrent: CTorrent }): CTorrentFile[];
-  setClientTorrentFilePriority(data: {
-    downloaderId: string;
-    torrent: CTorrent;
-    selections: CTorrentFileSelection[];
-  }): boolean;
-  getClientTorrentPeers(data: { downloaderId: string; torrent: CTorrent }): CTorrentPeer[];
-  getClientTorrentTrackersDetail(data: { downloaderId: string; torrent: CTorrent }): CTorrentTracker[];
-  addClientTorrentTracker(data: { downloaderId: string; torrent: CTorrent; url: string }): boolean;
-  removeClientTorrentTracker(data: { downloaderId: string; torrent: CTorrent; url: string }): boolean;
-
   downloadTorrent(data: IDownloadTorrentOption): IDownloadTorrentResult;
-
-  getDownloadHistory(): ITorrentDownloadMetadata[];
-  getDownloadHistoryById(downloadId: TTorrentDownloadKey): ITorrentDownloadMetadata;
-  setDownloadHistoryStatus(data: { downloadId: TTorrentDownloadKey; status: TTorrentDownloadStatus }): void;
-  deleteDownloadHistoryById(downloadId: TTorrentDownloadKey): void;
-  clearDownloadHistory(): void;
-
   // 2.4 用户信息 ( utils/userInfo )
   getSiteUserInfoResult(siteId: TSiteID): IUserInfo;
   setSiteLastUserInfo(userInfo: IUserInfo): void;
@@ -181,25 +78,11 @@ interface ProtocolMap extends TMessageMap {
   getSiteUserInfo(siteId: TSiteID): Record<string, IUserInfo>;
   removeSiteUserInfo(data: { siteId: TSiteID; date: string[] }): void;
 
-  // 2.5 社交信息 ( utils/socialInformation )
-  getSocialInformation(data: { site: TSupportSocialSite$1; sid: string }): ISocialInformation;
-  // 判断 URL 命中的社交站点（供 content-script 引导做轻量预筛，避免把 social 包打进引导，见 issue #1467）
-  matchSocialPage(url: string): TSupportSocialSite$1 | null;
-
   /**
    * content-script 引导用：判断该 URL 命中哪个站点，以及该站点是否允许注入。
    * 只需 host → siteId 一项判断，因此不再把整份 metadata store 搬到页面上下文。
    */
   matchSitePage(url: string): { siteId: TSiteID; allowContentScript: boolean } | null;
-  getSocialRecommendations(data?: {
-    flush?: boolean;
-    enrichment?: "all" | "none" | "visible";
-  }): ISocialRecommendationsResult;
-  getSocialRecommendationItem(data: { item: ISocialRecommendationItem; enrichment?: "all" | "visible" }): {
-    item: ISocialRecommendationItem;
-  };
-  clearSocialInformationCache(): void;
-
   // 2.6 备份/恢复 ( utils/backup )
   exportBackupData(data: { backupServerId: string | "local"; backupFields: TBackupFields[] }): boolean;
   getBackupHistory(data: string): IBackupFileInfo[];
@@ -208,27 +91,9 @@ interface ProtocolMap extends TMessageMap {
   restoreBackupData(data: { restoreData: IBackupData; restoreOptions?: IRestoreOptions }): boolean;
   getRemoteBackupData(data: { backupServerId: string; path: string; decryptKey?: string }): IBackupData;
 
-  // 2.7 辅种任务 ( utils/keepUploadTask )
-  getKeepUploadTasks(): IKeepUploadTask[];
-  getKeepUploadTaskById(taskId: TKeepUploadTaskKey): IKeepUploadTask;
-  createKeepUploadTask(task: IKeepUploadTask): void;
-  updateKeepUploadTask(task: IKeepUploadTask): void;
-  deleteKeepUploadTask(taskId: TKeepUploadTaskKey): void;
-  clearKeepUploadTasks(): void;
-
-  // 2.8 种子收藏 ( utils/torrentFavorite )
-  getTorrentFavorites(): ITorrentFavoriteItem[];
-  createTorrentFavorites(data: { torrents: ITorrent[]; favCategories?: string[]; comment?: string }): number;
-  deleteTorrentFavorites(keys: TTorrentFavoriteKey[]): void;
-
   // 2.9 Lightweight list queries (for CLI discovery)
   getSiteList(): Array<{ id: string; name: string; url: string; offline: boolean }>;
   getDownloaderList(): Array<{ id: string; name: string; type: string; enabled: boolean; address: string }>;
-
-  // 2.10 Native messaging bridge control
-  nativeBridgeGetStatus(): BridgeStatus;
-  nativeBridgeSetEnabled(data: boolean): BridgeStatus;
-  nativeBridgeReconnect(): BridgeStatus;
 }
 
 // 全局消息处理函数映射

@@ -12,7 +12,6 @@ import { copyTextToClipboard, doKeywordSearch, siteInstance, wrapperConfirmFn, t
 
 import AdvanceListModuleDialog from "../components/AdvanceListModuleDialog.vue";
 import SpeedDialBtn from "../components/SpeedDialBtn.vue";
-import TorrentFavoriteDialog from "@/options/components/TorrentFavoriteDialog.vue";
 
 const metadataStore = useMetadataStore();
 const runtimeStore = useRuntimeStore();
@@ -112,42 +111,13 @@ async function handleSearch() {
 
   doKeywordSearch(keywords);
 }
-
-// 收藏（当前页面解析出的全部种子，或高级列表中勾选的种子）
-const favoriteTorrents = shallowRef<ITorrent[]>([]);
-const showFavoriteDialog = ref<boolean>(false);
-
-function openFavoriteDialog(torrents: ITorrent[]) {
-  if (torrents.length === 0) {
-    return;
-  }
-  favoriteTorrents.value = torrents;
-  showFavoriteDialog.value = true;
-}
-
-function handleFavoriteMulti() {
-  parseListPage().then(({ torrents }) => openFavoriteDialog(torrents));
-}
-
-function handleFavoriteSelected(torrents: ITorrent[]) {
-  showAdvanceListModuleDialog.value = false;
-  openFavoriteDialog(torrents);
-}
 </script>
 
 <template>
-  <!-- SpeedDial 中越靠前的按钮越靠近主按钮（视觉上越靠下），收藏放在最下面 -->
-  <SpeedDialBtn
-    key="favorite"
-    color="amber"
-    icon="mdi-star-plus"
-    :title="t('contentScript.favoriteTorrents')"
-    @click="handleFavoriteMulti"
-  />
   <SpeedDialBtn
     key="save"
     :loading="localDownloadMultiStatus"
-    color="light-blue"
+    color="primary"
     icon="mdi-content-save-all"
     :title="t('downloaderLabel.localDownload')"
     @click="wrapperConfirmFn(handleLocalDownloadMulti)"
@@ -155,7 +125,7 @@ function handleFavoriteSelected(torrents: ITorrent[]) {
   <SpeedDialBtn
     key="copy"
     :loading="linkCopyMultiStatus"
-    color="light-blue"
+    color="primary"
     icon="mdi-content-copy"
     :title="t('contentScript.copyLink')"
     @click="wrapperConfirmFn(handleLinkCopyMulti)"
@@ -163,7 +133,7 @@ function handleFavoriteSelected(torrents: ITorrent[]) {
   <SpeedDialBtn
     key="download"
     :disabled="enabledDownloadersBySite.length === 0"
-    color="light-blue"
+    color="primary"
     icon="mdi-cloud-download"
     :title="t('contentScript.pushTo')"
     @click="() => handleRemoteDownloadMulti()"
@@ -172,34 +142,27 @@ function handleFavoriteSelected(torrents: ITorrent[]) {
     key="download_default"
     v-if="metadataStore.defaultDownloader?.id"
     :disabled="enabledDownloadersBySite.length === 0"
-    color="light-blue"
+    color="success"
     icon="mdi-download"
     :title="t('contentScript.pushToDefault')"
     @click="() => handleRemoteDownloadMulti(true)"
   />
-
   <SpeedDialBtn
     key="advance"
-    color="indigo"
+    color="secondary"
     icon="mdi-checkbox-multiple-marked"
     :title="t('contentScript.advanceList')"
     @click="handleAdvanceListModule"
   />
   <SpeedDialBtn
     key="search"
-    color="indigo"
+    color="secondary"
     icon="mdi-home-search"
     :title="t('contentScript.quickSearch')"
     @click="handleSearch"
   />
 
-  <AdvanceListModuleDialog
-    v-model="showAdvanceListModuleDialog"
-    :torrent-items="parsedTorrents"
-    @favorite="handleFavoriteSelected"
-  />
-
-  <TorrentFavoriteDialog v-model="showFavoriteDialog" :torrent-items="favoriteTorrents" />
+  <AdvanceListModuleDialog v-model="showAdvanceListModuleDialog" :torrent-items="parsedTorrents" />
 </template>
 
 <style scoped lang="scss"></style>

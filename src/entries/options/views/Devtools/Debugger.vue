@@ -14,7 +14,6 @@ import {
 } from "@ptd/site";
 
 import { getDownloader } from "@ptd/downloader";
-import { getMediaServer } from "@ptd/mediaServer";
 import { getBackupServer } from "@ptd/backupServer";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
@@ -56,7 +55,6 @@ const metadataStore = useMetadataStore();
 
 const simpleServer = ref<Record<string, { selected: string; piniaKey: keyof typeof metadataStore; getFn: Function }>>({
   Downloader: { selected: "", piniaKey: "downloaders", getFn: getDownloader },
-  MediaServer: { selected: "", piniaKey: "mediaServers", getFn: getMediaServer },
   BackupServer: { selected: "", piniaKey: "backupServers", getFn: getBackupServer },
 });
 
@@ -143,31 +141,9 @@ const resetItems = computed<resetItem[]>(() => [
     },
   },
   {
-    title: t("Debugger.resetItems.clearDownloadHistory"),
-    resetFn: async () => {
-      await sendMessage("clearDownloadHistory", undefined);
-    },
-  },
-  {
     title: t("Debugger.resetItems.clearFaviconCache"),
     resetFn: async () => {
       await sendMessage("clearSiteFaviconCache", undefined);
-    },
-  },
-  {
-    title: t("Debugger.resetItems.clearMediaCache"),
-    resetFn: async () => {
-      await sendMessage("clearSocialInformationCache", undefined);
-    },
-  },
-  {
-    title: t("Debugger.resetItems.clearSearchSnapshot"),
-    subTitle: t("Debugger.resetItems.clearSearchSnapshotDesc"),
-    resetFn: async () => {
-      const metadataStore = useMetadataStore();
-      metadataStore.snapshots = {};
-      await metadataStore.$save();
-      await sendMessage("setExtStorage", { key: "searchResultSnapshot", value: {} });
     },
   },
 ]);

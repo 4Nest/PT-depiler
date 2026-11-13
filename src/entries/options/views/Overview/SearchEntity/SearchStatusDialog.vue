@@ -62,22 +62,24 @@ const filteredSearchPlan = computed(() => {
 <template>
   <v-dialog v-model="showDialog" max-width="800" scrollable>
     <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <div>
+          <div class="text-subtitle-1 font-weight-bold">
             {{
               t("SearchEntity.SearchStatusDialog.title", [
                 metadataStore.getSearchSolutionName(runtimeStore.search.searchPlanKey),
               ])
             }}
-            <br />
-            <p class="text-body-small"><{{ runtimeStore.search.searchPlanKey }}></p>
-          </v-toolbar-title>
-
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
-          </template>
-        </v-toolbar>
+          </div>
+          <div class="text-caption text-medium-emphasis">&lt;{{ runtimeStore.search.searchPlanKey }}&gt;</div>
+        </div>
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          :title="t('common.dialog.close')"
+          @click="showDialog = false"
+        />
       </v-card-title>
       <v-divider />
       <v-card-text>
@@ -102,7 +104,7 @@ const filteredSearchPlan = computed(() => {
             <v-list-item-title>
               <div class="d-inline-flex">
                 <SiteName
-                  :class="['text-decoration-none', 'font-weight-bold', 'text-black']"
+                  :class="['text-decoration-none', 'font-weight-bold', 'text-high-emphasis']"
                   :site-id="searchPlan.siteId"
                 />
                 ->

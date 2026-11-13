@@ -50,40 +50,42 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
 </script>
 
 <template>
-  <v-alert :title="t('route.About.Logger')" type="info" />
+  <v-card>
+    <v-card-title class="pa-4 border-b d-flex align-center justify-space-between">
+      <span class="text-subtitle-1 font-weight-bold">{{ t("route.About.Logger") }}</span>
+    </v-card-title>
+    <v-data-table
+      ref="fitTableRef"
+      :class="fitTableClass"
+      :headers="fittedHeaders"
+      :items="logger"
+      :sort-by="[{ key: 'time', order: 'desc' }]"
+      class="table-stripe table-header-no-wrap"
+      hover
+      must-sort
+    >
+      <template #item.id="{ item }">
+        <code class="text-no-wrap">{{ item.id }}</code>
+      </template>
 
-  <v-data-table
-    ref="fitTableRef"
-    :class="fitTableClass"
-    :headers="fittedHeaders"
-    :items="logger"
-    :sort-by="[{ key: 'time', order: 'desc' }]"
-    class="table-stripe table-header-no-wrap"
-    hover
-    must-sort
-  >
-    <template #item.id="{ item }">
-      <code class="text-no-wrap">{{ item.id }}</code>
-    </template>
+      <template #item.time="{ item }">
+        <span class="text-no-wrap ptd-num">{{ formatDate(item.time!) }}</span>
+      </template>
 
-    <template #item.time="{ item }">
-      <span class="text-no-wrap">{{ formatDate(item.time!) }}</span>
-    </template>
-
-    <template #item.action="{ item }">
-      <v-btn-group class="table-action" density="compact" variant="plain">
-        <v-btn
-          :title="t('Logger.action.details')"
-          :disabled="typeof item.data === 'undefined'"
-          color="info"
-          size="small"
-          icon="mdi-archive-search"
-          @click="showLogDataDialogHandler(item.data)"
-        />
-      </v-btn-group>
-    </template>
-  </v-data-table>
-
+      <template #item.action="{ item }">
+        <v-btn-group class="table-action" density="compact" variant="text">
+          <v-btn
+            :title="t('Logger.action.details')"
+            :disabled="typeof item.data === 'undefined'"
+            color="primary"
+            size="small"
+            icon="mdi-archive-search"
+            @click="showLogDataDialogHandler(item.data)"
+          />
+        </v-btn-group>
+      </template>
+    </v-data-table>
+  </v-card>
   <v-dialog v-model="showLogDataDialog" max-width="800px">
     <v-card>
       <v-card-text>

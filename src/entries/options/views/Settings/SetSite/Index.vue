@@ -185,11 +185,16 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
 </script>
 
 <template>
-  <v-alert :title="t('route.Settings.SetSite')" type="info" />
   <v-card class="set-site">
-    <v-card-title>
-      <v-row gap="0" class="ma-0">
-        <NavButton :text="t('common.btn.add')" color="success" icon="mdi-plus" @click="showAddDialog = true" />
+    <v-card-title class="pa-4 border-b">
+      <div class="d-flex flex-wrap align-center ga-2">
+        <NavButton
+          :text="t('common.btn.add')"
+          color="primary"
+          variant="flat"
+          icon="mdi-plus"
+          @click="showAddDialog = true"
+        />
 
         <NavButton
           :disabled="tableSelected.length === 0"
@@ -199,29 +204,29 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
           @click="deleteSite(tableSelected)"
         />
 
-        <v-divider class="mx-2" inset vertical />
+        <v-divider class="mx-1" vertical />
 
         <NavButton
-          color="info"
+          color="secondary"
           icon="mdi-crosshairs-gps"
           :text="t('SetSite.index.oneClickImport')"
           @click="() => (showOneClickImportDialog = true)"
         />
 
-        <v-divider class="mx-2" inset vertical />
+        <v-divider class="mx-1" vertical />
 
         <NavButton
           :disabled="tableSelected.length === 0"
           :loading="isFaviconFlushing"
           :text="t('SetSite.index.table.flushFavicon')"
-          color="indigo"
+          color="secondary"
           icon="mdi-face-recognition"
           @click="() => flushSiteFavicon(tableSelected)"
         />
 
         <NavButton
           :text="t('SetSite.index.reBuildMap')"
-          color="indigo"
+          color="secondary"
           icon="mdi-wrench"
           @click="showRebuildMapDialog = true"
         />
@@ -281,9 +286,8 @@ const { tableRef: fitTableRef, fittedHeaders, tableClass: fitTableClass } = useT
             </v-menu>
           </template>
         </v-text-field>
-      </v-row>
+      </div>
     </v-card-title>
-
     <v-data-table
       ref="fitTableRef"
       :class="fitTableClass"

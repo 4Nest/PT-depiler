@@ -1,6 +1,5 @@
 import { computed, shallowRef, ref, toValue } from "vue";
 import { uniq } from "es-toolkit";
-import type { TSupportSocialSite } from "@ptd/social";
 import { getSite as createSiteInstance } from "@ptd/site";
 import type BittorrentSite from "@ptd/site/schemas/AbstractBittorrentSite.ts";
 
@@ -8,18 +7,16 @@ import { sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 
-import SocialSitePage from "./pages/SocialSitePage.vue";
 import SiteListPage from "./pages/SiteListPage.vue";
 import SiteDetailPage from "./pages/SiteDetailPage.vue";
 import { useConfigStore } from "@/options/stores/config.ts";
 
 export const siteInstance = shallowRef<BittorrentSite>();
 
-type TPageType = "unknown" | "social" | "list" | "detail";
+type TPageType = "unknown" | "list" | "detail";
 
 export interface IPtdData {
   siteId?: string;
-  socialSite?: TSupportSocialSite;
   [key: string]: any;
 }
 
@@ -31,9 +28,7 @@ export async function updatePageType(ptdData: IPtdData = {}) {
   pageType.value = "unknown"; // 重置为 unknown
   const url = location.href;
 
-  if (ptdData.socialSite) {
-    pageType.value = "social";
-  } else if (ptdData.siteId) {
+  if (ptdData.siteId) {
     const siteConfig = await metadataStore.getSiteUserConfig(ptdData.siteId);
     siteInstance.value = await createSiteInstance(ptdData.siteId, siteConfig);
 
@@ -139,7 +134,6 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
  */
 const routes: Record<TPageType, any> = {
   unknown: "div",
-  social: SocialSitePage,
   list: SiteListPage,
   detail: SiteDetailPage,
 };

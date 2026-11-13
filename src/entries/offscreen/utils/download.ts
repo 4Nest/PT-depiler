@@ -9,22 +9,13 @@ import {
   getDownloaderMetaData,
   getRemoteTorrentFile,
   type CAddTorrentOptions,
-  type CTorrent,
-  type CTorrentFile,
-  type CTorrentFileSelection,
-  type CTorrentPeer,
-  type CTorrentTracker,
   type TorrentClientStatus,
-  type TorrentQueueDirection,
-  type TorrentSpeedLimit,
 } from "@ptd/downloader";
 import type { ITorrent } from "@ptd/site";
 
 import { onMessage, sendMessage } from "@/messages.ts";
 import type {
   IConfigPiniaStorageSchema,
-  ITorrentDownloadMetadata,
-  TTorrentDownloadKey,
   IDownloaderMetadata,
   IMetadataPiniaStorageSchema,
   TTorrentDownloadStatus,
@@ -35,13 +26,14 @@ import type {
 
 import { logger } from "./logger.ts";
 import { getSiteInstance } from "./site.ts";
-import { ptdIndexDb } from "../adapter/indexdb.ts";
 
 type TLocalDownloadOption = AugmentedRequired<IDownloadTorrentOption, "downloadId" | "localDownloadMethod">;
 type TRemoteDownloadOption = AugmentedRequired<
   IDownloadTorrentOption,
   "downloadId" | "downloaderId" | "addTorrentOptions"
 >;
+
+let nextDownloadTaskId = 1;
 
 export async function getDownloaderConfig(downloaderId: string) {
   const metadataStore = (await sendMessage("getExtStorage", "metadata")) as IMetadataPiniaStorageSchema;
@@ -115,48 +107,6 @@ export async function getTorrentDownloadLink(torrent: ITorrent) {
 
 onMessage("getTorrentDownloadLink", async ({ data: torrent }) => await getTorrentDownloadLink(torrent));
 
-export async function getTorrentInfoForVerification(torrent: ITorrent) {
-  const downloadUrl = await getTorrentDownloadLink(torrent);
-  const siteInstance = await getSiteInstance<"public">(torrent.site);
-
-  const downloadRequestConfig = await siteInstance.getTorrentDownloadRequestConfig(torrent);
-  downloadRequestConfig.url = downloadUrl;
-  downloadRequestConfig.responseType = "arraybuffer";
-
-  const parsedTorrent = await getRemoteTorrentFile(downloadRequestConfig);
-
-  // 返回可序列化的种子信息
-  return {
-    infoHash: (parsedTorrent as unknown as { infoHash: string }).infoHash ?? "",
-    name: parsedTorrent.info.name ?? "unknown",
-    length: parsedTorrent.info.length ?? 0,
-    files: (parsedTorrent.info.files || []).map((f) => ({
-      path: f.path,
-      length: f.length,
-    })),
-  };
-}
-
-onMessage("getTorrentInfoForVerification", async ({ data: torrent }) => await getTorrentInfoForVerification(torrent));
-
-onMessage("getClientTorrents", async ({ data: downloaderId }) => {
-  let downloaderTorrents: CTorrent[] = [];
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    downloaderTorrents = await downloaderInstance.getAllTorrents();
-  }
-  return downloaderTorrents;
-});
-
-onMessage("getClientTorrentTrackers", async ({ data: { downloaderId, torrent } }) => {
-  let downloaderTrackers: string[] = [];
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    downloaderTrackers = await downloaderInstance.getTorrentTrackers(torrent);
-  }
-  return downloaderTrackers;
-});
-
 // 下载器能力元数据（feature 声明）
 onMessage("getDownloaderMetaData", async ({ data: downloaderId }) => {
   const downloaderConfig = await getDownloaderConfig(downloaderId);
@@ -166,186 +116,31 @@ onMessage("getDownloaderMetaData", async ({ data: downloaderId }) => {
   return await getDownloaderMetaData(downloaderConfig.type);
 });
 
-// 文件列表
-onMessage("getClientTorrentFiles", async ({ data: { downloaderId, torrent } }) => {
-  let files: CTorrentFile[] = [];
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    files = await downloaderInstance.getTorrentFiles(torrent);
-  }
-  return files;
-});
-
-// 文件优先级/选择
-onMessage("setClientTorrentFilePriority", async ({ data: { downloaderId, torrent, selections } }) => {
-  let result = false;
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    result = await downloaderInstance.setTorrentFilePriority(torrent, selections);
-  }
-  return result;
-});
-
-// peer 列表
-onMessage("getClientTorrentPeers", async ({ data: { downloaderId, torrent } }) => {
-  let peers: CTorrentPeer[] = [];
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    peers = await downloaderInstance.getTorrentPeers(torrent);
-  }
-  return peers;
-});
-
-// tracker 列表（带状态）
-onMessage("getClientTorrentTrackersDetail", async ({ data: { downloaderId, torrent } }) => {
-  let trackers: CTorrentTracker[] = [];
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    trackers = await downloaderInstance.getTorrentTrackersDetail(torrent);
-  }
-  return trackers;
-});
-
-// 新增 tracker
-onMessage("addClientTorrentTracker", async ({ data: { downloaderId, torrent, url } }) => {
-  let result = false;
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    result = await downloaderInstance.addTorrentTracker(torrent, url);
-  }
-  return result;
-});
-
-// 删除 tracker
-onMessage("removeClientTorrentTracker", async ({ data: { downloaderId, torrent, url } }) => {
-  let result = false;
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    result = await downloaderInstance.removeTorrentTracker(torrent, url);
-  }
-  return result;
-});
-
-onMessage("deleteClientTorrent", async ({ data: { downloaderId, id, removeData } }) => {
-  let deleteStatus: boolean = false;
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    deleteStatus = await downloaderInstance.removeTorrent(id, removeData ?? false);
-  }
-  return deleteStatus;
-});
-
-onMessage("pauseClientTorrent", async ({ data: { downloaderId, id } }) => {
-  let pauseStatus: boolean = false;
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    pauseStatus = await downloaderInstance.pauseTorrent(id);
-  }
-
-  return pauseStatus;
-});
-
-onMessage("resumeClientTorrent", async ({ data: { downloaderId, id } }) => {
-  let resumeStatus: boolean = false;
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    resumeStatus = await downloaderInstance.resumeTorrent(id);
-  }
-
-  return resumeStatus;
-});
-
-onMessage("recheckClientTorrent", async ({ data: { downloaderId, id } }) => {
-  let recheckStatus: boolean = false;
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    recheckStatus = await downloaderInstance.recheckTorrent(id);
-  }
-
-  return recheckStatus;
-});
-
-onMessage("moveClientTorrentInQueue", async ({ data: { downloaderId, id, direction } }) => {
-  let moveStatus: boolean = false;
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    moveStatus = await downloaderInstance.moveTorrentInQueue(id, direction as TorrentQueueDirection);
-  }
-
-  return moveStatus;
-});
-
-onMessage("setClientTorrentSpeedLimit", async ({ data: { downloaderId, id, limits } }) => {
-  let limitStatus: boolean = false;
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    limitStatus = await downloaderInstance.setTorrentSpeedLimit(id, limits as TorrentSpeedLimit);
-  }
-
-  return limitStatus;
-});
-
-onMessage("setClientTorrentLabel", async ({ data: { downloaderId, id, label } }) => {
-  let labelStatus: boolean = false;
-  const downloaderInstance = await getDownloaderInstance(downloaderId);
-  if (downloaderInstance) {
-    labelStatus = await downloaderInstance.setTorrentLabel(id, label);
-  }
-
-  return labelStatus;
-});
-
-function buildDownloadHistory(downloadOption: IDownloadTorrentOption): ITorrentDownloadMetadata {
-  const { torrent = {}, downloaderId = "local" } = downloadOption;
-  return {
-    ...downloadOption,
-    siteId: torrent.site ?? "unknown",
-    torrentId: torrent.id ?? "unknown",
-    downloaderId,
-    title: torrent.title ?? "unknown",
-    subTitle: torrent.subTitle,
-    url: torrent.url,
-    link: torrent.link,
-    downloadAt: +Date.now(),
-    downloadStatus: "pending",
-  } as ITorrentDownloadMetadata;
-}
-
 const lastSiteDownloadAt = new Map<string, number>();
 
-async function isAllowedSaveDownloadHistory(): Promise<boolean> {
-  const configStoreRaw = (await sendMessage("getExtStorage", "config")) as IConfigPiniaStorageSchema;
-  return configStoreRaw?.download?.saveDownloadHistory ?? true;
-}
-
-async function downloadTorrent(downloadOption: IDownloadTorrentOption) {
+async function downloadTorrent(downloadOption: IDownloadTorrentOption): Promise<IDownloadTorrentResult> {
   const configStoreRaw = (await sendMessage("getExtStorage", "config")) as IConfigPiniaStorageSchema;
 
   // 0. 解析传来的下载参数
   const { torrent, downloaderId = "local", addTorrentOptions = {} as CAddTorrentOptions } = downloadOption;
-  const isDownloadToLocalFile: boolean = downloaderId === "local"; // 如果前端没有传入下载器的id，则认为下载为本地文件
+  const isDownloadToLocalFile: boolean = downloaderId === "local";
 
-  // 1. 生成下载历史
-  let downloadId = downloadOption.downloadId!;
-  if (typeof downloadOption.downloadId === "undefined") {
-    const downloadHistory = buildDownloadHistory(downloadOption);
-    downloadOption.downloadId = downloadId = await setDownloadHistory(downloadHistory);
-  }
-  logger({ msg: `generate download torrent task #${downloadOption.downloadId}`, data: downloadOption });
-  let downloadStatus = await setDownloadStatus(downloadId!, "pending");
+  // 1. 分配内存级递增任务号，追踪单次下载与站点间隔延迟重排
+  const downloadId = downloadOption.downloadId ?? nextDownloadTaskId++;
+  downloadOption.downloadId = downloadId;
+  logger({ msg: `generate download torrent task #${downloadId}`, data: downloadOption });
+
+  let downloadStatus: TTorrentDownloadStatus = "pending";
   let errorMessage: string | undefined;
 
   // 2. 构建下载链接的请求配置
   let downloadRequestConfig: AxiosRequestConfig = { url: torrent.link, method: "GET", timeout: 30e3 };
-  let siteInstance: Awaited<ReturnType<typeof getSiteInstance<"public">>> | null = null;
 
   if (torrent.site) {
-    // 生成站点，并检查站点下载间隔，如果触及到站点下载间隔，则将下载任务放入到 alarms 中等待
-    siteInstance = await getSiteInstance<"public">(torrent.site);
+    const siteInstance = await getSiteInstance<"public">(torrent.site);
 
     if (
       siteInstance.downloadInterval > 0 &&
-      // 允许本地下载时忽略站点设置中的下载间隔
       !(isDownloadToLocalFile && configStoreRaw?.download?.ignoreSiteDownloadIntervalWhenLocalDownload)
     ) {
       const leftInterval =
@@ -356,14 +151,13 @@ async function downloadTorrent(downloadOption: IDownloadTorrentOption) {
         sendMessage("reDownloadTorrent", { ...downloadOption, downloadId, leftInterval }).catch();
         return {
           downloadId,
-          downloadStatus: await setDownloadStatus(downloadId, "pending"),
-        } as IDownloadTorrentResult;
+          downloadStatus: "pending",
+        };
       }
 
       lastSiteDownloadAt.set(torrent.site, new Date().getTime());
     }
 
-    // 添加站点配置的上传速度限制
     if (!isDownloadToLocalFile && (siteInstance.userConfig?.uploadSpeedLimit ?? 0) > 0) {
       addTorrentOptions.uploadSpeedLimit = siteInstance.userConfig.uploadSpeedLimit;
     }
@@ -373,12 +167,10 @@ async function downloadTorrent(downloadOption: IDownloadTorrentOption) {
       await siteInstance.getTorrentDownloadRequestConfig(torrent as ITorrent),
     );
   }
-  await patchDownloadHistory(downloadId!, { downloadRequestConfig }).catch(); // 存储下载请求配置，方便后续调试
 
   try {
-    downloadStatus = await setDownloadStatus(downloadId, "downloading");
+    downloadStatus = "downloading";
     if (isDownloadToLocalFile) {
-      // 本地下载
       downloadOption.localDownloadMethod ??= configStoreRaw?.download?.localDownloadMethod ?? "web";
       const localResult = await downloadTorrentToLocalFile(
         downloadOption as TLocalDownloadOption,
@@ -387,10 +179,9 @@ async function downloadTorrent(downloadOption: IDownloadTorrentOption) {
       downloadStatus = localResult.downloadStatus;
       errorMessage = localResult.errorMessage;
     } else {
-      // 远程推送
-      addTorrentOptions.localDownload ??= true; // 默认开启本地中转选项（如果传递进来的没有 localDownload 值的话）
+      addTorrentOptions.localDownload ??= true;
       if (!(configStoreRaw?.download?.allowDirectSendToClient ?? false)) {
-        addTorrentOptions.localDownload = true; // 如果不允许直接发送到下载器，则将本地中转选项强行设置为 true
+        addTorrentOptions.localDownload = true;
       }
       downloadOption.addTorrentOptions = addTorrentOptions;
       const remoteResult = await downloadTorrentToRemote(
@@ -405,14 +196,7 @@ async function downloadTorrent(downloadOption: IDownloadTorrentOption) {
     errorMessage = getErrorMessage(e);
   }
 
-  await setDownloadStatus(downloadId, downloadStatus);
-  if (errorMessage) {
-    // 将失败原因写入下载历史，方便在下载历史页面定位问题（见 issue #1430）
-    await patchDownloadHistory(downloadId, { errorMessage }).catch(() => {
-      logger({ msg: `Failed to persist errorMessage for download task #${downloadId}` });
-    });
-  }
-  return { downloadId, downloadStatus, errorMessage } as IDownloadTorrentResult;
+  return { downloadId, downloadStatus, errorMessage };
 }
 
 onMessage("downloadTorrent", async ({ data: downloadOption }) => await downloadTorrent(downloadOption));
@@ -421,32 +205,29 @@ async function downloadTorrentToLocalFile(
   downloadOption: TLocalDownloadOption,
   downloadRequestConfig: AxiosRequestConfig,
 ): Promise<Pick<IDownloadTorrentResult, "downloadStatus" | "errorMessage">> {
-  let { torrent, localDownloadMethod = "web", downloadId } = downloadOption;
+  let { torrent, localDownloadMethod = "web" } = downloadOption;
   let downloadStatus: TTorrentDownloadStatus = "downloading";
   let errorMessage: string | undefined;
 
-  const downloadUri = axios.getUri(downloadRequestConfig); // 组装 baseURL, url, params
+  const downloadUri = axios.getUri(downloadRequestConfig);
   const {
     method: downloadMethod = "GET",
     data: downloadData = {},
     headers: downloadHeaders = {} as Record<string, string>,
   } = downloadRequestConfig;
 
-  // 如果设置为 web 方法，且没有 headers 的情况，直接使用 window.open 方法
   if (localDownloadMethod === "web") {
     if (downloadMethod.toUpperCase() === "GET" && isEmpty(downloadHeaders)) {
       logger({ msg: `Download torrent file with web method: ${downloadUri}` });
       window.open(downloadUri, "_blank");
-      return { downloadStatus: await setDownloadStatus(downloadId, "completed"), errorMessage };
+      return { downloadStatus: "completed", errorMessage };
     } else {
-      localDownloadMethod = "extension"; // 如果是不能直接使用 window.open 方法的情况，直接使用 extension 方法
+      localDownloadMethod = "extension";
     }
   }
 
-  // 如果设置为 extension，直接使用 chrome.downloads 方法
   if (localDownloadMethod === "browser" && ["GET", "POST"].includes(downloadMethod.toUpperCase())) {
     try {
-      // 将 AxiosRequestConfig 转换为 chrome.downloads.DownloadOptions， 我们在这里只考虑 method, body, headers
       const downloadOptions: chrome.downloads.DownloadOptions = {
         url: downloadUri,
         conflictAction: "uniquify",
@@ -463,15 +244,14 @@ async function downloadTorrentToLocalFile(
 
       logger({ msg: `Download torrent file with browser method: ${downloadUri}`, data: downloadOptions });
       await sendMessage("downloadFile", downloadOptions);
-      return { downloadStatus: await setDownloadStatus(downloadId, "completed"), errorMessage };
+      return { downloadStatus: "completed", errorMessage };
     } catch (e) {
-      localDownloadMethod = "extension"; // 如果下载失败，直接使用 extension 方法（怎么可能？）
+      localDownloadMethod = "extension";
     }
   } else {
-    localDownloadMethod = "extension"; // 如果还是不能使用的情况（怎么可能？），则直接使用 extension 方法
+    localDownloadMethod = "extension";
   }
 
-  // 如果设置为 extension，其次考虑使用 getRemoteTorrentFile 转为 Blob 再调用 chrome.downloads
   if (localDownloadMethod === "extension") {
     try {
       logger({ msg: `Download torrent file with extension method: ${downloadUri}`, data: downloadRequestConfig });
@@ -480,15 +260,14 @@ async function downloadTorrentToLocalFile(
       const torrentUrl = URL.createObjectURL(torrentInstance.metadata.blob());
       let filename = torrentInstance.name;
       if (filename === "1.torrent") {
-        // 如果文件名是缺省的 1.torrent，那么使用种子属性中的站点名和标题作为文件名
         filename = `[${torrent.site}] ${torrent.title}.torrent`;
       }
 
       await sendMessage("downloadFile", { url: torrentUrl, filename, conflictAction: "uniquify" });
-      downloadStatus = await setDownloadStatus(downloadId, "completed");
+      downloadStatus = "completed";
       URL.revokeObjectURL(torrentUrl);
     } catch (e) {
-      downloadStatus = await setDownloadStatus(downloadId, "failed");
+      downloadStatus = "failed";
       errorMessage = getErrorMessage(e);
     }
   }
@@ -500,8 +279,8 @@ async function downloadTorrentToRemote(
   downloadOption: TRemoteDownloadOption,
   downloadRequestConfig: AxiosRequestConfig,
 ): Promise<Pick<IDownloadTorrentResult, "downloadStatus" | "errorMessage">> {
-  const { torrent, downloaderId, addTorrentOptions, downloadId } = downloadOption;
-  let downloadStatus: TTorrentDownloadStatus = "failed"; // 远程推送默认失败状态
+  const { torrent, downloaderId, addTorrentOptions } = downloadOption;
+  let downloadStatus: TTorrentDownloadStatus = "failed";
   let errorMessage: string | undefined;
 
   const downloaderConfig = await getDownloaderConfig(downloaderId);
@@ -514,7 +293,7 @@ async function downloadTorrentToRemote(
       addTorrentOptions.localDownloadOption = downloadRequestConfig;
     }
 
-    const loggerData = { torrent, downloaderId, downloadRequestConfig, addTorrentOptions } as Record<string, any>;
+    const loggerData: Record<string, unknown> = { torrent, downloaderId, downloadRequestConfig, addTorrentOptions };
     try {
       logger({ msg: "downloadTorrentToDownloader", data: loggerData });
       const addTorrentResult = await downloaderInstance.addTorrent(downloadRequestConfig.url!, addTorrentOptions);
@@ -526,7 +305,6 @@ async function downloadTorrentToRemote(
         logger({ msg: "Failed to add torrent to downloader", data: loggerData });
         errorMessage = getErrorMessage(addTorrentResult?.message || "Downloader rejected the torrent");
       }
-      patchDownloadHistory(downloadId, { addTorrentResult }).catch(); // 存储添加种子结果，方便后续调试
     } catch (e) {
       logger({ msg: "Error adding torrent to downloader", data: loggerData });
       errorMessage = getErrorMessage(e);
@@ -547,57 +325,3 @@ function getErrorMessage(error: unknown): string {
     return String(error);
   }
 }
-
-export async function getDownloadHistory() {
-  return await (await ptdIndexDb).getAll("download_history");
-}
-
-onMessage("getDownloadHistory", getDownloadHistory);
-
-export async function getDownloadHistoryById(downloadId: TTorrentDownloadKey) {
-  return await (await ptdIndexDb).get("download_history", downloadId);
-}
-
-onMessage("getDownloadHistoryById", async ({ data: downloadId }) => (await getDownloadHistoryById(downloadId))!);
-
-export async function setDownloadHistory(data: ITorrentDownloadMetadata) {
-  const allowedSave = await isAllowedSaveDownloadHistory();
-  return allowedSave ? await (await ptdIndexDb).put("download_history", data) : 0;
-}
-
-export async function patchDownloadHistory(downloadId: TTorrentDownloadKey, data: Partial<ITorrentDownloadMetadata>) {
-  const allowedSave = await isAllowedSaveDownloadHistory();
-  const downloadHistory = await getDownloadHistoryById(downloadId);
-  if (allowedSave && downloadHistory) {
-    await setDownloadHistory({ ...downloadHistory, ...data });
-  }
-}
-
-async function setDownloadStatus(
-  downloadId: TTorrentDownloadKey,
-  downloadStatus: TTorrentDownloadStatus,
-): Promise<TTorrentDownloadStatus> {
-  await patchDownloadHistory(downloadId, { downloadStatus }).catch();
-  return downloadStatus;
-}
-
-// ⚠️ 这个 handler 曾经缺失：`messages.ts` 有协议声明、`background/utils/alarms.ts` 有两处调用
-// （重下载失败时把下载历史标成 failed），但全仓没有 `onMessage("setDownloadHistoryStatus", ...)`
-// —— 于是那条兜底必然抛「无 handler」，又被调用点紧跟的 `.catch()` 吞掉，
-// 下载历史就停在中途状态，界面上看起来像是还在下载。
-// 注意 handler 不能返回状态值（协议声明的是 void），否则类型检查会拦下来。
-onMessage("setDownloadHistoryStatus", async ({ data }) => {
-  await setDownloadStatus(data.downloadId, data.status);
-});
-
-export async function deleteDownloadHistoryById(downloadId: TTorrentDownloadKey) {
-  return await (await ptdIndexDb).delete("download_history", downloadId);
-}
-
-onMessage("deleteDownloadHistoryById", async ({ data: downloadId }) => await deleteDownloadHistoryById(downloadId));
-
-export async function clearDownloadHistory() {
-  return await (await ptdIndexDb).clear("download_history");
-}
-
-onMessage("clearDownloadHistory", clearDownloadHistory);

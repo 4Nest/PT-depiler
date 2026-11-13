@@ -99,8 +99,8 @@ export function sendTorrentToDownloader(
           runtimeStore.showSnackbar("似乎并没有任务发送到下载器", { color: "warning" });
         }
       })
-      .catch((x) => {
-        runtimeStore.showSnackbar("有任务发送到下载器失败，请在下载历史页面重试", { color: "error" });
+      .catch(() => {
+        runtimeStore.showSnackbar("有任务发送到下载器失败，请检查下载器配置与日志", { color: "error" });
       })
       .finally(() => {
         resolve();

@@ -11,37 +11,12 @@ const metadataStore = useMetadataStore();
 
 async function clearLastDownloader(v: boolean) {
   if (!v) {
-    metadataStore.lastKeepUpload = {};
     await metadataStore.setLastDownloader({});
   }
 }
 </script>
 
 <template>
-  <v-row>
-    <v-col md="10" lg="8">
-      <v-switch
-        v-model="configStore.download.saveDownloadHistory"
-        :label="t('SetBase.download.saveDownloadHistory')"
-        color="success"
-        false-icon="mdi-alert-octagon"
-        hide-details
-      />
-    </v-col>
-  </v-row>
-
-  <v-row>
-    <v-col md="10" lg="8">
-      <v-label>{{ t("SetBase.download.myClientTitle") }}</v-label>
-      <v-switch
-        v-model="configStore.download.initDownloaderTorrentOnEnter"
-        :label="t('SetBase.download.initDownloaderTorrentOnEnter')"
-        color="success"
-        hide-details
-      />
-    </v-col>
-  </v-row>
-
   <v-row>
     <v-col md="10" lg="8">
       <v-label>{{ t("SetBase.download.localDownloadTitle") }}</v-label>

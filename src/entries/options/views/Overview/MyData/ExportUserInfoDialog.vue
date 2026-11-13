@@ -182,20 +182,22 @@ function convertToJSON(items: IHistoryUserInfo[]): string {
 <template>
   <v-dialog v-model="showDialog" width="700">
     <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="orange-darken-3">
-          <v-toolbar-title>
-            <template v-if="isExportSelected">
-              {{ t("MyData.exportDialog.exportSelected", { count: querySiteIds.length }) }}
-            </template>
-            <template v-else>
-              {{ t("MyData.exportDialog.exportAll", { count: querySiteIds.length }) }}
-            </template>
-          </v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <span class="text-subtitle-1 font-weight-bold">
+          <template v-if="isExportSelected">
+            {{ t("MyData.exportDialog.exportSelected", { count: querySiteIds.length }) }}
           </template>
-        </v-toolbar>
+          <template v-else>
+            {{ t("MyData.exportDialog.exportAll", { count: querySiteIds.length }) }}
+          </template>
+        </span>
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          :title="t('common.dialog.close')"
+          @click="showDialog = false"
+        />
       </v-card-title>
       <v-divider />
       <v-card-text class="pt-4">
@@ -204,7 +206,7 @@ function convertToJSON(items: IHistoryUserInfo[]): string {
             <v-label class="text-body-medium font-weight-bold mb-2 d-block">
               {{ t("MyData.exportDialog.formatLabel") }}
             </v-label>
-            <v-btn-toggle v-model="exportFormat" color="orange-darken-3" density="compact" mandatory variant="outlined">
+            <v-btn-toggle v-model="exportFormat" color="primary" density="compact" mandatory variant="outlined">
               <v-btn value="csv">
                 <v-icon start icon="mdi-file-delimited-outline" />
                 {{ t("MyData.exportDialog.formatCSV") }}
@@ -258,8 +260,8 @@ function convertToJSON(items: IHistoryUserInfo[]): string {
         <v-btn
           :disabled="isLoading"
           :loading="isLoading"
-          color="orange-darken-3"
-          variant="elevated"
+          color="primary"
+          variant="flat"
           prepend-icon="mdi-export"
           @click="doExport"
         >

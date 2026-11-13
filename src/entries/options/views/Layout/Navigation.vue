@@ -10,12 +10,10 @@ import { isDebug, REPO_URL } from "~/helper.ts";
 
 const git = __GIT_VERSION__;
 const ext_version = __EXT_VERSION__;
-const year = new Date().getFullYear();
 
 const { t } = useI18n();
 const configStore = useConfigStore();
 
-// 当页面窗口大小发生变化时，调整 Navigation 的显示
 const display = useDisplay();
 watch(display.mdAndUp, () => {
   if (configStore.autoToggleNavBarOnDisplayChange) {
@@ -23,7 +21,6 @@ watch(display.mdAndUp, () => {
   }
 });
 
-// 自动从router.ts生成目录
 const menuOptions = routes
   .filter((route) => route.meta?.isMainMenu)
   .map((route) => {
@@ -32,7 +29,7 @@ const menuOptions = routes
       name: route.name,
       icon: route.meta?.icon,
       children: route
-        .children!.filter((childrenRoute) => !(childrenRoute.meta?.show === false)) // 允许通过 meta.show = false 隐藏子路由
+        .children!.filter((childrenRoute) => !(childrenRoute.meta?.show === false))
         .map((childrenRoute) => {
           return {
             title: `route.${String(route.name)}.${String(childrenRoute.name)}`,
@@ -41,15 +38,21 @@ const menuOptions = routes
           };
         }),
     };
-  }); // 根据 meta 的 isMainMenu 属性筛选出应该列在目录中的路径
+  });
 </script>
 
 <template>
-  <v-navigation-drawer id="ptd-navigation" v-model="configStore.isNavBarOpen" :width="220" expand-on-hover permanent>
-    <!-- 侧边栏导航标题 -->
-    <v-list density="compact" nav>
+  <v-navigation-drawer
+    id="ptd-navigation"
+    v-model="configStore.isNavBarOpen"
+    :width="216"
+    color="surface"
+    border="e"
+    :temporary="display.smAndDown.value"
+  >
+    <v-list density="compact" nav class="pa-2">
       <template v-for="(group, groupIndex) in menuOptions" :key="groupIndex">
-        <v-list-subheader class="text-grey-darken-1">
+        <v-list-subheader class="text-caption font-weight-semibold text-medium-emphasis mt-1">
           {{ t(group.title) }}
         </v-list-subheader>
         <v-list-item
@@ -58,26 +61,33 @@ const menuOptions = routes
           :prepend-icon="nav.icon! as string"
           :to="{ name: nav.name }"
           :value="nav"
-          class="list-item-half-spacer"
+          color="primary"
+          rounded="lg"
+          class="list-item-half-spacer mb-1"
         >
           {{ t(nav.title) }}
         </v-list-item>
       </template>
     </v-list>
 
-    <!-- 页脚，用于展示版本信息 -->
-    <template v-slot:append>
-      <v-footer class="pa-0">
-        <v-row gap="0" class="justify-center">
-          <span class="pa-2 text-grey-darken-1">
-            &copy; {{ year }},
-            <a :href="`${REPO_URL}${git.long ? `/commit/${git.long}` : ''}`" target="_blank">{{ ext_version }}</a>
-            <v-chip v-if="isDebug" class="pa-1 ml-1 mb-1" color="amber" label size="x-small">
-              {{ t("common.test") }}
-            </v-chip>
-          </span>
-        </v-row>
-      </v-footer>
+    <template #append>
+      <div class="pa-3 border-t d-flex align-center justify-space-between text-caption text-medium-emphasis">
+        <div class="d-flex align-center ga-1">
+          <a :href="`${REPO_URL}${git.long ? `/commit/${git.long}` : ''}`" target="_blank" class="text-medium-emphasis">
+            {{ ext_version }}
+          </a>
+          <v-chip v-if="isDebug" color="warning" variant="tonal" label size="x-small">
+            {{ t("common.test") }}
+          </v-chip>
+        </div>
+        <v-btn
+          :to="{ name: 'Logger' }"
+          icon="mdi-text-box-search-outline"
+          size="x-small"
+          variant="text"
+          :title="t('route.About.Logger')"
+        />
+      </div>
     </template>
   </v-navigation-drawer>
 </template>

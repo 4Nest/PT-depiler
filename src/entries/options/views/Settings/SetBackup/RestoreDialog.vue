@@ -205,10 +205,15 @@ function goToPtppImport() {
 <template>
   <v-dialog v-model="showDialog" :persistent="isDoingRestore" max-width="800" scrollable @after-enter="resetDialog">
     <v-card>
-      <v-card-title class="pa-0">
-        <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>{{ t("SetBackup.RestoreDialog.title") }}</v-toolbar-title>
-        </v-toolbar>
+      <v-card-title class="d-flex align-center justify-space-between px-4 py-3 border-b">
+        <span class="text-subtitle-1 font-weight-bold">{{ t("SetBackup.RestoreDialog.title") }}</span>
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          :title="t('common.dialog.close')"
+          @click="showDialog = false"
+        />
       </v-card-title>
       <v-divider />
       <v-card-text>
@@ -310,22 +315,16 @@ function goToPtppImport() {
         </v-window>
       </v-card-text>
       <v-divider />
-      <v-card-actions>
+      <v-card-actions class="pa-4">
         <v-spacer />
-        <v-btn
-          :disabled="isDoingRestore"
-          color="error"
-          prepend-icon="mdi-close-circle"
-          variant="text"
-          @click="showDialog = false"
-        >
+        <v-btn :disabled="isDoingRestore" variant="text" @click="showDialog = false">
           {{ t("common.dialog.cancel") }}
         </v-btn>
         <v-btn
           v-if="currentStep == 'restore'"
-          color="blue-darken-1"
+          color="secondary"
           prepend-icon="mdi-chevron-left"
-          variant="text"
+          variant="tonal"
           @click="currentStep = restoreMetadata.type"
         >
           {{ t("common.dialog.prev") }}
@@ -334,8 +333,8 @@ function goToPtppImport() {
           v-if="currentStep != 'restore'"
           :disabled="isEmpty(restoreData)"
           append-icon="mdi-chevron-right"
-          color="blue-darken-1"
-          variant="text"
+          color="primary"
+          variant="tonal"
           @click="currentStep = 'restore'"
         >
           {{ t("common.dialog.next") }}
@@ -343,9 +342,9 @@ function goToPtppImport() {
         <v-btn
           v-if="currentStep == 'restore'"
           :loading="isDoingRestore"
-          color="success"
+          color="primary"
           prepend-icon="mdi-import"
-          variant="text"
+          variant="flat"
           @click="doRestore"
         >
           {{ t("common.dialog.ok") }}

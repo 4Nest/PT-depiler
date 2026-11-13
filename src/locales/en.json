@@ -1,8 +1,4 @@
 {
-  "ContextMenuLinkPush": {
-    "invalidLink": "Invalid download link",
-    "keywordWarning": "When pushing links via right-click, some keyword features for download paths or labels may not work correctly!"
-  },
   "Debugger": {
     "addServerFirst": "Please add a server on the Set{serverType} page first",
     "confirmReset": "Are you sure you want to reset?",
@@ -23,9 +19,7 @@
     "outputUserConfig": "Output User Config",
     "pluginReset": "Plugin Reset",
     "resetItems": {
-      "clearDownloadHistory": "Clear Download History",
       "clearFaviconCache": "Clear Site Favicon Cache",
-      "clearMediaCache": "Clear media summary cache from Douban, IMDb, etc.",
       "clearSearchSnapshot": "Clear Search Snapshots",
       "clearSearchSnapshotDesc": "Clear all search snapshot data",
       "clearSiteData": "Clear Site Data",
@@ -40,313 +34,9 @@
     "siteAll": "All",
     "title": "Debug Page!!!!"
   },
-  "DownloadHistory": {
-    "AdvanceFilterGenerateDialog": {
-      "downloader": "Downloader"
-    },
-    "ReDownloadSelectDialog": {
-      "oldMethod": "Retry with original method",
-      "selectDownloader": "Select Downloader",
-      "title": "Re-download {0} records"
-    },
-    "detail": {
-      "errorMessage": "Error Message"
-    },
-    "filterPlaceholder": "Filter download history",
-    "reDownload": "Re-download",
-    "refresh": "Refresh download history list",
-    "searchTorrent": "Search this torrent across all sites",
-    "table": {
-      "downloadAt": "Download Time",
-      "downloader": "Downloader",
-      "status": "Download Status",
-      "title": "Torrent"
-    }
-  },
-  "KeepUploadTask": {
-    "clearAll": "Clear All",
-    "clearConfirm": "Confirm clearing all reseed tasks?",
-    "clearError": "Clear failed",
-    "clearSuccess": "Cleared successfully",
-    "copyError": "Copy failed",
-    "copyLinks": "Copy download links",
-    "copySuccess": "Copied {count} download links",
-    "defaultPath": "Default Path",
-    "deleteConfirm": "Confirm deleting this reseed task?",
-    "deleteError": "Delete failed",
-    "deleteSelectedConfirm": "Confirm deleting {count} selected reseed tasks?",
-    "deleteSuccess": "Deleted successfully",
-    "editSavePath": "Edit save path",
-    "emptyNotice": "No reseed tasks yet. Select torrents from search results and click reseed check button.",
-    "leechers": "Leechers: ",
-    "qBittorrentLegacyFails": "qBittorrent rejected the torrent, but its legacy Web API returned no details; check for a duplicate torrent, validate the save path or category, and review the qBittorrent logs",
-    "savePath": "Save Path: ",
-    "seeders": "Seeders: ",
-    "sendAllTorrents": "Send all torrents",
-    "sendBaseTorrent": "Send base torrent",
-    "sendConfirm": "Confirm sending {count} torrents to downloader?",
-    "sendError": "Send failed",
-    "sendOtherTorrents": "Send other torrents",
-    "sendSingleError": "Failed to send",
-    "sendSingleErrorWithReason": "Failed to send: {reason}",
-    "sendSingleSuccess": "Sent",
-    "sendSuccess": "Sent successfully",
-    "setAsBaseTorrent": "Set as base torrent",
-    "setBaseError": "Failed to set as base torrent",
-    "setBaseSuccess": "Set as base torrent successfully",
-    "table": {
-      "count": "Count",
-      "site": "Site",
-      "size": "Size",
-      "time": "Created At",
-      "title": "Title"
-    },
-    "torrentCount": "Torrents: ",
-    "updateError": "Update failed",
-    "updateSuccess": "Updated successfully",
-    "warning": {
-      "item1": "Please confirm that the download client has disabled 'auto start download' option before reseeding.",
-      "item2": "The assistant only performs simple verification on torrent files, reseeding success is not guaranteed!",
-      "item3": "Users are responsible for any issues caused by failed reseeding!",
-      "title": "Warning:"
-    }
-  },
   "Logger": {
     "action": {
       "details": "Details"
-    }
-  },
-  "MediaServerEntity": {
-    "ItemInformationDialog": {
-      "premiereDate": "Premiered: ",
-      "watched": "Watched: ",
-      "playbackProgress": "Playback progress",
-      "notWatched": "Not watched",
-      "favorite": "In favorites",
-      "notFavorite": "Not in favorites",
-      "audio": "Audio: ",
-      "criticRating": "Critics",
-      "dateCreated": "Added: ",
-      "duration": "Duration: ",
-      "episodeCount": "{count} episode(s)",
-      "externalUrls": "Links: ",
-      "labels": "Labels: ",
-      "loadingDetail": "Loading details…",
-      "mediaSourceCount": "Versions: ",
-      "officialRating": "Rated: ",
-      "path": "Path: ",
-      "people": "Cast & Crew: ",
-      "playCountText": "{count} play(s)",
-      "rating": "Rating: ",
-      "searchOnSite": "Search on sites: ",
-      "series": "Series: ",
-      "size": "Size: ",
-      "studios": "Studios: ",
-      "subtitle": "Subtitle: ",
-      "taglines": "Taglines: ",
-      "title": "Media Details",
-      "type": "Type: ",
-      "video": "Video: ",
-      "year": "Year: "
-    },
-    "detail": "Details",
-    "embedded": "Embedded",
-    "external": "External",
-    "loadMore": "Load More",
-    "noItems": "No Items, use Search Input or Load More Button to Load",
-    "searchPlaceholder": "Search term",
-    "serverFilter": {
-      "all": "All Servers"
-    },
-    "versions": "{count} version(s)"
-  },
-  "MyCollection": {
-    "alert": "Favorites are stored locally; push them to your downloader in bulk when a site-wide freeleech starts.",
-    "clearAll": "Clear all",
-    "clearConfirm": "Clear all torrent favorites?",
-    "deleteSuccess": "Deleted",
-    "dialog": {
-      "alreadyFavorited": "In favorites",
-      "alreadyFavoritedNotice": "{0} of them are already in favorites — this will update their category and comment.",
-      "comment": "Comment",
-      "editTitle": "Edit favorite",
-      "editSuccess": "Updated {0} favorite(s)",
-      "favCategories": "Categories",
-      "favCategoriesHint": "Pick existing categories or type a new one and press Enter; a torrent can belong to several categories, leave empty for uncategorized",
-      "saveAndEditSuccess": "Added {0} torrent(s) and updated {1} favorite(s)",
-      "saveError": "Failed to add to favorites",
-      "saveSuccess": "Added {0} torrent(s) to favorites",
-      "title": "Add {0} torrent(s) to favorites",
-      "totalSize": "Total {0}"
-    },
-    "emptyNotice": "No favorites yet. Use the favorite button on the search results page, a torrent list page, or a torrent detail page.",
-    "filterAll": "All categories",
-    "filterLabel": "Filter favorites",
-    "loadError": "Failed to load torrent favorites",
-    "table": {
-      "action": {
-        "edit": "Edit categories and comment"
-      },
-      "category": "Category",
-      "createdAt": "Favorited at",
-      "favCategories": "Fav. categories",
-      "size": "Size",
-      "time": "Published at",
-      "title": "Title",
-      "unclassified": "Uncategorized"
-    }
-  },
-  "MyClient": {
-    "action": {
-      "delete": "Delete",
-      "detail": "Details",
-      "moveQueueSuccess": "Moved {count} torrent(s) in queue",
-      "pause": "Pause",
-      "pauseError": "Failed to pause",
-      "pauseSelectedSuccess": "Paused {count} torrent(s)",
-      "pauseSuccess": "Paused successfully",
-      "queue": "Queue Position",
-      "queueBottom": "Move to Bottom",
-      "queueDown": "Move Down",
-      "queueTop": "Move to Top",
-      "queueUp": "Move Up",
-      "recheck": "Recheck",
-      "recheckSelectedSuccess": "Rechecked {count} torrent(s)",
-      "resume": "Resume",
-      "resumeError": "Failed to resume",
-      "resumeSelectedSuccess": "Resumed {count} torrent(s)",
-      "resumeSuccess": "Resumed successfully",
-      "viewRaw": "View Raw"
-    },
-    "autoRefresh": {
-      "btnTitle": "Auto-Refresh",
-      "clientSuspended": "{name} failed 3 times in a row. Auto-refresh suspended. Click the chip to resume.",
-      "downloaderFilter": "Downloader Filter",
-      "intervalLabel": "Refresh interval",
-      "intervalUnit": "seconds (0 = off)",
-      "resumeDownloader": "Resume auto-refresh for this downloader",
-      "start": "Start auto-refresh",
-      "stop": "Stop auto-refresh",
-      "stopDownloader": "Stop auto-refresh for this downloader",
-      "suspendedTip": "This client has been suspended due to 3 consecutive failures. Click the alert icon to resume."
-    },
-    "clientStatusDialog": {
-      "openBtn": "All Downloaders Status",
-      "openClient": "Open Downloader",
-      "title": "Downloader Status",
-      "torrentCount": "{count} torrent(s)"
-    },
-    "columnSelector": "Columns",
-    "deleteSelected": "Delete",
-    "detail": {
-      "addTrackerFailure": "Failed to add tracker",
-      "addTrackerSuccess": "Tracker added",
-      "addTrackerTitle": "Add Tracker",
-      "copyHash": "Copy Hash",
-      "copyMagnet": "Copy Magnet Link",
-      "fileColumnName": "File",
-      "fileColumnPriority": "Priority",
-      "fileColumnProgress": "Progress",
-      "fileColumnSize": "Size",
-      "fileTitle": "Files",
-      "fileUnsupported": "This downloader does not support file management",
-      "noFiles": "No files",
-      "noPeers": "No peer connections",
-      "noTrackers": "This downloader does not support fetching trackers or has no trackers",
-      "operatorFailed": "Operation failed",
-      "peersColumnClient": "Client",
-      "peersColumnCountry": "Country",
-      "peersColumnDownloadSpeed": "DL",
-      "peersColumnEncrypted": "Enc",
-      "peersColumnIp": "IP",
-      "peersColumnProgress": "Progress",
-      "peersColumnUploadSpeed": "UL",
-      "peersTitle": "Peers",
-      "peersUnsupported": "This downloader does not support viewing peers",
-      "priorityHighest": "Highest",
-      "priorityHigh": "High",
-      "priorityLow": "Low",
-      "priorityNormal": "Normal",
-      "prioritySkip": "Skip",
-      "removeTracker": "Remove",
-      "removeTrackerFailure": "Failed to remove tracker",
-      "removeTrackerSuccess": "Tracker removed",
-      "title": "Torrent Details",
-      "trackerColumnLastAnnounce": "Last Announce",
-      "trackerColumnLeeches": "Leeches",
-      "trackerColumnSeeds": "Seeds",
-      "trackerColumnStatus": "Status",
-      "trackerColumnTier": "Tier",
-      "trackerColumnUrl": "URL",
-      "trackers": "Trackers",
-      "trackerUnsupported": "This downloader does not support tracker management",
-      "updateFilePriorityFailure": "Failed to update file priority",
-      "updateFilePrioritySuccess": "File priority updated"
-    },
-    "dialog": {
-      "removeData": "Also remove data"
-    },
-    "label": {
-      "batchBtn": "Set Label",
-      "emptyLabel": "Label cannot be empty",
-      "input": "Label",
-      "success": "Labeled {count} torrent(s)",
-      "title": "Set Label ({count} torrent(s))"
-    },
-    "pauseSelected": "Pause",
-    "pushToDownloader": {
-      "fileInputHint": "Select one or more .torrent files to push",
-      "fileInputLabel": "Torrent Files",
-      "modeFile": "Torrent File",
-      "modeUrl": "Link / Magnet",
-      "navBtn": "Push to Downloader",
-      "title": "Push to Downloader",
-      "urlInputHint": "One URL or magnet link per line",
-      "urlInputLabel": "URLs / Magnet Links"
-    },
-    "recheckSelected": "Recheck",
-    "recheckDialog": {
-      "text": "Are you sure you want to recheck the selected {count} torrent(s)? Rechecking consumes downloader resources and may temporarily interrupt seeding.",
-      "title": "Confirm Recheck"
-    },
-    "refresh": "Refresh",
-    "resumeSelected": "Resume",
-    "searchPlaceholder": "Search by name, hash, label, or path",
-    "sitePublic": "Public",
-    "sitePublicTip": "Public torrent: marked as public by the client, or its tracker only matches a public site",
-    "siteUnmatched": "Unmatched",
-    "siteUnmatchedTip": "No added site matched this torrent; if the site uses a dedicated tracker domain, declare trackerUrls in its definition",
-    "speedLimit": {
-      "batchBtn": "Speed Limit",
-      "download": "Download Limit (KiB/s, 0 = unlimited)",
-      "emptyLimit": "Please fill in at least one of upload or download limit",
-      "success": "Limited {count} torrent(s)",
-      "title": "Set Speed Limit ({count} torrent(s))",
-      "unitNote": "Speed limit unit is KiB/s; 0 means unlimited, empty means do not change this direction.",
-      "upload": "Upload Limit (KiB/s, 0 = unlimited)"
-    },
-    "state": {
-      "checking": "Checking",
-      "downloading": "Downloading",
-      "error": "Error",
-      "paused": "Paused",
-      "queued": "Queued",
-      "seeding": "Seeding",
-      "unknown": "Unknown"
-    },
-    "table": {
-      "addedAt": "Added At",
-      "client": "Client",
-      "dlSpeed": "Download Speed",
-      "name": "Torrent Name",
-      "progress": "Progress",
-      "ratio": "Ratio",
-      "savePath": "Save Path",
-      "size": "Size",
-      "status": "Status",
-      "totalDownloaded": "Total Download",
-      "totalUploaded": "Total Upload",
-      "upSpeed": "Upload Speed"
     }
   },
   "MyData": {
@@ -432,6 +122,24 @@
       "trueUserData": "True Data",
       "updateAt": "Updated At",
       "userData": "Data"
+    },
+    "kpi": {
+      "totalUploaded": "Total Uploaded",
+      "downloadAndRatio": "Downloaded {downloaded} · Ratio {ratio}",
+      "totalSeedingSize": "Total Seeding Size",
+      "totalSeedingCount": "{count} seeding torrents",
+      "totalBonusPerHour": "Bonus Per Hour",
+      "sitesWithBonus": "{count} sites earning bonus",
+      "siteHealth": "Site Health",
+      "healthRatio": "{success} / {total}",
+      "unreadSites": "{count} unread",
+      "errorSites": "{count} error",
+      "allHealthy": "All sites healthy"
+    },
+    "empty": {
+      "title": "No sites added yet",
+      "subtitle": "Add your first PT site to track user stats and enable federated search",
+      "addSiteBtn": "Add Site"
     }
   },
   "SearchEntity": {
@@ -549,7 +257,10 @@
         "noUpload": "No upload credit",
         "uploadTimes": "Upload counts ×{0}"
       },
-      "uploadAtFormatAsAlive": "Display Upload Time as Relative Time"
+      "uploadAtFormatAsAlive": "Display Upload Time as Relative Time",
+      "emptyFiltered": "Found {0} results, all hidden by current filters",
+      "clearFilter": "Clear Filters",
+      "emptyResult": "No matching torrents found. Try another keyword or check search status."
     },
     "siteFilter": {
       "all": "All Site"
@@ -668,11 +379,8 @@
     "fields": {
       "config": "Extension configuration (config)",
       "cookies": "Site cookies (cookies)",
-      "downloadHistory": "Download history (downloadHistory)",
-      "keepUploadTask": "Reseed tasks (keepUploadTask)",
       "metadata": "Site and service configuration (metadata)",
       "searchResultSnapshot": "Search result snapshots (searchResultSnapshot)",
-      "torrentFavorite": "Torrent favorites (torrentFavorite)",
       "userInfo": "User information (userInfo)"
     },
     "localExport": "Local Export",
@@ -699,10 +407,8 @@
   },
   "SetBase": {
     "download": {
-      "myClientTitle": "My Downloader",
       "allowDirectSendToClient": "Allow sending links directly (instead of torrent files) to the download server (Do not enable unless necessary)",
       "enableSiteFilter": "Enable site filter (configure per-downloader site filtering in downloader settings)",
-      "initDownloaderTorrentOnEnter": "Automatically load torrents from the downloader when entering the My Downloader page",
       "localDownloadIgnoreInterval": "Ignore site download interval limit for local downloads",
       "localDownloadMethod": "Local Download Method",
       "localDownloadMethodOptions": {
@@ -716,25 +422,18 @@
       "localDownloadTitle": "Local Download",
       "pushDownloadServerTitle": "Push to Download Server",
       "quickSendToClientNote": "When quick push is enabled, the plugin will perform the following default actions when pushing download tasks:<br />1. Flatten the downloader and download directory options for direct click-to-push.<br />2. When hovering over an option, the label list will temporarily open; clicking will additionally add label information.<br />3. All use local relay mode to push torrents, and basic settings like 'auto-start download' and downloader-specific configs are determined by downloader and site settings.",
-      "saveDownloadHistory": "Save download history (Please do not disable this function unless necessary)",
       "saveLastDownloader": "Save the last used download server settings",
       "useQuickSendToClient": "Use quick push by default"
     },
     "searchEntity": {
       "allowSingleSiteSearch": "Allow single-site search",
       "autoDetectOfficialGroupFromTitle": "Auto Detect Official Tag From Torrent Title",
-      "autoLoadInitialMediaWall": "Automatically load the initial media wall",
-      "autoLoadMoreMediaOnScroll": "Automatically load more media when scrolling to the bottom of the page",
       "filterLabel": "Result Filter",
       "forceImdbIdMatchFilter": "When searching by IMDb, filter out results whose IMDb ID returned by the site does not match",
       "hiddenTagNames": "Hidden tags (one per line)",
       "hiddenTagNamesMessage": "Closing tags on the search page is temporary. Save here to make it permanent.",
       "imdbTip": "When disabled, you need to use the `imdb|tt12345678` format for IMDb searches.",
       "maxTagCountBeforeGroup": "Max tags shown before grouping (0 = unlimited)",
-      "mediaQueueConcurrency": "Request Queue Concurrency",
-      "mediaSearchLimit": "Number of search results per request",
-      "mediaSearchLimitMessage": "Please do not load too many search results at once. It's not optimized with virtual-scroll, which may cause the browser to freeze and affect the performance of the media server.",
-      "mediaServerSearchConfig": "Media Server Search Configuration",
       "promotionDisplay": "Promotion display",
       "promotionDisplayMessage": "Do not show hides all promotion info; Tags only keeps the original behavior; Factor only hides promotion tags and uses the Promo column plus the promotion sliders; Tags + factor shows both",
       "promotionDisplayOptions": {
@@ -746,7 +445,6 @@
       "quickSiteFilter": "Quick Site Filter In Search Page",
       "saveLastSearchFilter": "Save last used search filter",
       "searchPlanLabel": "Search Plan",
-      "showHotRecommendations": "Show hot recommendations button in the search box",
       "siteQueueConcurrency": "Request Queue Concurrency",
       "siteSearchConfig": "Site Search Configuration",
       "tagLabel": "Tags Filter",
@@ -755,9 +453,7 @@
     "tab": {
       "backup": "Backup & Restore",
       "download": "Download",
-      "native-bridge": "Native Bridge",
       "search-entity": "@:common.search",
-      "social-information": "Social Rating",
       "ui": "Option UI",
       "user-info": "UserInfo"
     },
@@ -771,10 +467,6 @@
       "confirmTwoStep": "Require two-step confirmation for batch copy, local download, etc. on torrent list pages",
       "contentScript": "Content Script (Site Sidebar, etc.)",
       "contentScriptWarning": "After enabling or disabling related features, save settings and refresh the site page for changes to take effect.",
-      "contextMenu": "Context Menu",
-      "contextMenuLinkPush": "Enable (download) link push",
-      "contextMenuSocialSearch": "Enable social link (douban, imdb) search",
-      "contextMenuTextSearch": "Enable selected text search",
       "dataTable": "Data Table",
       "displayMode": {
         "auto": "Auto (Follow Browser or System)",
@@ -784,7 +476,6 @@
       },
       "dragNote": "Dragged download links may not always be correctly recognized!",
       "enableFadeEffect": "Enable fade-in effect (semi-transparent by default, shows on hover)",
-      "enableOnSocialSite": "Enable sidebar on social sites (e.g. Douban, IMDb)",
       "enableTableMultiSort": "Enable multi-column sorting for some tables",
       "expandByDefault": "Expand sidebar button by default",
       "respondDisplayMode": "Respond to plugin setting ",
@@ -792,13 +483,6 @@
       "showReleaseNote": "Show changelog window when plugin updates",
       "sidebarFunctions": "Sidebar Functions",
       "sidebarStyle": "Sidebar Style",
-      "socialSiteSearchBy": {
-        "chosen": "Let me choose",
-        "id": "Search by ID",
-        "imdb": "Search by IMDb Number",
-        "title": "Search by Main Title"
-      },
-      "socialSiteSearchLabel": "Social site search method",
       "tableActionColumnFixed": "Fix action column when the table is too wide",
       "tableActionColumnFixedNote": "Takes effect only when the table content is wider than the page and scrolls horizontally: the action column stays pinned to its side (row start or row end) while scrolling.",
       "tableActionColumnPosition": "Action column position",
@@ -904,95 +588,20 @@
           "setDefault": "Set this downloader server as Default Downloader.",
           "setPathAndTag": "Set Suggest Download Path and Tags",
           "setSiteFilter": "Set Site Filter",
-          "status": "Manage Download Server"
+          "testConnection": "Test Connection"
         },
         "autodl": "Auto DL ?",
         "downloaderCategory": "Downloader Category",
         "enabled": "Enabled ?"
-      }
+      },
+      "defaultBadge": "Default",
+      "testFailed": "Failed to connect to downloader. Check address and credentials."
     },
     "siteFilter": {
       "excludedSites": "Excluded Sites",
       "excludedSitesHint": "If a site is excluded, this downloader will not be shown on the site page (does not apply to the aggregated search page)",
       "noSites": "No sites added yet",
       "title": "Set site filter for downloader [{0}] (exclusion)"
-    }
-  },
-  "SetMediaServer": {
-    "Editor": {
-      "authInfo": "Authentication Info"
-    },
-    "Index": {
-      "refreshStatus": "Refresh Status",
-      "status": "Server Status",
-      "statusOffline": "Unreachable",
-      "statusUntested": "Untested"
-    },
-    "Overview": {
-      "averageBitrate": "Avg. Bitrate",
-      "byCodec": "Video Codec",
-      "byContainer": "Container",
-      "byResolution": "Resolution",
-      "byRootPath": "By directory / disk (size)",
-      "countUnit": "{count} item(s)",
-      "generatedAt": "Generated at {time}",
-      "generating": "Scanning the library and aggregating…",
-      "hint": "Generated on demand — the whole library is traversed in the background, large libraries may take a while",
-      "neverWatched": "Never watched but takes space (top 10)",
-      "partial": "Partially watched",
-      "playsPerGb": "Plays per GB",
-      "playsPerGbValue": "{value} /GB",
-      "recentlyAdded": "Added in the last 7 days (top 10)",
-      "regenerate": "Regenerate",
-      "title": "Library Overview",
-      "totalItems": "Items",
-      "totalPlays": "Total plays",
-      "totalSize": "Total size",
-      "truncated": "Reached the item limit ({count} items scanned), only part of the library is covered",
-      "unknownKey": "Unknown",
-      "unsupported": "This media server does not support overview statistics (or has no credentials configured)",
-      "warningCancel": "Cancel",
-      "warningConfirm": "I understand the risk, start scanning",
-      "warningLine1": "Generating the overview fetches **every item** of your library page by page (movies / series), which is a heavy operation.",
-      "warningLine2": "Most public media servers do **not** allow this kind of full-library traversal — it may be treated as abuse and get your account rate-limited or even banned. Only use it on servers you host yourself or are explicitly allowed to scan.",
-      "warningLine3": "The traversal only starts after you confirm. Closing the dialog stops further requests, but requests already sent cannot be recalled.",
-      "warningTitle": "Please confirm first: a full-library scan may violate server rules",
-      "watch": "Watch status"
-    },
-    "add": {
-      "title": "Add Media Server"
-    }
-  },
-  "SetNativeBridge": {
-    "bridge": {
-      "enabled": "Enable Native Bridge",
-      "status": {
-        "connected": "Connected",
-        "connecting": "Connecting...",
-        "disabled": "Disabled",
-        "error": "Error",
-        "no-permission": "No Permission",
-        "retrying": "Retrying..."
-      },
-      "testConnection": "Test Connection",
-      "title": "Bridge Control"
-    },
-    "info": {
-      "cliLink": "ptd-cli",
-      "cliRequired": "The external CLI tool must be installed for this feature to work. Native bridge is not available on mobile platforms. See {0} for installation instructions.",
-      "description": "The native bridge allows the PT-Depiler CLI tool to communicate with this extension. It requires the CLI tool to be installed separately on your computer.",
-      "privacy": "When enabled, the native bridge allows the locally installed CLI tool to access extension data including site configuration, search results, download history, user info, and downloader status. All communication is local (between browser and local process) — no data is sent to remote servers. You can disable this feature or revoke the permission at any time.",
-      "setupCommand": "Run the following command to register this extension with the CLI tool:",
-      "setupHint": "After running the command, restart the browser or click Test Connection.",
-      "title": "About Native Bridge"
-    },
-    "permission": {
-      "grant": "Grant Permission",
-      "grantFailed": "Permission request was denied",
-      "granted": "Permission Granted",
-      "notGranted": "Permission Not Granted",
-      "revoke": "Revoke Permission",
-      "title": "Permission"
     }
   },
   "SetSearchSolution": {
@@ -1130,26 +739,6 @@
       "title": "One-Click Import Sites",
       "trying": "Trying to import site [{name}] ..."
     }
-  },
-  "SpecialThank": {
-    "contributor": "Contributors",
-    "issue": "Suggesters",
-    "langContributor": "@:SpecialThank.contributor For Language",
-    "preWorkContributor": "@:SpecialThank.contributor For preliminary work",
-    "sortByName": "The list is sorted by name",
-    "thankNote": [
-      "During the development and testing of this project, they have given a lot of help and support (or development, or testing, or sending invite, or suggesting, or encouraging, or spurring), thank you.",
-      "Since we can't list all the people who helped, Please understand if there are any omissions.",
-      "Thanks for these at the same time:"
-    ]
-  },
-  "TechnologyStack": {
-    "dependency": "Dependencies of this Project",
-    "ptppHistory": "History of @:common.project",
-    "stackTableColumn": {
-      "homepage": "Homepage"
-    },
-    "thankNote": "The birth of 'PT Plugin Plus' is established on the base of these projects. Thanks all the participants of the project, thanks for your contribution!"
   },
   "UserDataStatistic": {
     "chart": {
@@ -1359,21 +948,6 @@
       "emptySearchNotice": "Get the first page of each tracker",
       "expand": "Expand More",
       "home": "Home",
-      "hotRecommendations": {
-        "category": {
-          "anime": "Anime",
-          "movie": "Movies",
-          "tv": "TV",
-          "variety": "Variety"
-        },
-        "empty": "No hot recommendations",
-        "loadFailed": "Failed to load hot recommendations. Please try again later.",
-        "loading": "Loading hot recommendations...",
-        "noRating": "No rating",
-        "noSummary": "No summary",
-        "refresh": "Refresh hot recommendations",
-        "title": "Hot Recommendations"
-      },
       "navBarTip": "Click to show/hide the navigation bar",
       "searchPlan": {
         "all": "@:manifest.searchPlanAll",
@@ -1382,7 +956,8 @@
       },
       "searchTip": "Input keyword, IMDb numbers to search",
       "wiki": "Wiki",
-      "wrongPixelRatioNotice": "Your page display may be affected by zooming. It is recommended to zoom at 100% to ensure your browsing experience~"
+      "wrongPixelRatioNotice": "Your page display may be affected by zooming. It is recommended to zoom at 100% to ensure your browsing experience~",
+      "themeSwitchTip": "Switch Light / Dark / Auto Theme"
     },
     "init": "Please wait patiently for the page to load.....",
     "releaseNote": {
@@ -1435,7 +1010,6 @@
     "extName": "PT Depiler",
     "notificationSendLinkToDownloaderFailure": "Failed to send the link to the downloader [$1]",
     "notificationSendLinkToDownloaderSuccess": "Successfully sent the link to the downloader [$1]",
-    "omniboxSearch": "Search $2 in [ $1 ]",
     "searchPlanAll": "All Sites",
     "searchPlanDefault": "Default",
     "searchPlanSingleSite": "Single Site"
@@ -1485,8 +1059,6 @@
   "route": {
     "About": {
       "Logger": "Runtime Log",
-      "SpecialThank": "Special Thanks",
-      "TechnologyStack": "Project Reference",
       "default": "About"
     },
     "Devtools": {
@@ -1495,11 +1067,6 @@
       "default": "Devtools"
     },
     "Overview": {
-      "DownloadHistory": "Download History",
-      "KeepUploadTask": "Reseed Task",
-      "MediaServerEntity": "Media Library",
-      "MyClient": "My BtClient",
-      "MyCollection": "Collection",
       "MyData": "My Data",
       "SearchEntity": "Search Results",
       "SearchResultSnapshot": "Search Snapshot",
@@ -1509,26 +1076,10 @@
       "SetBackup": "Backup & Restore",
       "SetBase": "General",
       "SetDownloader": "Download Server",
-      "SetMediaServer": "Media Server",
       "SetSearchSolution": "Search Solution",
       "SetSite": "Sites",
       "default": "Settings"
     }
-  },
-  "socialConfig": {
-    "anidbClientId": "AniDB Client ID",
-    "anidbClientMessages": "Please apply for a Client ID at https://anidb.net/perl-bin/animedb.pl?show=client and fill it in the format `Name/Version`.",
-    "bangumiApiKey": "Bangumi API Key",
-    "bangumiApiMessages": "You can generate an Access Token at https://next.bgm.tv/demo/access-token",
-    "basicConfig": "Basic Configuration",
-    "cacheShortWarning": "A cache time that is too short will lead to frequent requests, while one that is too long will result in outdated data.",
-    "cacheValidityDays": "Cache Validity (days)",
-    "mediaRatingConfig": "Media Rating Site Configuration",
-    "preferPtgenLabel": "Prefer data provided by PtGen",
-    "ptgenApiAddress": "PtGen API Address",
-    "ptgenApiMessages": "Select a built-in address or enter an address like https://example.com/ptgen?site=<site>&sid=<sid>",
-    "ptgenConfig": "PtGen Configuration",
-    "requestTimeoutMs": "Request Timeout (milliseconds)"
   },
   "torrent": {
     "status": {
