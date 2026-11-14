@@ -1577,6 +1577,7 @@ function extractCleanHeadingTitle(customEl = null) {
     "span.label",
     "span.badge",
     '[class*="promotion"]',
+    "span.sp_state_placeholder",
     "#bookmark0",
     'a[href*="bookmark"]',
     "script",
@@ -1595,15 +1596,13 @@ function extractCleanHeadingTitle(customEl = null) {
 }
 
 function cleanupMpUi(options = {}) {
-  let row = document.getElementById("mp-row-flag");
+  const row = document.getElementById("mp-row-flag");
   if (row) {
-    let tr = row.closest("tr");
-    if (tr) tr.remove();
-    else {
+    if (row.tagName !== "TR") {
       const next = row.nextElementSibling;
       if (next && next.querySelector("#moviepilot")) next.remove();
-      row.remove();
     }
+    row.remove();
   }
   document.querySelectorAll(".mp-modal").forEach((el) => el.remove());
   document.getElementById("mp-floating-cfg-btn")?.remove();
@@ -4325,7 +4324,7 @@ function extractAnimeSiteInfo() {
   return { torrent_name, torrent_description, download_link, torrent_size, mountTarget };
 }
 function extractHDWinGInfo(rows) {
-  const hdwHeading = document.querySelector(".m_name h1, h1#top");
+  const hdwHeading = document.querySelector(".m_name h2, .m_name h1, h2#top, h1#top");
   let torrent_name = extractCleanHeadingTitle(hdwHeading);
   if (!torrent_name) {
     const btnTitle = document.querySelector("a.torrentdown_button")?.getAttribute("title") || "";
@@ -4333,7 +4332,6 @@ function extractHDWinGInfo(rows) {
   }
   const subtitleEl =
     document.querySelector(".m_name h3") ||
-    document.querySelector("h3") ||
     findRowFollowByHeader(rows, /^(?:副标题|副標題|小标题|小標題|Small\s*Description)$/i);
   const torrent_description = extractCleanSubtitle(subtitleEl);
 
@@ -4383,6 +4381,29 @@ function extractHDWinGInfo(rows) {
     /^(?:种子添加|種子添加)$/i,
   ];
 
+  // 1) HDChina / HDWing 原生右侧详情列表 (.info_box > ul > li.left + li.right)
+  let mountInfoUl = null;
+  let mountInfoUlPos = "afterend";
+  const infoUls = Array.from(document.querySelectorAll(".info_box > ul"));
+  if (infoUls.length) {
+    for (const re of preferredOrder) {
+      const found = infoUls.find((ul) => {
+        const labelLi = ul.querySelector("li.left, li.leftb");
+        return labelLi && re.test(cleanText(labelLi.textContent || ""));
+      });
+      if (found) {
+        mountInfoUl = found;
+        const labelTxt = cleanText(found.querySelector("li.left, li.leftb")?.textContent || "");
+        mountInfoUlPos = /^(?:行为|行爲|Action)$/i.test(labelTxt) ? "beforebegin" : "afterend";
+        break;
+      }
+    }
+    if (!mountInfoUl) {
+      mountInfoUl = infoUls[0];
+      mountInfoUlPos = "afterend";
+    }
+  }
+
   const findHDWinGDetailRow = () => {
     const headerTds = rows.length
       ? Array.from(rows)
@@ -4423,12 +4444,15 @@ function extractHDWinGInfo(rows) {
     }
   }
 
-  const mountAnchor = document.querySelector(".m_name") || document.querySelector(".info_box");
+  const mountAnchor =
+    document.querySelector(".m_name") || document.querySelector(".details_box") || document.querySelector(".info_box");
   return {
     torrent_name,
     torrent_description,
     download_link,
     torrent_size,
+    mountInfoUl,
+    mountInfoUlPos,
     mountAnchor,
     mountTable,
     mountRowIdx,
@@ -4445,7 +4469,14 @@ function mountMpPanel(anchorEl, type, panelClass, titleText, contentId, info) {
   applyThemeClass(panel);
   const isMTeamStyle = panelClass === "mp-mteam-panel";
   panel.innerHTML = `<div class="${isMTeamStyle ? "mp-mteam-title" : "mp-anime-header"}">${escapeHtml(titleText)}</div><div id="${contentId}"${isMTeamStyle ? ' class="mp-mteam-tags"' : ""}>初始化中...</div>`;
-  anchorEl.insertAdjacentElement("afterend", panel);
+  if (anchorEl.tagName === "TD" || anchorEl.tagName === "TH") {
+    anchorEl.insertAdjacentElement("afterbegin", panel);
+  } else if (anchorEl.tagName === "TR") {
+    const tbl = anchorEl.closest("table");
+    (tbl || anchorEl).insertAdjacentElement("afterend", panel);
+  } else {
+    anchorEl.insertAdjacentElement("afterend", panel);
+  }
   const row = panel.querySelector(`#${contentId}`);
   if (row) {
     processRecognition(row, type, info.torrent_name, info.torrent_description, info.download_link, info.torrent_size);
@@ -4753,6 +4784,25 @@ function insertMpRow() {
         mountRowIdx: info.mountRowIdx,
       });
       if (info.torrent_name) {
+        if (info.mountInfoUl) {
+          const ul = document.createElement("ul");
+          ul.id = "mp-row-flag";
+          ul.innerHTML =
+            '<li class="left" style="font-size:12px;letter-spacing:-0.3px;white-space:nowrap;line-height:24px;">MoviePilot</li><li class="right" id="mp-hdwing-content" style="word-break:normal;vertical-align:middle;"></li>';
+          info.mountInfoUl.insertAdjacentElement(info.mountInfoUlPos || "afterend", ul);
+          const contentLi = ul.querySelector("#mp-hdwing-content");
+          if (contentLi) {
+            processRecognition(
+              contentLi,
+              "hdwing",
+              info.torrent_name,
+              info.torrent_description,
+              info.download_link,
+              info.torrent_size,
+            );
+            return;
+          }
+        }
         if (info.mountTable && info.mountRowIdx >= 0) {
           const row = info.mountTable.insertRow(info.mountRowIdx);
           row.id = "mp-row-flag";
