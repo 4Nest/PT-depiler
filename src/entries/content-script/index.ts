@@ -51,8 +51,7 @@ async function ensureMpModule(): Promise<typeof MpInjectModule> {
 async function syncMoviePilotState(mpConfig?: IMoviePilotConfig) {
   if (mpConfig?.enabled && shouldRunMoviePilotOnLocation()) {
     const mod = await ensureMpModule();
-    mod.mountMoviePilot(mpConfig);
-    mod.updateMoviePilotRuntimeConfig(mpConfig);
+    mod.mountOrUpdateMoviePilot(mpConfig);
   } else if (mpModulePromise) {
     const mod = await mpModulePromise;
     mod.unmountMoviePilot();

@@ -26,18 +26,24 @@ function extractHostname(rawUrl: string): string {
   }
 }
 
+let configWriteQueue: Promise<IMoviePilotConfig> = Promise.resolve(DEFAULT_MOVIEPILOT_CONFIG);
+
 onMessage("updateMoviePilotConfig", async ({ data: patch }) => {
-  const rawConfig = ((await extStorage.getItem("config")) ?? {}) as IConfigPiniaStorageSchema;
-  const merged: IMoviePilotConfig = {
-    ...DEFAULT_MOVIEPILOT_CONFIG,
-    ...(rawConfig.moviePilot ?? {}),
-    ...patch,
+  const run = async (): Promise<IMoviePilotConfig> => {
+    const rawConfig = ((await extStorage.getItem("config")) ?? {}) as IConfigPiniaStorageSchema;
+    const merged: IMoviePilotConfig = {
+      ...DEFAULT_MOVIEPILOT_CONFIG,
+      ...(rawConfig.moviePilot ?? {}),
+      ...patch,
+    };
+    await extStorage.setItem("config", {
+      ...rawConfig,
+      moviePilot: merged,
+    });
+    return merged;
   };
-  await extStorage.setItem("config", {
-    ...rawConfig,
-    moviePilot: merged,
-  });
-  return merged;
+  configWriteQueue = configWriteQueue.then(run, run);
+  return configWriteQueue;
 });
 
 onMessage("moviePilotHttpRequest", async ({ data }) => {

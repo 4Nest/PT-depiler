@@ -109,6 +109,25 @@ const MP_THEME_AND_LINK_PATCH_CSS = `
   a.mp-tag-type {
     color: var(--mp-primary) !important;
   }
+  .mp-svg {
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+  .mp-status-banner-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .mp-status-banner-inner > .mp-svg {
+    margin-top: 2px;
+  }
+  .mp-status-banner-text {
+    white-space: pre-line;
+    flex: 1;
+    min-width: 0;
+  }
 `;
 
 function ensureMpStyle() {
@@ -122,6 +141,42 @@ function ensureMpStyle() {
 
 function removeMpStyle() {
   document.getElementById("mp-injected-style")?.remove();
+}
+
+const MP_SVG_PATHS = {
+  download:
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  settings:
+    '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  sliders:
+    '<line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="20" x2="16" y2="20"/><line x1="12" y1="20" x2="3" y2="20"/><line x1="14" y1="2" x2="14" y2="6"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="16" y1="18" x2="16" y2="22"/>',
+  chevronDown: '<path d="m6 9 6 6 6-6"/>',
+  arrowUpRight: '<path d="M7 17 17 7"/><path d="M7 7h10v10"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  xCircle: '<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  info: '<circle cx="12" cy="12" r="9"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  alertTriangle:
+    '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  play: '<polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none"/>',
+  star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor" stroke-width="1.5"/>',
+  plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
+};
+
+function mpIcon(name, size = 13) {
+  const body = MP_SVG_PATHS[name] || "";
+  return `<svg class="mp-svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+}
+
+function mpSaveConfigPatch(patchObj) {
+  if (mpBridge?.saveConfigPatch && patchObj && typeof patchObj === "object") {
+    return mpBridge.saveConfigPatch(patchObj);
+  }
+  return Promise.resolve();
 }
 
 function mpStorageSet(key, value) {
@@ -648,9 +703,7 @@ function mpApiRequest(path, { method = "GET", data = null, timeout = 15000 } = {
 
 // ---------- 进度通知 Toast ----------
 function stripToastLeadingEmoji(text) {
-  return String(text || "")
-    .replace(/^[\s✅❌📡⏳⚠🔍★✓✕]+/, "")
-    .trim();
+  return String(text || "").trim();
 }
 
 function renderToastIcon(type, title) {
@@ -706,7 +759,7 @@ function createToast(title, msg, type = "info", autoCloseMs = 0) {
             <div class="mp-toast-title"></div>
             <div class="mp-toast-msg"></div>
         </div>
-        <button type="button" class="mp-toast-close" title="关闭">&times;</button>
+        <button type="button" class="mp-toast-close" title="关闭">${mpIcon("x", 14)}</button>
     `;
   toast.querySelector(".mp-toast-title").textContent = cleanTitle;
   toast.querySelector(".mp-toast-msg").textContent = msg || "";
@@ -793,7 +846,7 @@ function refreshCustomSelect(selectEl) {
     item.dataset.value = opt.value;
     item.title = opt.textContent;
     item.disabled = Boolean(opt.disabled);
-    item.innerHTML = `<span class="mp-cselect-opt-text">${escapeHtml(opt.textContent)}</span><span class="mp-cselect-check">✓</span>`;
+    item.innerHTML = `<span class="mp-cselect-opt-text">${escapeHtml(opt.textContent)}</span><span class="mp-cselect-check">${mpIcon("check", 13)}</span>`;
     item.addEventListener("click", (e) => {
       e.stopPropagation();
       if (opt.disabled) return;
@@ -909,7 +962,7 @@ function mountModal(id, wide = false, titleHtml = "", bodyHtml = "", options = {
       <div class="mp-modal-content ${wide ? "mp-modal-wide" : ""}" role="dialog" aria-modal="true">
         <div class="mp-modal-header">
           <h3 class="mp-modal-title">${titleHtml}</h3>
-          <button type="button" class="mp-close" title="关闭 (Esc)">&times;</button>
+          <button type="button" class="mp-close" title="关闭 (Esc)">${mpIcon("x", 16)}</button>
         </div>
         <div class="mp-modal-body">${bodyHtml}</div>
       </div>
@@ -1028,14 +1081,20 @@ function showConfigModal() {
       </div>
     `;
 
-  const { modal, closeModal } = mountModal("mp-config-modal", false, "⚙️ MoviePilot 配置", bodyHtml, {
-    onClose: () => {
-      if (!savedCommitted && mpThemeMode !== originalThemeMode) {
-        mpThemeMode = originalThemeMode;
-        refreshAllThemes();
-      }
+  const { modal, closeModal } = mountModal(
+    "mp-config-modal",
+    false,
+    `${mpIcon("settings", 16)}<span>MoviePilot 配置</span>`,
+    bodyHtml,
+    {
+      onClose: () => {
+        if (!savedCommitted && mpThemeMode !== originalThemeMode) {
+          mpThemeMode = originalThemeMode;
+          refreshAllThemes();
+        }
+      },
     },
-  });
+  );
 
   const urlInput = modal.querySelector("#mp-input-url");
   const keyInput = modal.querySelector("#mp-input-apikey");
@@ -1072,14 +1131,17 @@ function showConfigModal() {
   const showStatus = (msg, type = "info") => {
     statusEl.style.display = "block";
     statusEl.className = `mp-status-banner ${type}`;
-    statusEl.textContent = msg;
+    const iconName = type === "success" ? "checkCircle" : type === "error" ? "xCircle" : "info";
+    statusEl.innerHTML = `<div class="mp-status-banner-inner">${mpIcon(iconName, 15)}<span class="mp-status-banner-text">${escapeHtml(msg)}</span></div>`;
   };
 
   clearBtn.addEventListener("click", () => {
-    mpStorageDelete("mp_url");
-    mpStorageDelete("mp_api_key");
-    mpStorageDelete("mp_default_downloader");
-    mpStorageDelete("mp_default_save_path");
+    mpSaveConfigPatch({
+      url: "",
+      apiKey: "",
+      defaultDownloader: "",
+      defaultSavePath: "",
+    });
     mpUrl = "";
     mpApiKey = "";
     mpDefaultDownloader = "";
@@ -1140,14 +1202,16 @@ function showConfigModal() {
           mpCachedPaths = null;
           mpCachedFilterRuleGroups = null;
 
-          mpStorageSet("mp_url", mpUrl);
-          mpStorageSet("mp_api_key", mpApiKey);
-          mpStorageSet("mp_theme_mode", mpThemeMode);
-          mpStorageSet("mp_default_downloader", mpDefaultDownloader);
-          mpStorageSet("mp_default_save_path", mpDefaultSavePath);
-          mpStorageSet("mp_show_specs", mpShowSpecs);
-          mpStorageSet("mp_sub_auto_fill_specs", mpSubAutoFillSpecs);
-          mpStorageSet("mp_debug", mpDebug);
+          mpSaveConfigPatch({
+            url: mpUrl,
+            apiKey: mpApiKey,
+            themeMode: mpThemeMode,
+            defaultDownloader: mpDefaultDownloader,
+            defaultSavePath: mpDefaultSavePath,
+            showSpecs: mpShowSpecs,
+            subAutoFillSpecs: mpSubAutoFillSpecs,
+            debug: mpDebug,
+          });
 
           refreshAllThemes();
 
@@ -1157,7 +1221,7 @@ function showConfigModal() {
             const clientMsg = clients.length
               ? `可用下载器: ${clients.map((c) => c.name).join(", ")}`
               : "未检测到启用下载器";
-            showStatus(`✅ 连接成功${userName ? `（用户: ${userName}）` : ""}\n${clientMsg}`, "success");
+            showStatus(`连接成功${userName ? `（用户: ${userName}）` : ""}\n${clientMsg}`, "success");
             setTimeout(() => {
               closeModal();
               cleanupMpUi({ keepToast: true });
@@ -1167,7 +1231,7 @@ function showConfigModal() {
         } else {
           saveBtn.disabled = false;
           saveBtn.textContent = "验证并保存";
-          showStatus(`❌ 验证失败 (HTTP ${res.status})，请检查地址和 API Key`, "error");
+          showStatus(`验证失败 (HTTP ${res.status})，请检查地址和 API Key`, "error");
         }
       },
       onerror: () => {
@@ -1177,12 +1241,12 @@ function showConfigModal() {
           window.location.protocol === "https:" && /^http:\/\//i.test(url)
             ? "\n提示：扩展后台代理已自动绕过 CORS 与 HTTPS 混合内容限制，请检查内网 IP / 端口是否可达"
             : "";
-        showStatus(`❌ 无法连接到服务器，请检查地址是否可达或混合内容限制${extraHint}`, "error");
+        showStatus(`无法连接到服务器，请检查地址是否可达或混合内容限制${extraHint}`, "error");
       },
       ontimeout: () => {
         saveBtn.disabled = false;
         saveBtn.textContent = "验证并保存";
-        showStatus("❌ 连接超时，请检查网络或端口转发设置", "error");
+        showStatus("连接超时，请检查网络或端口转发设置", "error");
       },
     });
   };
@@ -1202,8 +1266,8 @@ function showConfigModal() {
 }
 
 // 注册油猴菜单栏命令（仅在管理器支持时注册）
-safeRegisterMenuCommand("⚙️ 设置 MoviePilot 账号", showConfigModal);
-safeRegisterMenuCommand("🧪 切换调试日志", () => {
+safeRegisterMenuCommand("设置 MoviePilot 账号", showConfigModal);
+safeRegisterMenuCommand("切换调试日志", () => {
   mpDebug = !mpDebug;
   mpStorageSet("mp_debug", mpDebug);
   createToast("调试日志设置", `调试日志已${mpDebug ? "开启" : "关闭"}`, "info", 3000);
@@ -1253,6 +1317,13 @@ function populateClientAndPathSelects(modal, dlSelect, pathSelect, options = {})
 function renderTag(string, className = "mp-tag-type", titleAttr = "") {
   const title = titleAttr ? ` title="${escapeHtmlAttr(titleAttr)}"` : "";
   return `<span class="mp-tag ${className}"${title}>${escapeHtml(string)}</span>`;
+}
+
+function renderIconTag(iconName, string, className = "mp-tag-type", titleAttr = "", trailingIconName = "") {
+  const title = titleAttr ? ` title="${escapeHtmlAttr(titleAttr)}"` : "";
+  const lead = iconName ? mpIcon(iconName, 12) : "";
+  const trail = trailingIconName ? mpIcon(trailingIconName, 11) : "";
+  return `<span class="mp-tag ${className}"${title}>${lead}<span>${escapeHtml(string)}</span>${trail}</span>`;
 }
 
 function renderMoviepilotTag(type, contentHtml, row = null) {
@@ -3361,7 +3432,7 @@ async function downloadTorrent(
     btn.title = "";
   }
 
-  const toastId = createToast("📡 正在连接站点", "正在获取站点配置并准备推送...", "info");
+  const toastId = createToast("正在连接站点", "正在获取站点配置并准备推送...", "info");
 
   const siteRes = await mpApiRequest(`/api/v1/site/domain/${encodeURIComponent(window.location.hostname)}`);
   const siteData = siteRes.ok && siteRes.data && typeof siteRes.data === "object" ? siteRes.data : {};
@@ -3371,7 +3442,7 @@ async function downloadTorrent(
 
   updateToast(
     toastId,
-    forceUnrecognized ? "⚡ 正在强制下发到下载器" : "⏳ 正在下发到下载器",
+    forceUnrecognized ? "正在强制下发到下载器" : "正在下发到下载器",
     `标题：${finalTitle}\n描述：${cleanDesc || "(无)"}${downloader ? `\n下载器：${downloader}` : ""}${savePath ? `\n路径：${savePath}` : ""}`,
     "info",
   );
@@ -3445,7 +3516,7 @@ async function downloadTorrent(
   if (dlRes.ok || verifiedQueued) {
     if (btn) {
       btn.className = "mp-btn mp-btn-success";
-      btn.textContent = forceUnrecognized ? "✓ 已强推" : "✓ 已推送";
+      btn.innerHTML = `${mpIcon("check", 13)}<span>${forceUnrecognized ? "已强推" : "已推送"}</span>`;
       btn.title = "再次点击可重新推送";
     }
     const msg = dlRes.ok
@@ -3454,7 +3525,7 @@ async function downloadTorrent(
     const descSnippet = cleanDesc.length > 80 ? cleanDesc.slice(0, 80) + "..." : cleanDesc || "(无)";
     updateToast(
       toastId,
-      forceUnrecognized ? "✅ 强制推送成功" : "✅ 推送成功",
+      forceUnrecognized ? "强制推送成功" : "推送成功",
       `${msg}\n描述：${descSnippet}`,
       "success",
       4000,
@@ -3463,10 +3534,10 @@ async function downloadTorrent(
   } else {
     if (btn) {
       btn.className = "mp-btn mp-btn-danger";
-      btn.textContent = "✕ 推送失败 (重试)";
+      btn.innerHTML = `${mpIcon("xCircle", 13)}<span>推送失败 (重试)</span>`;
       btn.title = dlRes.message || "推送失败，请检查 MoviePilot 日志";
     }
-    updateToast(toastId, "❌ 推送被拒绝或执行失败", dlRes.message || "未知错误", "error");
+    updateToast(toastId, "推送被拒绝或执行失败", dlRes.message || "未知错误", "error");
     return false;
   }
 }
@@ -3510,7 +3581,7 @@ async function resolveLinkAndPush(
             : "未获取到下载链接，请检查登录状态后重试";
       }
       createToast(
-        "❌ 获取链接失败",
+        "获取链接失败",
         type === "mteam"
           ? "未能捕获 M-Team 下载链接，请先点击一次原生下载按钮重试。"
           : "未能获取 SunnyPT 下载链接，请刷新或确认登录状态后重试。",
@@ -3590,11 +3661,13 @@ async function openAdvancedPushModal(
 
       <div class="mp-modal-footer">
         <button type="button" class="mp-btn mp-btn-secondary mp-btn-lg" id="mp-adv-cancel">取消</button>
-        <button type="button" class="mp-btn mp-btn-primary mp-btn-lg" id="mp-adv-submit">${forceUnrecognized ? "⚡ 强制推送下载" : "⬇ 立即推送下载"}</button>
+        <button type="button" class="mp-btn mp-btn-primary mp-btn-lg" id="mp-adv-submit">${forceUnrecognized ? `${mpIcon("zap", 14)}<span>强制推送下载</span>` : `${mpIcon("download", 14)}<span>立即推送下载</span>`}</button>
       </div>
     `;
 
-  const modalTitle = forceUnrecognized ? "⚡ 强制推送下载（未识别资源）" : "🚀 高级推送选项";
+  const modalTitle = forceUnrecognized
+    ? `${mpIcon("zap", 16)}<span>强制推送下载（未识别资源）</span>`
+    : `${mpIcon("sliders", 16)}<span>高级推送选项</span>`;
   const { modal, closeModal } = mountModal("mp-adv-push-modal", false, modalTitle, bodyHtml);
   const dlSelect = modal.querySelector("#mp-adv-downloader");
   const pathSelect = modal.querySelector("#mp-adv-path");
@@ -3729,11 +3802,16 @@ function openSubscribeModal(mediaInfo, detectedSeason = null, onSubscribed = nul
 
       <div class="mp-modal-footer">
         <button type="button" class="mp-btn mp-btn-secondary mp-btn-lg" id="mp-sub-cancel">取消</button>
-        <button type="button" class="mp-btn mp-btn-primary mp-btn-lg" id="mp-sub-confirm">★ 确认添加订阅</button>
+        <button type="button" class="mp-btn mp-btn-primary mp-btn-lg" id="mp-sub-confirm">${mpIcon("star", 13)}<span>确认添加订阅</span></button>
       </div>
     `;
 
-  const { modal, closeModal } = mountModal("mp-sub-modal", false, "★ 添加 MoviePilot 订阅", bodyHtml);
+  const { modal, closeModal } = mountModal(
+    "mp-sub-modal",
+    false,
+    `${mpIcon("star", 15)}<span>添加 MoviePilot 订阅</span>`,
+    bodyHtml,
+  );
   const seasonSelect = modal.querySelector("#mp-sub-season");
   const dlSelect = modal.querySelector("#mp-sub-downloader");
   const pathSelect = modal.querySelector("#mp-sub-path");
@@ -3826,7 +3904,7 @@ function openSubscribeModal(mediaInfo, detectedSeason = null, onSubscribed = nul
         chip.setAttribute("aria-pressed", "false");
         const metaHint = [group.media_type, group.category].filter(Boolean).join(" · ");
         chip.title = metaHint ? `${group.name} (${metaHint})` : group.name;
-        chip.innerHTML = `<span class="mp-rule-chip-check">✓</span><span>${escapeHtml(group.name)}</span>`;
+        chip.innerHTML = `<span class="mp-rule-chip-check">${mpIcon("check", 12)}</span><span>${escapeHtml(group.name)}</span>`;
         chip.addEventListener("click", () => {
           const idx = selectedFilterGroups.indexOf(group.name);
           if (idx >= 0) {
@@ -3865,7 +3943,7 @@ function openSubscribeModal(mediaInfo, detectedSeason = null, onSubscribed = nul
       closeModal();
       const groupNote = selectedFilterGroups.length ? `（规则组：${selectedFilterGroups.join("、")}）` : "";
       createToast(
-        "✅ 订阅成功",
+        "订阅成功",
         `已将《${mediaInfo.title}》${isTv && chosenSeason ? `第 ${chosenSeason} 季` : ""}加入订阅${groupNote}`,
         "success",
         3500,
@@ -3873,7 +3951,7 @@ function openSubscribeModal(mediaInfo, detectedSeason = null, onSubscribed = nul
       if (typeof onSubscribed === "function") onSubscribed(chosenSeason);
     } else {
       confirmBtn.disabled = false;
-      confirmBtn.textContent = "★ 确认添加订阅";
+      confirmBtn.innerHTML = `${mpIcon("star", 13)}<span>确认添加订阅</span>`;
       statusEl.style.display = "block";
       statusEl.className = "mp-status-banner error";
       statusEl.textContent = result.message || "订阅失败，请检查权限或参数";
@@ -3904,7 +3982,7 @@ function buildHtml(row, mediaInfo, type, torrentName, torrentDesc, downloadLink,
     mediaGroupHtml += renderTag(`S${String(detectedSeason).padStart(2, "0")}`, "mp-tag-season");
   }
   if (tmdbId) {
-    mediaGroupHtml += `<a class="mp-tag mp-tag-tmdb mp-tag-link" href="https://www.themoviedb.org/${tmdbType}/${tmdbId}" target="_blank" rel="noopener noreferrer" title="在 TMDB 查看">TMDB:${escapeHtml(tmdbId)} ↗</a>`;
+    mediaGroupHtml += `<a class="mp-tag mp-tag-tmdb mp-tag-link" href="https://www.themoviedb.org/${tmdbType}/${tmdbId}" target="_blank" rel="noopener noreferrer" title="在 TMDB 查看"><span>TMDB:${escapeHtml(tmdbId)}</span>${mpIcon("arrowUpRight", 12)}</a>`;
   }
 
   // 2) 技术参数区（紧凑中性配色）
@@ -3930,7 +4008,7 @@ function buildHtml(row, mediaInfo, type, torrentName, torrentDesc, downloadLink,
 
   const canPush = Boolean(downloadLink);
   const canLazyPush = type === "mteam" || type === "sunnypt";
-  const buttonText = canPush || canLazyPush ? "⬇ 推送下载" : "无下载链接";
+  const buttonHtml = canPush || canLazyPush ? `${mpIcon("download", 13)}<span>推送下载</span>` : "无下载链接";
   const buttonCls = canPush || canLazyPush ? "mp-btn mp-btn-primary" : "mp-btn mp-btn-secondary";
 
   const loadingExistsHtml = tmdbId
@@ -3947,12 +4025,12 @@ function buildHtml(row, mediaInfo, type, torrentName, torrentDesc, downloadLink,
   html += `<span class="mp-group mp-group-status"><span id="${existsId}" class="mp-status-slot">${loadingExistsHtml}</span><span id="${subId}" class="mp-status-slot">${loadingSubHtml}</span></span>`;
   html += `<span class="mp-group mp-group-actions">`;
   if (canPush || canLazyPush) {
-    html += `<span class="mp-btn-split"><button type="button" id="${btnId}" class="${buttonCls}">${buttonText}</button><button type="button" id="${advBtnId}" class="${buttonCls} mp-btn-split-care" title="选择下载器、保存路径或调整描述">▾</button></span>`;
+    html += `<span class="mp-btn-split"><button type="button" id="${btnId}" class="${buttonCls}">${buttonHtml}</button><button type="button" id="${advBtnId}" class="${buttonCls} mp-btn-split-care" title="选择下载器、保存路径或调整描述">${mpIcon("chevronDown", 12)}</button></span>`;
   } else {
-    html += `<button type="button" id="${btnId}" class="${buttonCls}" disabled title="当前页面未提取到可用下载链接">${buttonText}</button>`;
+    html += `<button type="button" id="${btnId}" class="${buttonCls}" disabled title="当前页面未提取到可用下载链接">${buttonHtml}</button>`;
   }
   html += `<button type="button" id="${reBtnId}" class="mp-btn mp-btn-secondary">重新识别</button>`;
-  html += `<button type="button" id="${cfgBtnId}" class="mp-btn mp-btn-icon" title="MoviePilot 配置">⚙</button>`;
+  html += `<button type="button" id="${cfgBtnId}" class="mp-btn mp-btn-icon" title="MoviePilot 配置">${mpIcon("settings", 13)}</button>`;
   html += `</span>`;
 
   const isStillValid = () => row.isConnected && row.dataset.mpMountToken === mountToken;
@@ -3996,7 +4074,7 @@ function buildHtml(row, mediaInfo, type, torrentName, torrentDesc, downloadLink,
             : "";
           if (info.itemId) {
             const playBtnId = nextUid("play");
-            el.innerHTML = `<button type="button" id="${playBtnId}" class="mp-tag mp-tag-exists mp-tag-link" title="点击获取媒体服务器在线播放地址">✓ 已入库${escapeHtml(epSuffix)} ▶</button>`;
+            el.innerHTML = `<button type="button" id="${playBtnId}" class="mp-tag mp-tag-exists mp-tag-link" title="点击获取媒体服务器在线播放地址">${mpIcon("check", 12)}<span>已入库${escapeHtml(epSuffix)}</span>${mpIcon("play", 10)}</button>`;
             document.getElementById(playBtnId)?.addEventListener("click", async () => {
               const playUrl = await fetchPlayUrl(info.itemId);
               if (playUrl) {
@@ -4006,7 +4084,7 @@ function buildHtml(row, mediaInfo, type, torrentName, torrentDesc, downloadLink,
               }
             });
           } else {
-            el.innerHTML = renderTag(`✓ 已入库${epSuffix}`, "mp-tag-exists");
+            el.innerHTML = renderIconTag("check", `已入库${epSuffix}`, "mp-tag-exists");
           }
         } else {
           el.innerHTML = renderTag("未入库", "mp-tag-missing");
@@ -4026,8 +4104,9 @@ function buildHtml(row, mediaInfo, type, torrentName, torrentDesc, downloadLink,
                 ? Math.max(total - found.lack_episode, 0)
                 : null;
           const progressText = isTv && total > 0 && completed !== null ? ` (${completed}/${total})` : "";
-          const prefix = found.best_version ? "★ 洗版中" : "★ 已订阅";
-          el.innerHTML = renderTag(
+          const prefix = found.best_version ? "洗版中" : "已订阅";
+          el.innerHTML = renderIconTag(
+            "star",
             `${prefix}${progressText}`,
             "mp-tag-sub-on",
             found.season ? `第 ${found.season} 季` : "",
@@ -4038,12 +4117,13 @@ function buildHtml(row, mediaInfo, type, torrentName, torrentDesc, downloadLink,
             const subCfgId = nextUid("subcfg");
             const splitCls =
               cls === "mp-tag-sub-err" ? "mp-btn-split mp-btn-split-sub-err" : "mp-btn-split mp-btn-split-sub";
-            el.innerHTML = `<span class="${splitCls}"><button type="button" id="${subBtnId}" class="mp-tag ${cls}">${escapeHtml(label)}</button><button type="button" id="${subCfgId}" class="mp-tag ${cls} mp-tag-split-care" title="订阅设置（季号 / 洗版 / 质量）">▾</button></span>`;
+            const subIcon = cls === "mp-tag-sub-err" ? mpIcon("xCircle", 12) : mpIcon("plus", 12);
+            el.innerHTML = `<span class="${splitCls}"><button type="button" id="${subBtnId}" class="mp-tag ${cls}">${subIcon}<span>${escapeHtml(label)}</span></button><button type="button" id="${subCfgId}" class="mp-tag ${cls} mp-tag-split-care" title="订阅设置（季号 / 洗版 / 质量）">${mpIcon("chevronDown", 12)}</button></span>`;
             const subBtn = document.getElementById(subBtnId);
             const subCfgBtn = document.getElementById(subCfgId);
             const markSubscribed = (chosenSeason) => {
               const sTip = chosenSeason ? `第 ${chosenSeason} 季` : "";
-              el.innerHTML = renderTag("★ 已订阅", "mp-tag-sub-on", sTip);
+              el.innerHTML = renderIconTag("star", "已订阅", "mp-tag-sub-on", sTip);
             };
 
             const torrentSubPreset = inferSubscribePresetFromTorrent(torrentName, safeMeta, torrentDesc);
@@ -4065,14 +4145,14 @@ function buildHtml(row, mediaInfo, type, torrentName, torrentDesc, downloadLink,
                       ? `（${torrentSubPreset.labels.join(" / ")}）`
                       : "";
                   createToast(
-                    "✅ 订阅成功",
+                    "订阅成功",
                     `已将《${mediaInfo.title}》${detectedSeason ? `第 ${detectedSeason} 季` : ""}加入 MoviePilot 订阅${presetSuffix}`,
                     "success",
                     3000,
                   );
                 } else {
                   renderSubUi("订阅失败 (重试)", "mp-tag-sub-err");
-                  createToast("❌ 订阅失败", res.message || "请检查 MoviePilot 订阅设置", "error", 4000);
+                  createToast("订阅失败", res.message || "请检查 MoviePilot 订阅设置", "error", 4000);
                 }
               });
             });
@@ -4081,10 +4161,7 @@ function buildHtml(row, mediaInfo, type, torrentName, torrentDesc, downloadLink,
               openSubscribeModal(mediaInfo, detectedSeason, markSubscribed, torrentSubPreset);
             });
           };
-          renderSubUi(
-            detectedSeason ? `+ 订阅 S${String(detectedSeason).padStart(2, "0")}` : "+ 订阅",
-            "mp-tag-sub-btn",
-          );
+          renderSubUi(detectedSeason ? `订阅 S${String(detectedSeason).padStart(2, "0")}` : "订阅", "mp-tag-sub-btn");
         }
       });
     }
@@ -4154,13 +4231,13 @@ function openManualModal(row, type, torrentName, torrentDesc, downloadLink, torr
           ? `
       <div class="mp-modal-footer" style="justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--mp-border);">
         <span class="mp-help-text" style="margin:0;">未搜索到对应条目？可直接指定保存路径强制下载</span>
-        <button type="button" class="mp-btn mp-btn-secondary mp-btn-lg" id="mp-manual-force-push">⚡ 选择路径强制推送</button>
+        <button type="button" class="mp-btn mp-btn-secondary mp-btn-lg" id="mp-manual-force-push">${mpIcon("zap", 14)}<span>选择路径强制推送</span></button>
       </div>`
           : ""
       }
     `;
 
-  const { modal, closeModal } = mountModal(null, true, "🔍 手动关联识别", bodyHtml);
+  const { modal, closeModal } = mountModal(null, true, `${mpIcon("search", 16)}<span>手动关联识别</span>`, bodyHtml);
 
   const inputEl = modal.querySelector("#mp-media-name");
   const searchBtn = modal.querySelector("#mp-search-all");
@@ -4280,7 +4357,9 @@ function openManualModal(row, type, torrentName, torrentDesc, downloadLink, torr
         const mpTypeName = item.type === "电视剧" ? "电视剧" : "电影";
         const year = String(item.year || "N/A");
         const tmdbId = String(item.tmdb_id || item.id || "");
-        const vote = item.vote_average ? `★ ${Number(item.vote_average).toFixed(1)}` : "";
+        const voteHtml = item.vote_average
+          ? ` · <span style="display:inline-flex;align-items:center;gap:2px;color:var(--mp-warning);font-weight:600;">${mpIcon("star", 11)}${escapeHtml(Number(item.vote_average).toFixed(1))}</span>`
+          : "";
         const posterUrl = resolvePosterUrl(item.poster_path);
 
         const div = document.createElement("div");
@@ -4289,7 +4368,7 @@ function openManualModal(row, type, torrentName, torrentDesc, downloadLink, torr
                   ${
                     posterUrl
                       ? `<img class="mp-result-poster" src="${escapeHtmlAttr(posterUrl)}" alt="">`
-                      : `<div class="mp-result-poster-placeholder">🎬</div>`
+                      : `<div class="mp-result-poster-placeholder">${mpIcon("film", 20)}</div>`
                   }
                   <div class="mp-result-info">
                     <div class="mp-result-title">
@@ -4297,7 +4376,7 @@ function openManualModal(row, type, torrentName, torrentDesc, downloadLink, torr
                       <span>${escapeHtml(title)}</span>
                       ${enTitle && enTitle !== title ? `<span style="font-weight:400;color:var(--mp-text-muted);font-size:12px;">(${escapeHtml(enTitle)})</span>` : ""}
                     </div>
-                    <div class="mp-result-meta">年份: ${escapeHtml(year)} · TMDB: ${escapeHtml(tmdbId)}${vote ? " · " + escapeHtml(vote) : ""}</div>
+                    <div class="mp-result-meta">年份: ${escapeHtml(year)} · TMDB: ${escapeHtml(tmdbId)}${voteHtml}</div>
                     ${item.overview ? `<div class="mp-result-overview">${escapeHtml(item.overview)}</div>` : ""}
                   </div>
                   <div class="mp-result-actions">
@@ -4310,7 +4389,7 @@ function openManualModal(row, type, torrentName, torrentDesc, downloadLink, torr
           img.addEventListener("error", () => {
             const placeholder = document.createElement("div");
             placeholder.className = "mp-result-poster-placeholder";
-            placeholder.textContent = "🎬";
+            placeholder.innerHTML = mpIcon("film", 20);
             img.replaceWith(placeholder);
           });
         }
@@ -5043,11 +5122,11 @@ function processRecognition(row, type, t_name, t_desc, d_link, t_size) {
               });
               const canForcePush = Boolean(latestFailLink || type === "mteam" || type === "sunnypt");
               const forcePushHtml = canForcePush
-                ? `<span class="mp-btn-split"><button type="button" id="${forceBtnId}" class="mp-btn mp-btn-primary mp-force-push-btn" title="按默认下载器与路径强制推送">⚡ 强制推送</button><button type="button" id="${forceAdvId}" class="mp-btn mp-btn-primary mp-btn-split-care" title="选择下载器、保存路径并强制推送">▾</button></span>`
+                ? `<span class="mp-btn-split"><button type="button" id="${forceBtnId}" class="mp-btn mp-btn-primary mp-force-push-btn" title="按默认下载器与路径强制推送">${mpIcon("zap", 13)}<span>强制推送</span></button><button type="button" id="${forceAdvId}" class="mp-btn mp-btn-primary mp-btn-split-care" title="选择下载器、保存路径并强制推送">${mpIcon("chevronDown", 12)}</button></span>`
                 : `<button type="button" class="mp-btn mp-btn-secondary" disabled title="当前页面未提取到可用下载链接">无下载链接</button>`;
               row.innerHTML = renderMoviepilotTag(
                 type,
-                `<button type="button" id="${failBtnId}" class="mp-btn mp-btn-danger">⚠ 识别失败，点此手动匹配</button>${forcePushHtml}<button type="button" id="${cfgFailBtnId}" class="mp-btn mp-btn-icon" title="MoviePilot 配置">⚙</button>`,
+                `<button type="button" id="${failBtnId}" class="mp-btn mp-btn-danger">${mpIcon("alertTriangle", 13)}<span>识别失败，点此手动匹配</span></button>${forcePushHtml}<button type="button" id="${cfgFailBtnId}" class="mp-btn mp-btn-icon" title="MoviePilot 配置">${mpIcon("settings", 13)}</button>`,
                 row,
               );
               document
@@ -5161,7 +5240,7 @@ function ensureFloatingConfigButton() {
   btn.id = "mp-floating-cfg-btn";
   btn.className = "mp-floating-cfg-btn";
   applyThemeClass(btn);
-  btn.textContent = "⚙️ 配置 MoviePilot";
+  btn.innerHTML = `${mpIcon("settings", 14)}<span>配置 MoviePilot</span>`;
   btn.addEventListener("click", showConfigModal);
   document.body?.appendChild(btn);
 }

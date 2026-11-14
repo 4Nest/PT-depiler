@@ -17,15 +17,19 @@ const bridge = {
   mteamHookUrl: chrome.runtime.getURL("js/mp-mteam-hook.js"),
 };
 
-export function mountMoviePilot(config: Partial<IMoviePilotConfig> = {}) {
-  startMpEngine(bridge, config);
-}
+let engineMounted = false;
 
-export function updateMoviePilotRuntimeConfig(config: Partial<IMoviePilotConfig> = {}) {
-  syncMpEngineConfig(config);
+export function mountOrUpdateMoviePilot(config: Partial<IMoviePilotConfig> = {}) {
+  if (!engineMounted) {
+    engineMounted = true;
+    startMpEngine(bridge, config);
+  } else {
+    syncMpEngineConfig(config);
+  }
 }
 
 export function unmountMoviePilot() {
+  engineMounted = false;
   stopMpEngine();
 }
 

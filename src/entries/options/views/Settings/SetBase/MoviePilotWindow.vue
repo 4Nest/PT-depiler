@@ -147,7 +147,15 @@ async function handleToggleEnabled(val: boolean) {
   });
 }
 
+async function handleToggleBoolField(field: "showSpecs" | "subAutoFillSpecs" | "debug", val: boolean) {
+  ensureMoviePilotState();
+  configStore.moviePilot[field] = Boolean(val);
+  await sendMessage("updateMoviePilotConfig", { ...configStore.moviePilot });
+  void configStore.$save();
+}
+
 async function handleAutoSaveSwitch() {
+  ensureMoviePilotState();
   await sendMessage("updateMoviePilotConfig", { ...configStore.moviePilot });
   void configStore.$save();
 }
@@ -318,7 +326,15 @@ defineExpose({ beforeSave });
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div class="space-y-1.5">
             <Label>{{ t("SetBase.moviepilot.themeMode") }}</Label>
-            <Select v-model="configStore.moviePilot.themeMode" @update:model-value="handleAutoSaveSwitch">
+            <Select
+              :model-value="configStore.moviePilot.themeMode"
+              @update:model-value="
+                (v) => {
+                  configStore.moviePilot.themeMode = v as 'auto' | 'light' | 'dark';
+                  handleAutoSaveSwitch();
+                }
+              "
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -431,7 +447,10 @@ defineExpose({ beforeSave });
             <div class="text-sm font-medium text-foreground">{{ t("SetBase.moviepilot.showSpecs") }}</div>
             <div class="text-xs text-muted-foreground">{{ t("SetBase.moviepilot.showSpecsDesc") }}</div>
           </div>
-          <Switch v-model="configStore.moviePilot.showSpecs" @update:model-value="handleAutoSaveSwitch" />
+          <Switch
+            :model-value="configStore.moviePilot.showSpecs"
+            @update:model-value="(v) => handleToggleBoolField('showSpecs', v)"
+          />
         </div>
 
         <Separator />
@@ -441,7 +460,10 @@ defineExpose({ beforeSave });
             <div class="text-sm font-medium text-foreground">{{ t("SetBase.moviepilot.subAutoFillSpecs") }}</div>
             <div class="text-xs text-muted-foreground">{{ t("SetBase.moviepilot.subAutoFillSpecsDesc") }}</div>
           </div>
-          <Switch v-model="configStore.moviePilot.subAutoFillSpecs" @update:model-value="handleAutoSaveSwitch" />
+          <Switch
+            :model-value="configStore.moviePilot.subAutoFillSpecs"
+            @update:model-value="(v) => handleToggleBoolField('subAutoFillSpecs', v)"
+          />
         </div>
 
         <Separator />
@@ -451,7 +473,10 @@ defineExpose({ beforeSave });
             <div class="text-sm font-medium text-foreground">{{ t("SetBase.moviepilot.debugLog") }}</div>
             <div class="text-xs text-muted-foreground">{{ t("SetBase.moviepilot.debugLogDesc") }}</div>
           </div>
-          <Switch v-model="configStore.moviePilot.debug" @update:model-value="handleAutoSaveSwitch" />
+          <Switch
+            :model-value="configStore.moviePilot.debug"
+            @update:model-value="(v) => handleToggleBoolField('debug', v)"
+          />
         </div>
       </CardContent>
     </Card>
