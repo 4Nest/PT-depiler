@@ -31,8 +31,11 @@ export async function setupOffscreenDocument() {
       reasons: [chrome.offscreen.Reason.DOM_PARSER],
       justification: "Allow DOM_PARSER, CLIPBOARD, BLOBS in background.",
     });
-    await creating;
-    creating = null;
+    try {
+      await creating;
+    } finally {
+      creating = null;
+    }
   }
 }
 
@@ -40,10 +43,12 @@ export async function resetOffscreenDocument() {
   if (__BROWSER__ == "firefox") {
     return;
   }
+  if (creating) {
+    await creating.catch(() => {});
+  }
   try {
     await chrome.offscreen.closeDocument();
   } catch {}
-  creating = null;
   await setupOffscreenDocument();
 }
 
@@ -51,5 +56,4 @@ onMessage("resetOffscreen", async () => {
   await resetOffscreenDocument();
 });
 
-// noinspection JSIgnoredPromiseFromCall
-setupOffscreenDocument();
+setupOffscreenDocument().catch(() => {});
