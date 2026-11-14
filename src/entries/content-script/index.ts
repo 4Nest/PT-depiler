@@ -21,7 +21,7 @@ function isMoviePilotCandidateLocation(loc: Location, matchedPtdSite: boolean): 
   if (host === "totheglory.im" && path.startsWith("/t/")) return true;
   if (host === "bangumi.moe" && path.startsWith("/torrent/")) return true;
   if (/(^|\.)acgnx\.se$/.test(host) && path.startsWith("/show-")) return true;
-  if (/(^|\.)dmhy\.org$/.test(host) && path.startsWith("/topics/view/")) return true;
+  if (/(^|\.)dmhy\.org$/.test(host) && host !== "u2.dmhy.org" && path.startsWith("/topics/view/")) return true;
   if (/(^|\.)nyaa\.si$/.test(host) && path.startsWith("/view/")) return true;
   if (host === "mikanani.me" && /^\/Home\/Episode\//i.test(path)) return true;
   if (/(^|\.)m-team\.(cc|io)$/.test(host)) return true;
