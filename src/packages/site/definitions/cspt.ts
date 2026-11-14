@@ -189,7 +189,14 @@ export const siteMetadata: ISiteMetadata = {
     selectors: {
       ...SchemaMetadata.search.selectors,
       rows: { selector: "div.torrent-table-sub-info" },
-      subTitle: { selector: ".torrent-info-text-small_name" },
+      subTitle: {
+        selector: ".torrent-info-text-small_name",
+        elementProcess: (element: HTMLElement) => {
+          const clone = element.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll("a[href*='tag_id'], span[class*='tag'], img").forEach((el) => el.remove());
+          return (clone.textContent || "").trim();
+        },
+      },
       time: { selector: ".torrent-info-text-added", ...SchemaMetadata.search.selectors!.time! },
       size: { selector: ".torrent-info-text-size", filters: [{ name: "parseSize" }] },
       author: { selector: ".torrent-info-text-author" },

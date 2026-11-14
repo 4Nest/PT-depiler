@@ -34,5 +34,16 @@ export async function setupOffscreenDocument() {
   }
 }
 
+export async function resetOffscreenDocument() {
+  if (__BROWSER__ == "firefox") {
+    return;
+  }
+  try {
+    await chrome.offscreen.closeDocument();
+  } catch {}
+  creating = null;
+  await setupOffscreenDocument();
+}
+
 // noinspection JSIgnoredPromiseFromCall
 setupOffscreenDocument();

@@ -323,6 +323,11 @@ export const siteMetadata: ISiteMetadata = {
       subTitle: {
         selector: "td.t_name h4",
         text: "",
+        elementProcess: (element: HTMLElement) => {
+          const clone = element.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll("span, a, img").forEach((el) => el.remove());
+          return (clone.textContent || "").trim();
+        },
       },
       url: {
         selector: "td.t_name h3 a",
