@@ -18,6 +18,7 @@ import {
 } from "../types";
 import {
   createDocument,
+  createInertElement,
   definedFilters,
   extractContent,
   parseSizeString,
@@ -194,8 +195,7 @@ export const subTitleRemoveExtraElement =
       const subTitleHtml = testSubTitle[testSubTitle.length - 1];
 
       // 先移除通用标签徽章与图标节点，再移除站点自定义选择器内容
-      const div = document.createElement("div");
-      div.innerHTML = subTitleHtml;
+      const div = createInertElement("div", subTitleHtml);
       div.querySelectorAll(DEFAULT_SUBTITLE_TAG_SELECTORS).forEach((el) => el.remove());
       for (const removeSelectorsKey of removeSelectors) {
         div.querySelectorAll(removeSelectorsKey).forEach((el) => (self ? el : el.parentElement)?.remove());

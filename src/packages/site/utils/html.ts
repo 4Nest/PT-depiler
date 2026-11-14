@@ -17,10 +17,33 @@ export function cfDecodeEmail(encodedString: string | undefined | null) {
 }
 
 // From: https://stackoverflow.com/a/28899585/8824471
+let sharedInertDocument: Document | null = null;
+
+export function getInertDocument(): Document {
+  if (!sharedInertDocument) {
+    if (typeof document !== "undefined" && typeof document.implementation?.createHTMLDocument === "function") {
+      sharedInertDocument = document.implementation.createHTMLDocument("");
+    } else {
+      sharedInertDocument = new DOMParser().parseFromString("", "text/html");
+    }
+  }
+  return sharedInertDocument;
+}
+
+export function createInertElement<K extends keyof HTMLElementTagNameMap>(
+  tagName: K,
+  html?: string,
+): HTMLElementTagNameMap[K] {
+  const el = getInertDocument().createElement(tagName);
+  if (html !== undefined) {
+    el.innerHTML = html;
+  }
+  return el;
+}
+
 export function extractContent(s: string): string {
-  const span = document.createElement("span");
-  span.innerHTML = s;
-  return span.textContent || span.innerText;
+  const span = createInertElement("span", s);
+  return span.textContent || span.innerText || "";
 }
 
 export function createDocument(str: string, type: DOMParserSupportedType = "text/html"): Document {

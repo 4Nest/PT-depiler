@@ -4,7 +4,7 @@
  */
 import Sizzle from "sizzle";
 import Gazelle, { SchemaMetadata } from "../schemas/Gazelle.ts";
-import { parseValidTimeString, parseSizeString, buildCategoryOptionsFromList } from "../utils";
+import { parseValidTimeString, parseSizeString, buildCategoryOptionsFromList, createInertElement } from "../utils";
 import type { ISiteMetadata, ITorrent, ISearchInput } from "../types";
 import { ETorrentStatus, NoTorrentsError } from "../types";
 
@@ -299,9 +299,7 @@ export const siteMetadata: ISiteMetadata = {
 
 export default class PassThePopcorn extends Gazelle {
   protected createTempDiv(rawHtml: string): HTMLDivElement {
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = rawHtml;
-    return tempDiv;
+    return createInertElement("div", rawHtml);
   }
   protected parsePageData(movie: any, authKey: string, torrentPass: string): Partial<ITorrent> {
     const torrent = movie.GroupingQualities?.[0]?.Torrents?.[0];

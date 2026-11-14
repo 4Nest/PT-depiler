@@ -178,6 +178,19 @@ function mpSaveConfigPatch(patchObj) {
   }
   return Promise.resolve();
 }
+let mpSharedInertDoc = null;
+function cloneInertNode(node) {
+  if (!node) return null;
+  try {
+    if (!mpSharedInertDoc && typeof document?.implementation?.createHTMLDocument === "function") {
+      mpSharedInertDoc = document.implementation.createHTMLDocument("");
+    }
+    if (mpSharedInertDoc) {
+      return mpSharedInertDoc.importNode(node, true);
+    }
+  } catch (e) {}
+  return node.cloneNode(true);
+}
 
 function mpStorageSet(key, value) {
   const prop = KEY_TO_CONFIG_PROP[key];
@@ -1429,7 +1442,7 @@ function isPureRatingFragmentText(text) {
 
 function extractCleanSubtitle(cell) {
   if (!cell) return "";
-  const clone = cell.cloneNode(true);
+  const clone = cloneInertNode(cell);
 
   clone
     .querySelectorAll(
@@ -1748,7 +1761,7 @@ function extractCleanHeadingTitle(customEl = null) {
   const h1 = customEl || document.querySelector("h1#top") || document.querySelectorAll("h1")[0];
   if (!h1) return "";
 
-  const clone = h1.cloneNode(true);
+  const clone = cloneInertNode(h1);
   const promoSelectors = [
     "font.free",
     "font.twoup",
@@ -2808,7 +2821,7 @@ function extractMTeamDownloadLink(options = {}) {
 
 function extractCleanMTeamNodeTitle(el) {
   if (!el) return "";
-  const clone = el.cloneNode(true);
+  const clone = cloneInertNode(el);
   clone
     .querySelectorAll(
       [
