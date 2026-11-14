@@ -1,3 +1,5 @@
+import { onMessage } from "@/messages.ts";
+
 let creating: Promise<void> | null; // A global promise to avoid concurrency issues
 
 const offscreenPath = "src/entries/offscreen/offscreen.html";
@@ -44,6 +46,10 @@ export async function resetOffscreenDocument() {
   creating = null;
   await setupOffscreenDocument();
 }
+
+onMessage("resetOffscreen", async () => {
+  await resetOffscreenDocument();
+});
 
 // noinspection JSIgnoredPromiseFromCall
 setupOffscreenDocument();

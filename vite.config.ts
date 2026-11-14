@@ -252,7 +252,7 @@ export default defineConfig({
                   // 我们自己的 @pkg 下分包，使用 vendor/packages 前缀
                   if (/[\\/]src[\\/]packages[\\/](downloader|backupServer|site|social).+\.ts/.test(chunkName)) {
                     const name = chunkName.replace(/^.+?[\\/]src[\\/]/, "").replace(/\..+?$/, "");
-                    return `vendor/${name}-[hash].js`;
+                    return chunkInfo.facadeModuleId ? `vendor/${name}.js` : `vendor/${name}-[hash].js`;
                   }
 
                   // 其他 node_modules 分包，直接使用 vendor/{deps} 前缀

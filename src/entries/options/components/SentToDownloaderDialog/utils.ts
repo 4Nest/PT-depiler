@@ -71,13 +71,33 @@ export function sendTorrentToDownloader(
         }
       }
 
+      const payload = {
+        torrent,
+        downloaderId: downloaderId,
+        addTorrentOptions: realAddTorrentOptions as CAddTorrentOptions,
+      };
+      const isStaleChunkErr = (msg?: unknown) =>
+        typeof msg === "string" && msg.includes("Failed to fetch dynamically imported module");
+
       promises.push(
-        sendMessage("downloadTorrent", {
-          torrent,
-          downloaderId: downloaderId,
-          addTorrentOptions: realAddTorrentOptions as CAddTorrentOptions,
-        }).catch((x) => {
-          runtimeStore.showSnackbar(`[${torrent.title}] 发送到下载器失败！错误信息： ${x}`, { color: "error" });
+        (async () => {
+          let res = await sendMessage("downloadTorrent", payload);
+          if (res?.downloadStatus === "failed" && isStaleChunkErr(res.errorMessage)) {
+            await sendMessage("resetOffscreen", undefined).catch(() => {});
+            res = await sendMessage("downloadTorrent", payload);
+          }
+          return res;
+        })().catch(async (err) => {
+          if (isStaleChunkErr(String(err))) {
+            try {
+              await sendMessage("resetOffscreen", undefined);
+              return await sendMessage("downloadTorrent", payload);
+            } catch (retryErr) {
+              err = retryErr;
+            }
+          }
+          runtimeStore.showSnackbar(`[${torrent.title}] 发送到下载器失败！错误信息： ${err}`, { color: "error" });
+          return undefined;
         }),
       );
     }
