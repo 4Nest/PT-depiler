@@ -1,8 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, shallowRef, toRaw, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { cloneDeep, toMerged } from "es-toolkit";
-import { ArrowRight, Check, CloudDownload, Folder, Loader2, Send, SlidersHorizontal, Tag, Zap } from "lucide-vue-next";
+import { cloneDeep, toMerged, uniq } from "es-toolkit";
+import {
+  ArrowRight,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  CloudDownload,
+  Folder,
+  Loader2,
+  Send,
+  SlidersHorizontal,
+  Tag,
+  Zap,
+} from "lucide-vue-next";
 
 import { type ITorrent } from "@ptd/site";
 import {
@@ -42,6 +54,8 @@ import type { IDownloaderMetadata } from "@/shared/types.ts";
 
 import { sendTorrentToDownloader } from "./utils.ts";
 
+const DEFAULT_VISIBLE_PATHS = 6;
+
 const showDialog = defineModel<boolean>();
 const { torrentItems, isDefaultSend } = defineProps<{
   torrentItems: ITorrent[];
@@ -61,6 +75,8 @@ const isSending = ref(false);
 const quickSendToClient = ref<boolean>(false);
 const selectedDownloader = ref<IDownloaderMetadata | null>(null);
 const selectedDownloaderMetadata = shallowRef<any>(null);
+const expandedDownloaderFolders = ref<Record<string, boolean>>({});
+
 const addTorrentOptions = ref<Required<Omit<CAddTorrentOptions, "localDownloadOption">>>({
   localDownload: true,
   addAtPaused: false,
@@ -99,10 +115,10 @@ const labelTags = computed<string[]>({
   },
 });
 
-const suggestFolders = computed(() => selectedDownloader.value?.suggestFolders ?? []);
-const suggestTags = computed(() => selectedDownloader.value?.suggestTags ?? []);
+const suggestFolders = computed(() => uniq((selectedDownloader.value?.suggestFolders ?? []).filter(Boolean)));
+const suggestTags = computed(() => uniq((selectedDownloader.value?.suggestTags ?? []).filter(Boolean)));
 
-const currentSiteIds = computed(() => [...new Set(torrentItems.map((t) => t.site).filter(Boolean))]);
+const currentSiteIds = computed(() => [...new Set(torrentItems.map((item) => item.site).filter(Boolean))]);
 const enabledDownloadersBySite = computed(() => {
   const ids = currentSiteIds.value;
   if (ids.length === 0) return metadataStore.getEnabledDownloaders;
@@ -129,6 +145,75 @@ const advancedAccordionItems = computed(() => [
     badge: selectedDownloaderMetadata.value?.advanceAddTorrentOptions?.length ?? 0,
   },
 ]);
+
+function getCleanFolders(downloader: IDownloaderMetadata): string[] {
+  return uniq((downloader.suggestFolders ?? []).map((f) => f.trim()).filter(Boolean));
+}
+
+function getCleanTags(downloader: IDownloaderMetadata): string[] {
+  return uniq((downloader.suggestTags ?? []).map((tag) => tag.trim()).filter(Boolean));
+}
+
+function getAllQuickPaths(downloader: IDownloaderMetadata): string[] {
+  return ["", ...getCleanFolders(downloader)];
+}
+
+function getVisibleQuickPaths(downloader: IDownloaderMetadata): string[] {
+  const all = getAllQuickPaths(downloader);
+  if (expandedDownloaderFolders.value[downloader.id] || all.length <= DEFAULT_VISIBLE_PATHS) {
+    return all;
+  }
+  return all.slice(0, DEFAULT_VISIBLE_PATHS);
+}
+
+function formatCompactPath(rawPath: string): string {
+  if (!rawPath) return t("SentToDownloaderDialog.defaultFolder");
+  if (rawPath.length <= 36) return rawPath;
+  const sep = rawPath.includes("\\") ? "\\" : "/";
+  const parts = rawPath.split(/[\\/]+/).filter(Boolean);
+  if (parts.length <= 2) return rawPath;
+  const prefix = rawPath.startsWith(sep) ? sep : "";
+  const tail = parts.slice(-2).join(sep);
+  return `${prefix}${parts[0]}${sep}…${sep}${tail}`;
+}
+
+function getQuickSelectedTags(downloader: IDownloaderMetadata): string[] {
+  const validSet = new Set(getCleanTags(downloader));
+  const saved = configStore.download.quickSendTags?.[downloader.id] ?? [];
+  return saved.filter((tag) => validSet.has(tag));
+}
+
+function isQuickTagSelected(downloader: IDownloaderMetadata, tag: string): boolean {
+  return getQuickSelectedTags(downloader).includes(tag);
+}
+
+function toggleQuickTag(downloader: IDownloaderMetadata, tag: string) {
+  const current = getQuickSelectedTags(downloader);
+  const next = current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag];
+  if (!configStore.download.quickSendTags) {
+    configStore.download.quickSendTags = {};
+  }
+  configStore.download.quickSendTags[downloader.id] = next;
+  configStore.$save();
+}
+
+function isLastUsedTarget(downloader: IDownloaderMetadata, path: string): boolean {
+  if (!configStore.download.saveLastDownloader) return false;
+  return (
+    metadataStore.lastDownloader?.id === downloader.id &&
+    (metadataStore.lastDownloader?.options?.savePath ?? "") === path
+  );
+}
+
+function openCustomForDownloader(downloader: IDownloaderMetadata) {
+  selectedDownloader.value = downloader;
+  restoreAddTorrentOptions(downloader);
+  const activeTags = getQuickSelectedTags(downloader);
+  if (activeTags.length > 0) {
+    addTorrentOptions.value.label = activeTags.join(",");
+  }
+  quickSendToClient.value = false;
+}
 
 function restoreAddTorrentOptions(downloader?: IDownloaderMetadata) {
   addTorrentOptions.value.localDownload = true;
@@ -173,20 +258,22 @@ async function sendToDownloader() {
   });
 }
 
-function quickSendToDownloader(downloader: IDownloaderMetadata, path: string = "", label?: string) {
+function quickSendToDownloader(downloader: IDownloaderMetadata, path: string = "") {
   selectedDownloader.value = downloader;
 
-  // 设置下载推送选项
+  const activeTags = getQuickSelectedTags(downloader);
+
   addTorrentOptions.value.localDownload = true;
   addTorrentOptions.value.addAtPaused = !(downloader.feature?.DefaultAutoStart ?? true);
   addTorrentOptions.value.advanceAddTorrentOptions = downloader.advanceAddTorrentOptions ?? {};
   addTorrentOptions.value.savePath = path || "";
-  addTorrentOptions.value.label = label || "";
+  addTorrentOptions.value.label = activeTags.join(",");
 
   return sendToDownloader();
 }
 
 function dialogEnter() {
+  expandedDownloaderFolders.value = {};
   // 如果是默认下载发送，则直接设置为快速发送到客户端模式
   if (isDefaultSend) {
     const downloader = metadataStore.downloaders[metadataStore.defaultDownloader.id!];
@@ -249,11 +336,11 @@ function dialogLeave() {
           <TabsList class="h-8">
             <TabsTrigger value="quick" class="h-6 px-2.5 text-xs">
               <Zap class="size-3" />
-              <span>快捷直推</span>
+              <span>{{ t("SentToDownloaderDialog.quickMode") }}</span>
             </TabsTrigger>
             <TabsTrigger value="custom" class="h-6 px-2.5 text-xs">
               <SlidersHorizontal class="size-3" />
-              <span>自定义参数</span>
+              <span>{{ t("SentToDownloaderDialog.customMode") }}</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -278,33 +365,93 @@ function dialogLeave() {
           </div>
         </div>
 
-        <!-- 快捷直推模式 -->
+        <!-- 快捷直推模式（按下载器聚合卡片，告别路径×标签重复展开） -->
         <template v-else-if="quickSendToClient">
-          <div v-if="sortedEnabledDownloadersBySite.length > 0" class="flex flex-col gap-2">
-            <template v-for="downloader in sortedEnabledDownloadersBySite" :key="downloader.id">
+          <div v-if="sortedEnabledDownloadersBySite.length > 0" class="flex flex-col gap-2.5">
+            <div
+              v-for="downloader in sortedEnabledDownloadersBySite"
+              :key="downloader.id"
+              class="overflow-hidden rounded-xl border border-border bg-card shadow-2xs transition-colors"
+            >
+              <!-- 形态 A：无预设目录 & 无预设标签 -> 单行紧凑整卡一键直推 -->
               <div
-                v-for="path in ['', ...(downloader.suggestFolders ?? [])]"
-                :key="`${downloader.id}_${path}`"
+                v-if="getCleanFolders(downloader).length === 0 && getCleanTags(downloader).length === 0"
                 role="button"
                 tabindex="0"
-                class="group flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-3.5 py-2.5 transition-all hover:border-primary/40 hover:bg-accent/50"
-                @click="() => quickSendToDownloader(downloader, path)"
-                @keydown.enter.prevent="() => quickSendToDownloader(downloader, path)"
+                class="group flex cursor-pointer items-center justify-between gap-3 px-3.5 py-2.5 transition-colors hover:bg-accent/55"
+                @click="() => quickSendToDownloader(downloader, '')"
+                @keydown.enter.prevent="() => quickSendToDownloader(downloader, '')"
               >
-                <div
-                  class="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 p-1.5"
-                >
-                  <img
-                    :src="getDownloaderIcon(downloader.type)"
-                    :alt="downloader.type"
-                    class="size-full object-contain"
-                  />
+                <div class="flex min-w-0 items-center gap-2.5">
+                  <div
+                    class="flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 p-1"
+                  >
+                    <img
+                      :src="getDownloaderIcon(downloader.type)"
+                      :alt="downloader.type"
+                      class="size-full object-contain"
+                    />
+                  </div>
+                  <span class="truncate text-sm font-semibold text-foreground">{{ downloader.name }}</span>
+                  <Badge
+                    v-if="metadataStore.defaultDownloader?.id === downloader.id"
+                    variant="default"
+                    class="h-4 shrink-0 px-1.5 text-[10px]"
+                  >
+                    {{ t("SentToDownloaderDialog.defaultBadge") }}
+                  </Badge>
+                  <Badge variant="outline" class="h-4.5 shrink-0 px-1.5 text-[10px] font-normal text-muted-foreground">
+                    {{ downloader.type }}
+                  </Badge>
+                  <span class="hidden truncate text-xs text-muted-foreground sm:inline tabular-nums">
+                    {{ downloader.address }}
+                  </span>
                 </div>
 
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2">
-                    <span class="truncate text-sm font-medium text-foreground">{{ downloader.name }}</span>
-                    <Badge variant="outline" class="shrink-0 font-normal text-muted-foreground">
+                <div class="flex shrink-0 items-center gap-1.5">
+                  <span
+                    class="inline-flex items-center gap-1 rounded-md bg-muted/70 px-2 py-1 text-xs font-medium text-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary"
+                  >
+                    <Folder class="size-3 opacity-70" />
+                    <span>{{ t("SentToDownloaderDialog.defaultFolder") }}</span>
+                    <ArrowRight class="size-3 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                  <button
+                    type="button"
+                    :title="t('SentToDownloaderDialog.customizeThis')"
+                    class="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    @click.stop="openCustomForDownloader(downloader)"
+                  >
+                    <SlidersHorizontal class="size-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <!-- 形态 B：配有预设目录或预设标签 -> 聚合顶栏（标签可点选记忆）+ 紧凑双列路径网格 -->
+              <template v-else>
+                <div class="flex flex-wrap items-center justify-between gap-2 bg-muted/25 px-3.5 py-2">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <div
+                      class="flex size-6.5 shrink-0 items-center justify-center rounded-md border border-border bg-background p-1"
+                    >
+                      <img
+                        :src="getDownloaderIcon(downloader.type)"
+                        :alt="downloader.type"
+                        class="size-full object-contain"
+                      />
+                    </div>
+                    <span class="truncate text-sm font-semibold text-foreground">{{ downloader.name }}</span>
+                    <Badge
+                      v-if="metadataStore.defaultDownloader?.id === downloader.id"
+                      variant="default"
+                      class="h-4 shrink-0 px-1.5 text-[10px]"
+                    >
+                      {{ t("SentToDownloaderDialog.defaultBadge") }}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      class="h-4.5 shrink-0 px-1.5 text-[10px] font-normal text-muted-foreground"
+                    >
                       {{ downloader.type }}
                     </Badge>
                     <span class="hidden truncate text-xs text-muted-foreground sm:inline tabular-nums">
@@ -312,32 +459,128 @@ function dialogLeave() {
                     </span>
                   </div>
 
-                  <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                    <span class="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[11px]">
-                      <Folder class="size-3 text-muted-foreground" />
-                      <span class="max-w-[260px] truncate">{{ path || "默认目录" }}</span>
-                    </span>
-
-                    <template v-if="downloader.suggestTags?.length">
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <!-- 可多选切换并自动记忆的预设标签胶囊 -->
+                    <template v-if="getCleanTags(downloader).length > 0">
                       <button
-                        v-for="tag in downloader.suggestTags"
+                        v-for="tag in getCleanTags(downloader)"
                         :key="tag"
                         type="button"
-                        class="inline-flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary"
-                        @click.stop="() => quickSendToDownloader(downloader, path, tag)"
+                        :title="`${t('SentToDownloaderDialog.attachTags')}: ${tag}`"
+                        :class="
+                          cn(
+                            'inline-flex h-6 items-center gap-1 rounded-md border px-2 text-[11px] transition-all',
+                            isQuickTagSelected(downloader, tag)
+                              ? 'border-primary/60 bg-primary/12 font-medium text-primary shadow-2xs'
+                              : 'border-border bg-background text-muted-foreground hover:border-primary/35 hover:text-foreground',
+                          )
+                        "
+                        @click.stop="toggleQuickTag(downloader, tag)"
                       >
-                        <Tag class="size-2.5 opacity-60" />
-                        <span>{{ tag }}</span>
+                        <Check v-if="isQuickTagSelected(downloader, tag)" class="size-2.5 shrink-0" />
+                        <Tag v-else class="size-2.5 shrink-0 opacity-65" />
+                        <span class="max-w-[140px] truncate">{{ tag }}</span>
                       </button>
                     </template>
+
+                    <!-- 无预设目录但有标签时，直接在顶栏提供一键发送默认目录按钮 -->
+                    <button
+                      v-if="getCleanFolders(downloader).length === 0"
+                      type="button"
+                      class="group/def inline-flex h-6 items-center gap-1 rounded-md bg-primary px-2.5 text-[11px] font-medium text-primary-foreground shadow-2xs transition-opacity hover:opacity-90"
+                      @click="() => quickSendToDownloader(downloader, '')"
+                    >
+                      <Folder class="size-3" />
+                      <span>{{ t("SentToDownloaderDialog.defaultFolder") }}</span>
+                      <ArrowRight class="size-3 transition-transform group-hover/def:translate-x-0.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      :title="t('SentToDownloaderDialog.customizeThis')"
+                      class="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      @click.stop="openCustomForDownloader(downloader)"
+                    >
+                      <SlidersHorizontal class="size-3.5" />
+                    </button>
                   </div>
                 </div>
 
-                <ArrowRight
-                  class="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
-                />
-              </div>
-            </template>
+                <!-- 预设路径双列紧凑直推矩阵 -->
+                <div v-if="getCleanFolders(downloader).length > 0" class="border-t border-border/60 p-2">
+                  <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    <button
+                      v-for="path in getVisibleQuickPaths(downloader)"
+                      :key="`${downloader.id}_${path || '__default__'}`"
+                      type="button"
+                      :title="path || t('SentToDownloaderDialog.defaultFolder')"
+                      :class="
+                        cn(
+                          'group/path flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs transition-all hover:border-primary/50 hover:bg-primary/6 active:scale-[0.995]',
+                          isLastUsedTarget(downloader, path)
+                            ? 'border-primary/40 bg-primary/4'
+                            : 'border-border/80 bg-background/60',
+                        )
+                      "
+                      @click="() => quickSendToDownloader(downloader, path)"
+                    >
+                      <span class="flex min-w-0 items-center gap-1.5">
+                        <Folder
+                          :class="
+                            cn(
+                              'size-3.5 shrink-0 transition-colors group-hover/path:text-primary',
+                              path ? 'text-primary/75' : 'text-muted-foreground',
+                            )
+                          "
+                        />
+                        <span
+                          :class="
+                            cn(
+                              'truncate',
+                              path
+                                ? 'font-mono text-[11.5px] font-medium text-foreground'
+                                : 'text-muted-foreground font-medium',
+                            )
+                          "
+                        >
+                          {{ formatCompactPath(path) }}
+                        </span>
+                      </span>
+
+                      <ArrowRight
+                        class="size-3.5 shrink-0 text-muted-foreground/60 transition-all group-hover/path:translate-x-0.5 group-hover/path:text-primary"
+                      />
+                    </button>
+                  </div>
+
+                  <div
+                    v-if="getAllQuickPaths(downloader).length > DEFAULT_VISIBLE_PATHS"
+                    class="mt-1.5 flex justify-end"
+                  >
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      @click="expandedDownloaderFolders[downloader.id] = !expandedDownloaderFolders[downloader.id]"
+                    >
+                      <template v-if="expandedDownloaderFolders[downloader.id]">
+                        <ChevronUp class="size-3" />
+                        <span>{{ t("SentToDownloaderDialog.collapseFolders") }}</span>
+                      </template>
+                      <template v-else>
+                        <ChevronDown class="size-3" />
+                        <span>
+                          {{
+                            t("SentToDownloaderDialog.expandFolders", [
+                              getAllQuickPaths(downloader).length - DEFAULT_VISIBLE_PATHS,
+                            ])
+                          }}
+                        </span>
+                      </template>
+                    </button>
+                  </div>
+                </div>
+              </template>
+            </div>
           </div>
 
           <Alert v-else variant="warning">
@@ -434,7 +677,7 @@ function dialogLeave() {
               >
                 <div class="min-w-0">
                   <div class="text-sm font-medium text-foreground">{{ t("SentToDownloaderDialog.localRelay") }}</div>
-                  <div class="text-[11px] text-muted-foreground">本地下载种子文件后推送至客户端</div>
+                  <div class="text-[11px] text-muted-foreground">{{ t("SentToDownloaderDialog.localRelayDesc") }}</div>
                 </div>
                 <Switch
                   v-model="addTorrentOptions.localDownload"
@@ -447,7 +690,7 @@ function dialogLeave() {
               >
                 <div class="min-w-0">
                   <div class="text-sm font-medium text-foreground">{{ t("SentToDownloaderDialog.pauseOnAdd") }}</div>
-                  <div class="text-[11px] text-muted-foreground">添加到客户端后保持暂停状态</div>
+                  <div class="text-[11px] text-muted-foreground">{{ t("SentToDownloaderDialog.pauseOnAddDesc") }}</div>
                 </div>
                 <Switch v-model="addTorrentOptions.addAtPaused" />
               </div>

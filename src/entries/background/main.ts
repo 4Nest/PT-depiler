@@ -6,6 +6,7 @@ import "./utils/cookies.ts";
 import "./utils/offscreen.ts";
 import "./utils/alarms.ts";
 import "./utils/webRequest.ts";
+import "./utils/moviepilot.ts";
 
 // 监听 点击图标 事件
 chrome.action.onClicked.addListener(async () => {

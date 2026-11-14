@@ -18,6 +18,9 @@ import {
   IDownloadTorrentOption,
   IDownloadTorrentResult,
   AugmentedRequired,
+  IMoviePilotConfig,
+  IMoviePilotHttpRequestOptions,
+  IMoviePilotHttpResponse,
 } from "@/shared/types.ts";
 
 import { isDebug } from "~/helper.ts";
@@ -50,6 +53,10 @@ interface ProtocolMap extends TMessageMap {
   getCookie(data: chrome.cookies.CookieDetails): chrome.cookies.Cookie | null;
   removeCookie(data: chrome.cookies.CookieDetails | chrome.cookies.SetDetails): chrome.cookies.CookieDetails;
   checkAndExtendCookies(url: string): void;
+
+  // 1.6 MoviePilot 跨域请求代理与配置同步
+  moviePilotHttpRequest(data: IMoviePilotHttpRequestOptions): IMoviePilotHttpResponse;
+  updateMoviePilotConfig(patch: Partial<IMoviePilotConfig>): IMoviePilotConfig;
 
   // 2. 在 offscreen 中注册，涉及页面解析等功能，主要供 options 使用
   logger(data: ILoggerItem): void;

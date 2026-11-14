@@ -14,6 +14,34 @@ interface UiTableBehaviorItem<T = string> {
   sortBy?: { key: T; order: "asc" | "desc" }[];
 }
 
+export interface IMoviePilotConfig {
+  enabled: boolean;
+  url: string;
+  apiKey: string;
+  themeMode: "auto" | "light" | "dark";
+  defaultDownloader: string;
+  defaultSavePath: string;
+  showSpecs: boolean;
+  subAutoFillSpecs: boolean;
+  mteamPrefetch: boolean;
+  debug: boolean;
+}
+
+export interface IMoviePilotHttpRequestOptions {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  data?: string;
+  timeout?: number;
+}
+
+export interface IMoviePilotHttpResponse {
+  status: number;
+  responseText: string;
+  isTimeout?: boolean;
+  errorMessage?: string;
+}
+
 export interface IConfigPiniaStorageSchema {
   version: string; // 插件版本，格式为 v0.0.5.1147+23f758f7 ，如果为空则表示第一次安装
   lang: TLangCode;
@@ -192,6 +220,8 @@ export interface IConfigPiniaStorageSchema {
     allowDirectSendToClient: boolean;
     // 是否使用快速发送到客户端功能（展平 下载器和下载目录 ）
     useQuickSendToClient: boolean;
+    // 快捷直推模式下各下载器记忆选中的附加标签
+    quickSendTags?: Record<string, string[]>;
   };
 
   searchEntity: {
@@ -227,4 +257,6 @@ export interface IConfigPiniaStorageSchema {
     triggerThreshold: number; // 触发阈值（周），默认 2
     extensionDuration: number; // 延长时长（月），默认 3
   };
+
+  moviePilot: IMoviePilotConfig;
 }

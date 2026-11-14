@@ -147,8 +147,8 @@ const showPopover = computed(
         </button>
       </PopoverTrigger>
 
-      <PopoverContent align="start" class="w-[520px] max-w-[92vw] p-0">
-        <div class="flex items-center justify-between border-b border-border px-3.5 py-2.5">
+      <PopoverContent align="start" class="flex w-[540px] max-w-[92vw] flex-col overflow-hidden p-0">
+        <div class="flex shrink-0 items-center justify-between border-b border-border bg-muted/20 px-3.5 py-2.5">
           <div class="flex items-center gap-1.5 text-xs font-semibold text-foreground">
             <component :is="userLevelGroupIcon" :class="['size-4', levelTextClass]" />
             <span>{{ t("MyData.UserLevelRequirementsTd.levelList") }}</span>
@@ -156,7 +156,9 @@ const showPopover = computed(
           <Badge variant="secondary" class="text-[11px]">{{ levelName }}</Badge>
         </div>
 
-        <div class="max-h-[420px] space-y-2 overflow-y-auto p-3">
+        <div
+          class="max-h-[min(70vh,calc(var(--reka-popover-content-available-height,480px)-3.25rem))] min-h-0 flex-1 space-y-2 overflow-y-auto p-3"
+        >
           <div
             v-if="
               configStore.myDataTableControl.showNextLevelInDialog &&
@@ -196,11 +198,7 @@ const showPopover = computed(
                     :use-join-time-as-ref="true"
                   />
                 </div>
-                <p
-                  v-if="userLevel.privilege"
-                  class="truncate text-[11px] text-muted-foreground"
-                  :title="userLevel.privilege"
-                >
+                <p v-if="userLevel.privilege" class="text-[11px] leading-relaxed text-muted-foreground break-words">
                   {{ userLevel.privilege }}
                 </p>
               </div>

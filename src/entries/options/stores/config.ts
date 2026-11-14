@@ -221,6 +221,7 @@ export const useConfigStore = defineStore("config", {
       localDownloadMethod: "browser",
       ignoreSiteDownloadIntervalWhenLocalDownload: true,
       useQuickSendToClient: true,
+      quickSendTags: {},
     },
 
     searchEntity: {
@@ -245,6 +246,19 @@ export const useConfigStore = defineStore("config", {
       enabled: false,
       triggerThreshold: 2,
       extensionDuration: 3,
+    },
+
+    moviePilot: {
+      enabled: false,
+      url: "",
+      apiKey: "",
+      themeMode: "auto",
+      defaultDownloader: "",
+      defaultSavePath: "",
+      showSpecs: true,
+      subAutoFillSpecs: false,
+      mteamPrefetch: true,
+      debug: false,
     },
   }),
   getters: {

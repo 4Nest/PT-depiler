@@ -161,7 +161,7 @@ export default defineConfig({
 
         web_accessible_resources: [
           {
-            resources: ["icons/*", "pt-depiler.css"],
+            resources: ["icons/*", "js/*", "pt-depiler.css"],
             matches: ["*://*/*"],
           },
           // content script 的按需主逻辑（assets/cs-app.js）及其共享 chunk 依赖链，
@@ -216,6 +216,9 @@ export default defineConfig({
               (config.build.rollupOptions.input as Record<string, string>)["cs-app"] = base_path(
                 "src/entries/content-script/app/init.ts",
               );
+              (config.build.rollupOptions.input as Record<string, string>)["mp-inject"] = base_path(
+                "src/entries/content-script/moviepilot/index.ts",
+              );
               // 该入口仅由 content script 引导在运行时动态 import（构建期无静态消费者），
               // 必须保留入口导出签名，否则 mountApp 会被 rollup 树摇成纯副作用壳
               config.build.rollupOptions.preserveEntrySignatures = "strict";
@@ -265,8 +268,8 @@ export default defineConfig({
                 },
                 entryFileNames: (chunkInfo) => {
                   // cs-app 的加载地址写死在 content script 引导里，必须使用稳定文件名（不带 hash）
-                  if (chunkInfo.name === "cs-app") {
-                    return "assets/cs-app.js";
+                  if (chunkInfo.name === "cs-app" || chunkInfo.name === "mp-inject") {
+                    return `assets/${chunkInfo.name}.js`;
                   }
                   return "assets/[name]-[hash].js"; // vite default
                 },

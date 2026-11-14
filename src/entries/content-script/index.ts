@@ -1,41 +1,113 @@
 // This file is the entry point for the content script
 //
-// 此入口应保持轻量（仅做"当前页面是否需要挂载"的判断），
-// 重资源（Vue/Vuetify/站点包）都在多页构建的 assets/cs-app.js 中按需加载；
-// social 匹配判断经消息由 offscreen 代查，避免把 social 包打进引导（见 issue #1467）。
+// 此入口保持极度轻量（仅做当前页面是否需要挂载的判断），
+// 重资源（Vue/站点包与 MoviePilot 引擎）分别在 assets/cs-app.js 与 assets/mp-inject.js 中按需动态加载。
 
 import { sendMessage } from "@/messages.ts";
-import type { IConfigPiniaStorageSchema } from "@/shared/types/storages/config.ts";
+import type { IConfigPiniaStorageSchema, IMoviePilotConfig } from "@/shared/types/storages/config.ts";
+import type * as CsAppModule from "./app/init.ts";
+import type { IPtdData } from "./app/utils.ts";
+import type * as MpInjectModule from "./moviepilot/index.ts";
 
-async function loadApp(props: Parameters<(typeof import("./app/init.ts"))["mountApp"]>[1]) {
-  // 运行时从扩展包内加载多页构建产出的 ESM 入口（assets/cs-app.js，固定文件名），
-  // @vite-ignore 阻止本入口（IIFE 单文件构建）将 app 静态打进引导
+let mpModulePromise: Promise<typeof MpInjectModule> | null = null;
+let isMatchedPtdSite = false;
+
+function isMoviePilotStandaloneMatch(loc: Location): boolean {
+  const host = loc.hostname.toLowerCase();
+  const path = loc.pathname;
+
+  if (/\/details[^/]*\.php/i.test(path)) return true;
+  if (host === "totheglory.im" && path.startsWith("/t/")) return true;
+  if (host === "bangumi.moe" && path.startsWith("/torrent/")) return true;
+  if (/(^|\.)acgnx\.se$/.test(host) && path.startsWith("/show-")) return true;
+  if (/(^|\.)dmhy\.org$/.test(host) && path.startsWith("/topics/view/")) return true;
+  if (/(^|\.)nyaa\.si$/.test(host) && path.startsWith("/view/")) return true;
+  if (host === "mikanani.me" && /^\/Home\/Episode\//i.test(path)) return true;
+  if (/(^|\.)skyey2\.com$/.test(host) || /(^|\.)skyeysnow\.com$/.test(host)) return true;
+  if (/(^|\.)m-team\.(cc|io)$/.test(host)) return true;
+  if (host === "sunnypt.top" || /(^|\.)sunnypt\.top$/.test(host)) return true;
+  if (host === "anibt.net" || /(^|\.)anibt\.net$/.test(host)) return true;
+  if (/(^|\.)hdwing\.org$/.test(host)) return true;
+
+  return false;
+}
+
+function shouldRunMoviePilotOnLocation(): boolean {
+  return isMatchedPtdSite || isMoviePilotStandaloneMatch(window.location);
+}
+
+async function ensureMpModule(): Promise<typeof MpInjectModule> {
+  if (!mpModulePromise) {
+    // 静态 import 会将 235KB 引擎打入所有网页执行的 IIFE 引导脚本，此处必须通过运行时扩展 URL 按需加载独立 ESM 入口
+    const mpUrl = chrome.runtime.getURL("assets/mp-inject.js");
+    mpModulePromise = import(/* @vite-ignore */ mpUrl) as Promise<typeof MpInjectModule>;
+  }
+  return mpModulePromise;
+}
+
+async function syncMoviePilotState(mpConfig?: IMoviePilotConfig) {
+  if (mpConfig?.enabled && shouldRunMoviePilotOnLocation()) {
+    const mod = await ensureMpModule();
+    mod.mountMoviePilot(mpConfig);
+    mod.updateMoviePilotRuntimeConfig(mpConfig);
+  } else if (mpModulePromise) {
+    const mod = await mpModulePromise;
+    mod.unmountMoviePilot();
+  }
+}
+
+async function loadApp(props: IPtdData) {
+  // 静态 import 会将完整 Vue + 站点定义打入 IIFE 引导脚本，必须通过运行时扩展 URL 按需加载
   const appUrl = chrome.runtime.getURL("assets/cs-app.js");
   console.debug("[PTD] loading app from", appUrl);
-  const { mountApp } = (await import(/* @vite-ignore */ appUrl)) as typeof import("./app/init.ts");
+  const { mountApp } = (await import(/* @vite-ignore */ appUrl)) as typeof CsAppModule;
   console.debug("[PTD] app module loaded");
   await mountApp(document, props);
   console.debug("[PTD] app mounted");
 }
 
 sendMessage("getExtStorage", "config").then(async (data) => {
-  const configStore = data as IConfigPiniaStorageSchema;
+  const configStore = data as IConfigPiniaStorageSchema | undefined;
+
+  const siteMatchPromise = sendMessage("matchSitePage", window.location.href).catch(() => null);
 
   if (configStore?.contentScript?.enabled ?? true) {
-    // 这里不再把整份 metadata store 搬到页面上下文：只需要 host → siteId 一项判断，
-    // 由 SW 侧完成（含 allowExceptionSites 的排除逻辑），回传一个极小的对象
-    sendMessage("matchSitePage", window.location.href).then(async (siteMatch) => {
-      if (!siteMatch) {
-        return; // 当前页面不是已添加的站点
+    siteMatchPromise.then(async (siteMatch) => {
+      if (!siteMatch) return;
+      isMatchedPtdSite = true;
+
+      if (configStore?.moviePilot?.enabled) {
+        void syncMoviePilotState(configStore.moviePilot);
       }
 
       if (!siteMatch.allowContentScript) {
         console.debug(`[PTD] Content script is disabled for site: ${siteMatch.siteId}`);
-        return; // 允许排除站点，且该站点配置里禁用了 contentScript
+        return;
       }
 
       console.debug(`[PTD] host found for site: ${siteMatch.siteId}, loading app...`);
       await loadApp({ siteId: siteMatch.siteId });
     });
+  }
+
+  // 对未加入 PTD 站点但属于 MoviePilot 原生支持的详情页（如公网动漫站或新 PT 站），直接按开关启动
+  if (configStore?.moviePilot?.enabled && isMoviePilotStandaloneMatch(window.location)) {
+    void syncMoviePilotState(configStore.moviePilot);
+  }
+});
+
+// 监听配置实时变更：开关关闭时立即卸载清理，开关开启或修改参数时免刷新实时生效
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local" || !changes.config) return;
+  let nextConfig = changes.config.newValue as IConfigPiniaStorageSchema | string | undefined;
+  if (typeof nextConfig === "string") {
+    try {
+      nextConfig = JSON.parse(nextConfig) as IConfigPiniaStorageSchema;
+    } catch {
+      return;
+    }
+  }
+  if (nextConfig && typeof nextConfig === "object") {
+    void syncMoviePilotState(nextConfig.moviePilot);
   }
 });

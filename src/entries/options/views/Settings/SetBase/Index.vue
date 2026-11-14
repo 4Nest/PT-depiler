@@ -2,7 +2,7 @@
 import { computed, useTemplateRef, type Component } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
-import { CheckCircle2, Download, KeyRound, Palette, Search, User } from "lucide-vue-next";
+import { CheckCircle2, Clapperboard, Download, KeyRound, Palette, Search, User } from "lucide-vue-next";
 
 import { setBaseChildren } from "@/options/plugins/router.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
@@ -22,6 +22,7 @@ const iconMap: Record<string, Component> = {
   download: Download,
   user: User,
   "key-round": KeyRound,
+  clapperboard: Clapperboard,
 };
 
 const setBaseTabs = setBaseChildren.map((x) => ({

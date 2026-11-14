@@ -21,6 +21,12 @@ export const setBaseChildren: RouteRecordRaw[] = [
     component: () => import("../views/Settings/SetBase/DownloadWindow.vue"),
   },
   {
+    path: "moviepilot",
+    name: "SetBaseMoviePilot",
+    meta: { icon: "clapperboard", usesGlobalSave: false },
+    component: () => import("../views/Settings/SetBase/MoviePilotWindow.vue"),
+  },
+  {
     path: "user-info",
     name: "SetBaseUserInfo",
     meta: { icon: "user" },
