@@ -11,7 +11,6 @@ const DEFAULT_MOVIEPILOT_CONFIG: IMoviePilotConfig = {
   defaultSavePath: "",
   showSpecs: true,
   subAutoFillSpecs: false,
-  mteamPrefetch: true,
   debug: false,
 };
 

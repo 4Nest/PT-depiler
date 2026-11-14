@@ -461,8 +461,6 @@
       "fillUrlAndKey": "请填写完整的 MoviePilot 服务地址与 API Key",
       "invalidUrlProtocol": "服务地址必须以 http:// 或 https:// 开头",
       "letMpDecide": "默认（由 MoviePilot 决定）",
-      "mteamPrefetch": "M-Team 详情页自动预取下载链接",
-      "mteamPrefetchDesc": "开启后进入详情页即后台捕获直链；关闭则点击推送下载时按需获取",
       "noClientsDetected": "未检测到已启用下载器",
       "serverCardDesc": "配置随 PT Depiler 扩展存储及备份自动同步，在站点详情页内点击 ⚙ 同样可即时修改。",
       "serverCardTitle": "服务连接与默认参数",

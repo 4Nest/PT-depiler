@@ -257,7 +257,6 @@ export const useConfigStore = defineStore("config", {
       defaultSavePath: "",
       showSpecs: true,
       subAutoFillSpecs: false,
-      mteamPrefetch: true,
       debug: false,
     },
   }),

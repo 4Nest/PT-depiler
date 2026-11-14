@@ -9,7 +9,6 @@ let mpEngineActive = false;
 let mpUrl = "";
 let mpApiKey = "";
 let mpDebug = false;
-let mpMTeamAutoPrefetch = true;
 let mpThemeMode = "auto";
 let mpShowSpecs = true;
 let mpSubAutoFillSpecs = false;
@@ -20,7 +19,6 @@ const KEY_TO_CONFIG_PROP = {
   mp_url: "url",
   mp_api_key: "apiKey",
   mp_debug: "debug",
-  mp_mteam_prefetch: "mteamPrefetch",
   mp_theme_mode: "themeMode",
   mp_show_specs: "showSpecs",
   mp_sub_auto_fill_specs: "subAutoFillSpecs",
@@ -32,7 +30,6 @@ function applyConfigObject(cfg = {}) {
   mpUrl = String(cfg.url || "").replace(/\/+$/, "");
   mpApiKey = String(cfg.apiKey || "").trim();
   mpDebug = Boolean(cfg.debug);
-  mpMTeamAutoPrefetch = cfg.mteamPrefetch !== undefined ? Boolean(cfg.mteamPrefetch) : true;
   mpThemeMode = cfg.themeMode || "auto";
   mpShowSpecs = cfg.showSpecs !== undefined ? Boolean(cfg.showSpecs) : true;
   mpSubAutoFillSpecs = Boolean(cfg.subAutoFillSpecs);
@@ -40,12 +37,86 @@ function applyConfigObject(cfg = {}) {
   mpDefaultSavePath = cfg.defaultSavePath || "";
 }
 
+const MP_THEME_AND_LINK_PATCH_CSS = `
+  .mp-dark {
+    --mp-bg: #161b22;
+    --mp-panel-bg: #1c222d;
+    --mp-surface: #1e2530;
+    --mp-surface-2: #262f3d;
+    --mp-surface-hover: #303b4c;
+    --mp-border: rgba(255, 255, 255, 0.12);
+    --mp-border-strong: rgba(255, 255, 255, 0.20);
+    --mp-text: #f1f5f9;
+    --mp-text-muted: #94a3b8;
+    --mp-primary: #60a5fa;
+    --mp-primary-hover: #3b82f6;
+    --mp-primary-soft: rgba(37, 99, 235, 0.24);
+    --mp-success: #4ade80;
+    --mp-success-hover: #22c55e;
+    --mp-success-soft: rgba(22, 163, 74, 0.22);
+    --mp-danger: #f87171;
+    --mp-danger-hover: #ef4444;
+    --mp-danger-soft: rgba(220, 38, 38, 0.22);
+    --mp-warning: #fbbf24;
+    --mp-warning-soft: rgba(217, 119, 6, 0.22);
+    --mp-info-soft: rgba(14, 165, 233, 0.22);
+    --mp-info-text: #7dd3fc;
+  }
+  .mp-dark.mp-mteam-panel,
+  .mp-dark.mp-anime-panel,
+  .mp-dark .mp-modal-header {
+    background: var(--mp-panel-bg);
+  }
+  .mp-dark .mp-btn-primary {
+    background: #2563eb;
+    color: #ffffff !important;
+  }
+  .mp-dark .mp-btn-primary:hover:not(:disabled) {
+    background: #3b82f6;
+  }
+  .mp-dark .mp-tag-type,
+  .mp-dark .mp-tag-sub-btn,
+  .mp-dark .mp-btn-split.mp-btn-split-sub {
+    border-color: rgba(96, 165, 250, 0.34);
+  }
+  .mp-dark .mp-tag-team {
+    background: rgba(99, 102, 241, 0.24);
+    color: #c7d2fe !important;
+    border-color: rgba(129, 140, 248, 0.36);
+  }
+  .mp-dark .mp-tag-sub-btn:hover {
+    background: #2563eb;
+    color: #ffffff !important;
+    border-color: #2563eb;
+  }
+  .mp-inline-bar a.mp-tag,
+  a.mp-tag.mp-tag-link {
+    text-decoration: none !important;
+  }
+  .mp-inline-bar a.mp-tag-tmdb,
+  a.mp-tag-tmdb {
+    color: var(--mp-text) !important;
+  }
+  .mp-inline-bar a.mp-tag-tmdb:hover,
+  a.mp-tag-tmdb:hover {
+    color: var(--mp-primary) !important;
+  }
+  .mp-inline-bar a.mp-tag-exists,
+  a.mp-tag-exists {
+    color: var(--mp-success) !important;
+  }
+  .mp-inline-bar a.mp-tag-type,
+  a.mp-tag-type {
+    color: var(--mp-primary) !important;
+  }
+`;
+
 function ensureMpStyle() {
   if (document.getElementById("mp-injected-style")) return;
   const style = document.createElement("style");
   style.id = "mp-injected-style";
   style.type = "text/css";
-  style.textContent = MP_STYLE_TEXT;
+  style.textContent = MP_STYLE_TEXT + MP_THEME_AND_LINK_PATCH_CSS;
   (document.head || document.documentElement || document.body)?.appendChild(style);
 }
 
@@ -323,40 +394,92 @@ function formatSizeText(bytes) {
   return `${val.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
 }
 
-function isDarkThemePage() {
+function parseColorLuminance(str) {
+  const s = String(str || "").trim();
+  if (!s || s === "transparent") return null;
+  const rgb = s.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,/\s]+([\d.]+%?))?\s*\)/i);
+  if (rgb) {
+    let alpha = 1;
+    if (rgb[4] !== undefined) {
+      alpha = rgb[4].endsWith("%") ? parseFloat(rgb[4]) / 100 : parseFloat(rgb[4]);
+    }
+    if (alpha <= 0.08) return null;
+    return (0.299 * parseInt(rgb[1], 10) + 0.587 * parseInt(rgb[2], 10) + 0.114 * parseInt(rgb[3], 10)) / 255;
+  }
+  const oklch = s.match(/oklch\(\s*([\d.]+)(%?)(?:\s+[\d.]+\s+[\d.]+(?:\s*\/\s*([\d.]+%?))?)?/i);
+  if (oklch) {
+    if (oklch[3] !== undefined) {
+      const a = oklch[3].endsWith("%") ? parseFloat(oklch[3]) / 100 : parseFloat(oklch[3]);
+      if (a <= 0.08) return null;
+    }
+    const rawL = parseFloat(oklch[1]);
+    return oklch[2] === "%" ? rawL / 100 : rawL;
+  }
+  return null;
+}
+
+function isDarkThemePage(targetEl = null) {
   if (mpThemeMode === "dark") return true;
   if (mpThemeMode === "light") return false;
   try {
+    // 1. 跳过 MoviePilot 自身节点与浮层遮罩，直接从站点原生宿主父容器开始向上实测第一个非透明背景色
+    let probeStart = targetEl && targetEl.nodeType === 1 ? targetEl : null;
+    if (probeStart) {
+      if (
+        probeStart.classList?.contains("mp-modal") ||
+        probeStart.id === "mp-toast-container" ||
+        probeStart.classList?.contains("mp-floating-cfg-btn")
+      ) {
+        probeStart = document.getElementById("mp-row-flag")?.parentElement || null;
+      } else {
+        while (
+          probeStart &&
+          (probeStart.id === "mp-row-flag" ||
+            probeStart.id?.startsWith?.("mp-") ||
+            String(probeStart.className || "").includes("mp-"))
+        ) {
+          probeStart = probeStart.parentElement;
+        }
+      }
+    }
+    const startEl =
+      probeStart ||
+      document.getElementById("mp-row-flag")?.parentElement ||
+      document.querySelector("td.rowfollow, table.main, .details_box, #outer, main, #app");
+    let cur = startEl;
+    while (cur && cur.nodeType === 1) {
+      const bgLum = parseColorLuminance(getComputedStyle(cur).backgroundColor);
+      if (bgLum !== null) {
+        return bgLum < 0.42;
+      }
+      cur = cur.parentElement;
+    }
+
+    // 2. 兜底检查 body / html 背景色
+    for (const rootEl of [document.body, document.documentElement]) {
+      if (!rootEl) continue;
+      const bgLum = parseColorLuminance(getComputedStyle(rootEl).backgroundColor);
+      if (bgLum !== null) {
+        return bgLum < 0.42;
+      }
+    }
+
+    // 3. 若整条链背景完全透明（经典 HTML 默认白底画布站点，如 keepfrds），仅在页面显式声明 dark 或文字本身为浅色时判暗色，绝不盲从系统 prefers-color-scheme
     const htmlAttr = (document.documentElement.getAttribute("data-theme") || "").toLowerCase();
     const bodyAttr = (document.body?.getAttribute("data-theme") || "").toLowerCase();
     if (htmlAttr.includes("dark") || bodyAttr.includes("dark")) return true;
     if (document.documentElement.classList.contains("dark") || document.body?.classList.contains("dark")) return true;
+    const colorScheme = (getComputedStyle(document.documentElement).colorScheme || "").toLowerCase();
+    if (colorScheme === "dark") return true;
 
-    const parseBgDarkness = (str) => {
-      const s = String(str || "").trim();
-      const rgb = s.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i);
-      if (rgb) {
-        const alpha = rgb[4] !== undefined ? parseFloat(rgb[4]) : 1;
-        if (alpha <= 0.05) return null;
-        const lum = (0.299 * parseInt(rgb[1], 10) + 0.587 * parseInt(rgb[2], 10) + 0.114 * parseInt(rgb[3], 10)) / 255;
-        return lum < 0.45;
+    const textProbe = startEl || document.body || document.documentElement;
+    if (textProbe) {
+      const textLum = parseColorLuminance(getComputedStyle(textProbe).color);
+      if (textLum !== null) {
+        return textLum > 0.6;
       }
-      const oklch = s.match(/oklch\(\s*([\d.]+)(%?)/i);
-      if (oklch) {
-        const rawL = parseFloat(oklch[1]);
-        const lum = oklch[2] === "%" ? rawL / 100 : rawL;
-        return lum < 0.5;
-      }
-      return null;
-    };
-
-    const bodyDark = document.body ? parseBgDarkness(getComputedStyle(document.body).backgroundColor) : null;
-    if (bodyDark !== null) return bodyDark;
-    const htmlDark = document.documentElement
-      ? parseBgDarkness(getComputedStyle(document.documentElement).backgroundColor)
-      : null;
-    if (htmlDark !== null) return htmlDark;
-    return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches || false;
+    }
+    return false;
   } catch (e) {
     return false;
   }
@@ -364,17 +487,16 @@ function isDarkThemePage() {
 
 function applyThemeClass(el) {
   if (!el) return;
-  el.classList.toggle("mp-dark", isDarkThemePage());
+  el.classList.toggle("mp-dark", isDarkThemePage(el));
 }
 
 function refreshAllThemes() {
-  const dark = isDarkThemePage();
   document
     .querySelectorAll(
       ".mp-inline-bar, .mp-mteam-panel, .mp-anime-panel, .mp-modal, #mp-toast-container, .mp-floating-cfg-btn",
     )
     .forEach((el) => {
-      el.classList.toggle("mp-dark", dark);
+      el.classList.toggle("mp-dark", isDarkThemePage(el));
     });
 }
 
@@ -892,14 +1014,6 @@ function showConfigModal() {
 
       <div class="mp-switch-row">
         <div>
-          <div class="mp-switch-label">M-Team 详情页自动预取下载链接</div>
-          <div class="mp-switch-sub">开启后进入详情页即后台捕获直链；关闭则点击“推送下载”时按需获取</div>
-        </div>
-        ${renderToggleHtml("mp-input-mteam-prefetch", mpMTeamAutoPrefetch)}
-      </div>
-
-      <div class="mp-switch-row">
-        <div>
           <div class="mp-switch-label">开启控制台调试日志</div>
           <div class="mp-switch-sub">在浏览器 F12 控制台输出提取与识别详情，便于排查问题</div>
         </div>
@@ -931,7 +1045,6 @@ function showConfigModal() {
   const defaultPathSelect = modal.querySelector("#mp-input-path-default");
   const showSpecsInput = modal.querySelector("#mp-input-show-specs");
   const subAutoFillInput = modal.querySelector("#mp-input-sub-autofill");
-  const prefetchInput = modal.querySelector("#mp-input-mteam-prefetch");
   const debugInput = modal.querySelector("#mp-input-debug");
   const statusEl = modal.querySelector("#mp-config-status");
   const saveBtn = modal.querySelector("#mp-save-btn");
@@ -1024,7 +1137,6 @@ function showConfigModal() {
           mpShowSpecs = Boolean(showSpecsInput.checked);
           mpSubAutoFillSpecs = Boolean(subAutoFillInput.checked);
           mpDebug = Boolean(debugInput.checked);
-          mpMTeamAutoPrefetch = Boolean(prefetchInput.checked);
           mpCachedPaths = null;
           mpCachedFilterRuleGroups = null;
 
@@ -1036,7 +1148,6 @@ function showConfigModal() {
           mpStorageSet("mp_show_specs", mpShowSpecs);
           mpStorageSet("mp_sub_auto_fill_specs", mpSubAutoFillSpecs);
           mpStorageSet("mp_debug", mpDebug);
-          mpStorageSet("mp_mteam_prefetch", mpMTeamAutoPrefetch);
 
           refreshAllThemes();
 
@@ -1145,7 +1256,7 @@ function renderTag(string, className = "mp-tag-type", titleAttr = "") {
 }
 
 function renderMoviepilotTag(type, contentHtml, row = null) {
-  const darkCls = isDarkThemePage() ? " mp-dark" : "";
+  const darkCls = isDarkThemePage(row) ? " mp-dark" : "";
   if (type === "common") {
     const headCls = row?.dataset?.mpRowHeadClass || "rowhead nowrap";
     const followCls = row?.dataset?.mpRowFollowClass || "rowfollow";
@@ -1534,6 +1645,11 @@ function shouldProcessCurrentPage() {
   if (/(^|\.)bangumi\.moe$/.test(h)) return /^\/torrent\//.test(p);
   if (/(^|\.)acgnx\.se$/.test(h)) return /^\/show-/.test(p);
   if (/(^|\.)anibt\.net$/.test(h)) return /(?:^|\/[a-z]{2}(?:-[a-z0-9]+)?)\/release\/[^/?#]+/i.test(p);
+  if (/\.php$/i.test(p)) {
+    return (
+      /\/details[^/]*\.php$/i.test(p) || (/\/forum\.php$/i.test(p) && /mod=viewthread/i.test(window.location.search))
+    );
+  }
   return true;
 }
 
@@ -2792,12 +2908,6 @@ function getLatestDownloadLink(type, currentLink, options = {}) {
     if (tid && mpSunnyPTLinkCache[tid]) return mpSunnyPTLinkCache[tid];
   }
   if (type === "mteam" || isMTeamDetailPage()) {
-    if (options.allowPrefetch) {
-      autoPrefetchMTeamDownloadLink(options.reason || "late-refresh", {
-        force: Boolean(options.forcePrefetch),
-        cooldownMs: options.cooldownMs || 30000,
-      });
-    }
     const dlResult = extractMTeamDownloadLink({ skipFullHtmlScan: Boolean(options.skipFullHtmlScan) });
     if (dlResult.link) {
       debugLog("m-team late download-link refresh", dlResult);
@@ -4670,7 +4780,6 @@ function insertMpRow() {
     try {
       if (!isMTeamPageDataReady()) return;
       installMTeamNativeDownloadHook();
-      if (mpMTeamAutoPrefetch) autoPrefetchMTeamDownloadLink("initial", { force: false });
       const tid = getCurrentMTeamTid();
       const cachedDetail = getCachedMTeamDetail(tid);
       const row = createMTeamMountNode();
@@ -4787,8 +4896,9 @@ function insertMpRow() {
         if (info.mountInfoUl) {
           const ul = document.createElement("ul");
           ul.id = "mp-row-flag";
+          ul.style.cssText = "display:flex;align-items:flex-start;margin:0;padding:3px 0;";
           ul.innerHTML =
-            '<li class="left" style="font-size:12px;letter-spacing:-0.3px;white-space:nowrap;line-height:24px;">MoviePilot</li><li class="right" id="mp-hdwing-content" style="word-break:normal;vertical-align:middle;"></li>';
+            '<li class="left" style="flex:0 0 78px;width:78px;margin:0 0 0 -14px;padding:3px 2px;font-size:12.5px;line-height:20px;text-align:right;white-space:nowrap;box-sizing:border-box;">MoviePilot</li><li class="right" id="mp-hdwing-content" style="flex:1 1 auto;min-width:0;width:auto;margin:0;padding:0 2px 0 10px;word-break:normal;"></li>';
           info.mountInfoUl.insertAdjacentElement(info.mountInfoUlPos || "afterend", ul);
           const contentLi = ul.querySelector("#mp-hdwing-content");
           if (contentLi) {

@@ -23,7 +23,6 @@ export interface IMoviePilotConfig {
   defaultSavePath: string;
   showSpecs: boolean;
   subAutoFillSpecs: boolean;
-  mteamPrefetch: boolean;
   debug: boolean;
 }
 

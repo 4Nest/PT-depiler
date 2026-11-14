@@ -12,28 +12,31 @@ import type * as MpInjectModule from "./moviepilot/index.ts";
 let mpModulePromise: Promise<typeof MpInjectModule> | null = null;
 let isMatchedPtdSite = false;
 
-function isMoviePilotStandaloneMatch(loc: Location): boolean {
+function isMoviePilotCandidateLocation(loc: Location, matchedPtdSite: boolean): boolean {
   const host = loc.hostname.toLowerCase();
   const path = loc.pathname;
 
-  if (/\/details[^/]*\.php/i.test(path)) return true;
+  if (/\/details[^/]*\.php$/i.test(path)) return true;
+  if (/\/forum\.php$/i.test(path) && /mod=viewthread/i.test(loc.search)) return true;
   if (host === "totheglory.im" && path.startsWith("/t/")) return true;
   if (host === "bangumi.moe" && path.startsWith("/torrent/")) return true;
   if (/(^|\.)acgnx\.se$/.test(host) && path.startsWith("/show-")) return true;
   if (/(^|\.)dmhy\.org$/.test(host) && path.startsWith("/topics/view/")) return true;
   if (/(^|\.)nyaa\.si$/.test(host) && path.startsWith("/view/")) return true;
   if (host === "mikanani.me" && /^\/Home\/Episode\//i.test(path)) return true;
-  if (/(^|\.)skyey2\.com$/.test(host) || /(^|\.)skyeysnow\.com$/.test(host)) return true;
   if (/(^|\.)m-team\.(cc|io)$/.test(host)) return true;
   if (host === "sunnypt.top" || /(^|\.)sunnypt\.top$/.test(host)) return true;
   if (host === "anibt.net" || /(^|\.)anibt\.net$/.test(host)) return true;
-  if (/(^|\.)hdwing\.org$/.test(host)) return true;
+
+  if (matchedPtdSite && !/\.php$/i.test(path)) {
+    return /\/(?:torrents?|detail|t|view|release)\/\d+/i.test(path);
+  }
 
   return false;
 }
 
 function shouldRunMoviePilotOnLocation(): boolean {
-  return isMatchedPtdSite || isMoviePilotStandaloneMatch(window.location);
+  return isMoviePilotCandidateLocation(window.location, isMatchedPtdSite);
 }
 
 async function ensureMpModule(): Promise<typeof MpInjectModule> {
@@ -91,7 +94,7 @@ sendMessage("getExtStorage", "config").then(async (data) => {
   }
 
   // 对未加入 PTD 站点但属于 MoviePilot 原生支持的详情页（如公网动漫站或新 PT 站），直接按开关启动
-  if (configStore?.moviePilot?.enabled && isMoviePilotStandaloneMatch(window.location)) {
+  if (configStore?.moviePilot?.enabled && isMoviePilotCandidateLocation(window.location, false)) {
     void syncMoviePilotState(configStore.moviePilot);
   }
 });

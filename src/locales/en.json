@@ -461,8 +461,6 @@
       "fillUrlAndKey": "Please enter both MoviePilot URL and API Key",
       "invalidUrlProtocol": "Server URL must start with http:// or https://",
       "letMpDecide": "Default (managed by MoviePilot)",
-      "mteamPrefetch": "Auto-prefetch download link on M-Team detail pages",
-      "mteamPrefetchDesc": "Capture direct download link on page load; when off, fetch on demand when pushing",
       "noClientsDetected": "No enabled downloaders detected",
       "serverCardDesc": "Synced with PT Depiler storage & backups. Can also be edited inline via the ⚙ button on detail pages.",
       "serverCardTitle": "Server Connection & Defaults",

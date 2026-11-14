@@ -46,7 +46,6 @@ function ensureMoviePilotState() {
       defaultSavePath: "",
       showSpecs: true,
       subAutoFillSpecs: false,
-      mteamPrefetch: true,
       debug: false,
     };
   }
@@ -443,16 +442,6 @@ defineExpose({ beforeSave });
             <div class="text-xs text-muted-foreground">{{ t("SetBase.moviepilot.subAutoFillSpecsDesc") }}</div>
           </div>
           <Switch v-model="configStore.moviePilot.subAutoFillSpecs" @update:model-value="handleAutoSaveSwitch" />
-        </div>
-
-        <Separator />
-
-        <div class="flex items-center justify-between gap-4">
-          <div class="space-y-0.5">
-            <div class="text-sm font-medium text-foreground">{{ t("SetBase.moviepilot.mteamPrefetch") }}</div>
-            <div class="text-xs text-muted-foreground">{{ t("SetBase.moviepilot.mteamPrefetchDesc") }}</div>
-          </div>
-          <Switch v-model="configStore.moviePilot.mteamPrefetch" @update:model-value="handleAutoSaveSwitch" />
         </div>
 
         <Separator />
