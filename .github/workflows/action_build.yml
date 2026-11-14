@@ -3,9 +3,13 @@ name: Build Action Release
 on:
   push:
     branches: ["master"]
+    tags: ["v*"]
   pull_request:
     branches: ["master"]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -40,17 +44,26 @@ jobs:
         uses: cardinalby/webext-buildtools-pack-extension-dir-action@v1
         with:
           extensionDir: "dist-chrome"
-          zipFilePath: "build/extension-chrome.zip"
+          zipFilePath: "build/PT-Depiler-Lite-chrome.zip"
 
       - id: zip_firefox
         name: Build Zip For Firefox
         uses: cardinalby/webext-buildtools-pack-extension-dir-action@v1
         with:
           extensionDir: "dist-firefox"
-          zipFilePath: "build/extension-firefox.zip"
+          zipFilePath: "build/PT-Depiler-Lite-firefox.zip"
 
       - name: Upload Built Zip to action
         uses: actions/upload-artifact@v7
         with:
           name: build-zip-${{ steps.zip_chrome.outputs.extensionVersion }}
           path: build/*.zip
+
+      - name: Publish GitHub Release on Tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            build/PT-Depiler-Lite-chrome.zip
+            build/PT-Depiler-Lite-firefox.zip
