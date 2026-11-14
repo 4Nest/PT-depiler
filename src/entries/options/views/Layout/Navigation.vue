@@ -112,7 +112,7 @@ const collapsed = computed(() => !isMobile.value && !configStore.isNavBarOpen);
         'z-40 flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200 select-none',
         isMobile
           ? ['fixed inset-y-0 left-0 w-60 shadow-xl', configStore.isNavBarOpen ? 'translate-x-0' : '-translate-x-full']
-          : ['sticky top-0 h-screen', collapsed ? 'w-14' : 'w-58'],
+          : ['sticky top-0 h-screen', collapsed ? 'w-14' : 'w-52'],
       )
     "
   >
@@ -188,14 +188,14 @@ const collapsed = computed(() => !isMobile.value && !configStore.isNavBarOpen);
     <!-- Sidebar Footer -->
     <div class="shrink-0 border-t border-sidebar-border p-2.5">
       <div v-if="!collapsed" class="flex items-center justify-between gap-1 rounded-lg bg-muted/45 px-2.5 py-2">
-        <div class="min-w-0">
+        <div class="min-w-0 flex-1">
           <button
             type="button"
-            class="flex items-center gap-1 truncate text-xs font-medium text-foreground hover:text-primary"
-            :title="gitVersion.short"
+            class="flex max-w-full min-w-0 items-center gap-1 text-[11px] font-medium text-foreground hover:text-primary"
+            :title="extVersion"
             @click="emit('openReleaseNote')"
           >
-            <Sparkles class="size-3 text-primary" />
+            <Sparkles class="size-3 shrink-0 text-primary" />
             <span class="truncate tabular-nums">{{ extVersion }}</span>
           </button>
           <span v-if="isDebug" class="mt-0.5 inline-block text-[10px] text-warning">DEV MODE</span>

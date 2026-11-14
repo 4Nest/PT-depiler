@@ -93,22 +93,29 @@ const fullTableHeader = computed<SearchTableColumn[]>(() => [
   {
     title: t("common.site"),
     key: "site",
-    align: "start",
-    width: 116,
+    align: configStore.searchEntifyControl.showSiteName ? "start" : "center",
+    width: "1%",
+    headerClass: "px-2.5",
+    cellClass: "whitespace-nowrap px-2.5",
     required: true,
   },
   {
     title: t("SearchEntity.index.table.title"),
     key: "title",
     align: "start",
-    minWidth: "260px",
+    width: "100%",
+    minWidth: "360px",
+    headerClass: "px-3",
+    cellClass: "px-3",
     required: true,
   },
   {
     title: t("SearchEntity.index.table.category"),
     key: "category",
     align: "center",
-    width: 96,
+    width: "1%",
+    headerClass: "px-2",
+    cellClass: "whitespace-nowrap px-2",
   },
   ...(showPromoColumn.value
     ? [
@@ -116,7 +123,9 @@ const fullTableHeader = computed<SearchTableColumn[]>(() => [
           title: t("SearchEntity.index.table.downloadVolumeFactor"),
           key: "downloadVolumeFactor",
           align: "center" as const,
-          width: 92,
+          width: "1%",
+          headerClass: "px-2",
+          cellClass: "whitespace-nowrap px-2",
           sortValue: promoSortValue,
         },
       ]
@@ -125,43 +134,57 @@ const fullTableHeader = computed<SearchTableColumn[]>(() => [
     title: t("SearchEntity.index.table.size"),
     key: "size",
     align: "end",
-    width: 100,
+    width: "1%",
+    headerClass: "px-2.5",
+    cellClass: "whitespace-nowrap px-2.5",
   },
   {
     title: t("SearchEntity.index.table.seeders"),
     key: "seeders",
     align: "end",
-    width: 74,
+    width: "1%",
+    headerClass: "px-2",
+    cellClass: "whitespace-nowrap px-2",
   },
   {
     title: t("SearchEntity.index.table.leechers"),
     key: "leechers",
     align: "end",
-    width: 74,
+    width: "1%",
+    headerClass: "px-2",
+    cellClass: "whitespace-nowrap px-2",
   },
   {
     title: t("SearchEntity.index.table.completed"),
     key: "completed",
     align: "end",
-    width: 74,
+    width: "1%",
+    headerClass: "px-2",
+    cellClass: "whitespace-nowrap px-2",
   },
   {
     title: t("SearchEntity.index.table.comments"),
     key: "comments",
     align: "end",
-    width: 74,
+    width: "1%",
+    headerClass: "px-2",
+    cellClass: "whitespace-nowrap px-2",
   },
   {
     title: t("SearchEntity.index.table.time"),
     key: "time",
     align: "center",
-    width: 116,
+    width: "1%",
+    headerClass: "px-2.5",
+    cellClass: "whitespace-nowrap px-2.5",
   },
   {
     title: t("common.action"),
     key: "action",
     align: "center",
-    width: 120,
+    width: "1%",
+    headerClass: "px-2",
+    cellClass: "whitespace-nowrap px-2",
     sortable: false,
     required: true,
   },
@@ -679,7 +702,7 @@ const hasActiveFilter = computed(() => Boolean((tableFilterRef.value ?? "").trim
             <SiteName
               v-if="configStore.searchEntifyControl.showSiteName"
               :site-id="item.site"
-              class="text-xs font-medium text-foreground"
+              class="max-w-[116px] truncate text-xs font-medium text-foreground"
             />
           </div>
         </template>
@@ -691,7 +714,12 @@ const hasActiveFilter = computed(() => Boolean((tableFilterRef.value ?? "").trim
 
         <!-- 分类 -->
         <template #cell-category="{ item }">
-          <Badge v-if="item.category" variant="secondary" class="whitespace-nowrap font-normal">
+          <Badge
+            v-if="item.category"
+            variant="secondary"
+            :title="String(item.category)"
+            class="max-w-[120px] truncate whitespace-nowrap font-normal"
+          >
             {{ item.category }}
           </Badge>
           <span v-else class="text-xs text-muted-foreground/50">-</span>

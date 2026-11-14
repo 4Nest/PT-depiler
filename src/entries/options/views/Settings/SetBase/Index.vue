@@ -53,7 +53,7 @@ async function save() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
+  <div class="flex max-w-6xl flex-col gap-6 lg:flex-row lg:items-start">
     <!-- 左侧垂直导航（移动端自动转为横向胶囊条） -->
     <nav
       class="flex shrink-0 gap-1 overflow-x-auto pb-1 lg:sticky lg:top-20 lg:w-56 lg:flex-col lg:overflow-visible lg:pb-0"

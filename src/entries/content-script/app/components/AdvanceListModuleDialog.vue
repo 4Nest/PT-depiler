@@ -43,13 +43,61 @@ const runtimeStore = useRuntimeStore();
 const metadataStore = useMetadataStore();
 
 const tableColumns = computed<DataTableColumn<ITorrent>[]>(() => [
-  { title: t("SearchEntity.index.table.category"), key: "category", align: "center", width: 80 },
-  { title: t("SearchEntity.index.table.title"), key: "title", align: "start", minWidth: 320 },
-  { title: t("SearchEntity.index.table.size"), key: "size", align: "end", width: 96 },
-  { title: t("SearchEntity.index.table.seeders"), key: "seeders", align: "end", width: 72 },
-  { title: t("SearchEntity.index.table.leechers"), key: "leechers", align: "end", width: 72 },
-  { title: t("SearchEntity.index.table.completed"), key: "completed", align: "end", width: 72 },
-  { title: t("SearchEntity.index.table.time"), key: "time", align: "center", width: 150 },
+  {
+    title: t("SearchEntity.index.table.category"),
+    key: "category",
+    align: "center",
+    width: "1%",
+    headerClass: "px-2",
+    cellClass: "whitespace-nowrap px-2",
+  },
+  {
+    title: t("SearchEntity.index.table.title"),
+    key: "title",
+    align: "start",
+    width: "100%",
+    minWidth: 380,
+  },
+  {
+    title: t("SearchEntity.index.table.size"),
+    key: "size",
+    align: "end",
+    width: "1%",
+    headerClass: "px-2.5",
+    cellClass: "whitespace-nowrap px-2.5",
+  },
+  {
+    title: t("SearchEntity.index.table.seeders"),
+    key: "seeders",
+    align: "end",
+    width: "1%",
+    headerClass: "px-2",
+    cellClass: "whitespace-nowrap px-2",
+  },
+  {
+    title: t("SearchEntity.index.table.leechers"),
+    key: "leechers",
+    align: "end",
+    width: "1%",
+    headerClass: "px-2",
+    cellClass: "whitespace-nowrap px-2",
+  },
+  {
+    title: t("SearchEntity.index.table.completed"),
+    key: "completed",
+    align: "end",
+    width: "1%",
+    headerClass: "px-2",
+    cellClass: "whitespace-nowrap px-2",
+  },
+  {
+    title: t("SearchEntity.index.table.time"),
+    key: "time",
+    align: "center",
+    width: "1%",
+    headerClass: "px-2.5",
+    cellClass: "whitespace-nowrap px-2.5",
+  },
 ]);
 
 const selectedTorrentIds = ref<ITorrent["id"][]>([]);

@@ -76,8 +76,8 @@ configStore.$onReady(() => {
 
       <Topbar />
 
-      <main id="ptd-main" class="flex-1 px-4 py-5 md:px-6 md:py-6">
-        <div class="mx-auto w-full max-w-[1720px]">
+      <main id="ptd-main" class="flex-1 px-3 py-4 md:px-4 md:py-4">
+        <div class="w-full">
           <router-view v-slot="{ Component }">
             <component :is="Component" />
           </router-view>

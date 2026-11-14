@@ -286,7 +286,7 @@ const pageSizeString = computed({
       <table class="w-full caption-bottom border-collapse text-sm">
         <thead class="border-b border-border bg-muted/50">
           <tr>
-            <th v-if="props.selectable" class="h-9.5 w-10 px-3 text-left align-middle">
+            <th v-if="props.selectable" class="h-9.5 w-9 px-2.5 text-left align-middle">
               <Checkbox
                 :model-value="headerCheckState"
                 :disabled="selectableFilteredIds.length === 0"
@@ -368,7 +368,7 @@ const pageSizeString = computed({
               )
             "
           >
-            <td v-if="props.selectable" class="w-10 px-3 py-2.5 align-middle">
+            <td v-if="props.selectable" class="w-9 px-2.5 py-2.5 align-middle">
               <Checkbox
                 :model-value="selectedSet.has(getRowId(row))"
                 :disabled="!canSelectRow(row)"

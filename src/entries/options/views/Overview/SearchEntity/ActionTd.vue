@@ -75,7 +75,7 @@ function sendToDownloader(defaultDownload = false) {
     :class="
       cn(
         density === 'compact'
-          ? 'inline-flex items-center gap-0.5'
+          ? 'inline-flex items-center'
           : 'inline-flex items-center divide-x divide-border overflow-hidden rounded-md border border-border bg-background shadow-2xs',
       )
     "
@@ -89,7 +89,7 @@ function sendToDownloader(defaultDownload = false) {
         :class="
           cn(
             density === 'compact'
-              ? 'text-primary hover:bg-primary/10 hover:text-primary'
+              ? 'size-6.5 text-primary hover:bg-primary/10 hover:text-primary'
               : 'h-8 rounded-none px-2.5 text-primary hover:bg-primary/10 hover:text-primary',
           )
         "
@@ -108,7 +108,7 @@ function sendToDownloader(defaultDownload = false) {
         :class="
           cn(
             density === 'compact'
-              ? 'text-muted-foreground hover:text-foreground'
+              ? 'size-6.5 text-muted-foreground hover:text-foreground'
               : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
           )
         "
@@ -127,7 +127,7 @@ function sendToDownloader(defaultDownload = false) {
         :class="
           cn(
             density === 'compact'
-              ? 'text-muted-foreground hover:text-foreground'
+              ? 'size-6.5 text-muted-foreground hover:text-foreground'
               : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
           )
         "
@@ -147,7 +147,7 @@ function sendToDownloader(defaultDownload = false) {
         :class="
           cn(
             density === 'compact'
-              ? 'text-muted-foreground hover:text-foreground'
+              ? 'size-6.5 text-muted-foreground hover:text-foreground'
               : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
           )
         "
