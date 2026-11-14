@@ -116,6 +116,14 @@ const remoteDownloadDialogData = shallowReactive<IRemoteDownloadDialogData>({
   isDefaultSend: false,
 });
 provide("remoteDownloadDialogData", remoteDownloadDialogData);
+watch(
+  () => remoteDownloadDialogData.show,
+  (show) => {
+    if (show && !configStore.contentScript?.defaultOpenSpeedDial) {
+      openSpeedDial.value = false;
+    }
+  },
+);
 
 const CUSTOM_DRAG_MIME = "text/json+ptd";
 const isDragging = ref<boolean>(false);
@@ -272,7 +280,7 @@ function openOptions() {
     v-show="isSupportedPage"
     ref="el"
     :style="style"
-    style="position: fixed; z-index: 9999999"
+    style="position: fixed; z-index: 40"
     :class="
       cn(
         'select-none transition-opacity duration-200',
