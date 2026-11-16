@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { isEmpty, set } from "es-toolkit/compat";
 import {
+  EResultParseStatus,
   getHostFromUrl,
   getDefinedSiteMetadata,
   isIndexedMetadataField,
@@ -66,6 +67,23 @@ export const useMetadataStore = defineStore("metadata", {
       return this.getAddedSites.sort((a, b) => {
         return (b.sortIndex ?? 0) - (a.sortIndex ?? 0);
       });
+    },
+
+    getNeedLoginSites(state): Array<{ id: TSiteID; name: string; url: string }> {
+      const result: Array<{ id: TSiteID; name: string; url: string }> = [];
+      for (const [siteId, siteUserConfig] of Object.entries(state.sites)) {
+        const siteMeta = siteMetadataIndex[siteId];
+        if (!siteMeta || siteMeta.type === "public" || siteMeta.isDead) continue;
+        if (siteUserConfig.isOffline || siteUserConfig.allowQueryUserInfo === false) continue;
+        if (state.lastUserInfo[siteId]?.status === EResultParseStatus.needLogin) {
+          result.push({
+            id: siteId as TSiteID,
+            name: state.siteNameMap?.[siteId] || siteMeta.name || siteId,
+            url: siteUserConfig.url || siteMeta.urls?.[0] || "#",
+          });
+        }
+      }
+      return result;
     },
 
     getSitesGroupData(state) {

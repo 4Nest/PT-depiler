@@ -88,7 +88,13 @@ const { width: containerWidth } = useElementSize(chartContainerRef);
 const perChartHeight = 380;
 
 const allowEditName = ref<boolean>(false);
-const showControlPanel = ref<boolean>(true);
+const showControlPanel = computed<boolean>({
+  get: () => configStore.userStatisticControl.showControlPanel ?? true,
+  set: (val: boolean) => {
+    configStore.userStatisticControl.showControlPanel = val;
+    configStore.$save();
+  },
+});
 const customStartDate = ref<string>("");
 const customEndDate = ref<string>("");
 const customRangePopoverOpen = ref<boolean>(false);

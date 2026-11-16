@@ -21,6 +21,7 @@ import {
 import { routes } from "@/options/plugins/router.ts";
 import { definedLangMetaData } from "@/options/plugins/i18n.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
+import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { isDebug, REPO_URL } from "~/helper.ts";
 import { cn } from "~/lib/utils";
 import {
@@ -42,7 +43,9 @@ const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const configStore = useConfigStore();
+const metadataStore = useMetadataStore();
 const isMobile = useMediaQuery("(max-width: 767px)");
+const needLoginCount = computed(() => metadataStore.getNeedLoginSites.length);
 
 const extVersion = __EXT_VERSION__;
 const gitVersion = __GIT_VERSION__;
@@ -179,6 +182,17 @@ const collapsed = computed(() => !isMobile.value && !configStore.isNavBarOpen);
                 "
               />
               <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
+              <Badge
+                v-if="item.name === 'MyData' && needLoginCount > 0 && !collapsed"
+                variant="destructive"
+                class="ml-auto h-4 min-w-4 justify-center px-1 text-[10px] tabular-nums"
+              >
+                {{ needLoginCount }}
+              </Badge>
+              <span
+                v-else-if="item.name === 'MyData' && needLoginCount > 0 && collapsed"
+                class="absolute top-1.5 right-2 size-2 rounded-full bg-destructive"
+              />
             </button>
           </Tooltip>
         </template>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useMediaQuery, watchDebounced } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { isUndefined } from "es-toolkit/compat";
 import {
   AlertCircle,
@@ -24,6 +24,7 @@ import {
   Globe,
   HardDrive,
   History,
+  KeyRound,
   Plus,
   RefreshCw,
   Search,
@@ -75,6 +76,7 @@ import { formatRatio } from "./utils/format.ts";
 import { tableData, initTableData, cancelFlushSiteLastUserInfo, flushSiteLastUserInfo } from "./utils/lastUserData.ts";
 
 const { t } = useI18n();
+const route = useRoute();
 const router = useRouter();
 const configStore = useConfigStore();
 const runtimeStore = useRuntimeStore();
@@ -185,7 +187,21 @@ const lastUpdateErrorStatuses = [
   EResultParseStatus.noUserInput,
 ].map((item) => item.toString());
 
-onMounted(() => initTableData());
+onMounted(async () => {
+  await initTableData();
+  if (route.query.filter === "needLogin") {
+    filterNeedLoginSites();
+  }
+});
+
+watch(
+  () => route.query.filter,
+  (filterVal) => {
+    if (filterVal === "needLogin") {
+      filterNeedLoginSites();
+    }
+  },
+);
 
 watchDebounced(
   () => metadataStore.lastUserInfo,
@@ -277,6 +293,7 @@ const kpiSummary = computed(() => {
   let sitesWithBonusCount = 0;
   let successSiteCount = 0;
   let errorSiteCount = 0;
+  let needLoginSiteCount = 0;
   let unreadMessageSiteCount = 0;
 
   for (const item of tableData.value) {
@@ -290,8 +307,13 @@ const kpiSummary = computed(() => {
     }
     if (item.status === EResultParseStatus.success) {
       successSiteCount++;
-    } else if (lastUpdateErrorStatuses.includes(String(item.status))) {
-      errorSiteCount++;
+    } else {
+      if (item.status === EResultParseStatus.needLogin) {
+        needLoginSiteCount++;
+      }
+      if (lastUpdateErrorStatuses.includes(String(item.status))) {
+        errorSiteCount++;
+      }
     }
     if ((item.messageCount ?? 0) > 0) {
       unreadMessageSiteCount++;
@@ -309,12 +331,27 @@ const kpiSummary = computed(() => {
     sitesWithBonusCount,
     successSiteCount,
     errorSiteCount,
+    needLoginSiteCount,
     unreadMessageSiteCount,
   };
 });
 
 function getSiteUrlSync(siteId: TSiteID): string {
   return metadataStore.sites[siteId]?.url || siteMetadataIndex[siteId]?.urls?.[0] || "#";
+}
+
+const needLoginSites = computed(() => metadataStore.getNeedLoginSites);
+
+function filterNeedLoginSites() {
+  advanceFilterDictRef.value.status.required = [EResultParseStatus.needLogin.toString()];
+  updateTableFilterValueFn();
+}
+
+function flushNeedLoginSites() {
+  const siteIds = needLoginSites.value.map((s) => s.id);
+  if (siteIds.length > 0) {
+    flushSiteLastUserInfo(siteIds);
+  }
 }
 
 function filterErrorSites() {
@@ -547,7 +584,18 @@ async function applyBatchGroups() {
               </Badge>
             </button>
             <button
-              v-if="kpiSummary.errorSiteCount > 0"
+              v-if="kpiSummary.needLoginSiteCount > 0"
+              type="button"
+              class="cursor-pointer transition-opacity hover:opacity-80"
+              @click="filterNeedLoginSites"
+            >
+              <Badge variant="destructive" class="px-1.5 py-0 text-[11px]">
+                <KeyRound class="size-3" />
+                {{ t("MyData.kpi.needLoginSites", { count: kpiSummary.needLoginSiteCount }) }}
+              </Badge>
+            </button>
+            <button
+              v-if="kpiSummary.errorSiteCount > kpiSummary.needLoginSiteCount"
               type="button"
               class="cursor-pointer transition-opacity hover:opacity-80"
               @click="filterErrorSites"
@@ -566,6 +614,48 @@ async function applyBatchGroups() {
         </div>
       </Card>
     </div>
+
+    <!-- 站点登录失效醒目提醒 -->
+    <Card v-if="hasAddedSites && needLoginSites.length > 0" class="border-destructive/40 bg-destructive/5 p-3.5">
+      <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex min-w-0 items-start gap-2.5 sm:items-center">
+          <span
+            class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-destructive/15 text-destructive"
+          >
+            <KeyRound class="size-4" />
+          </span>
+          <div class="min-w-0 space-y-1">
+            <p class="text-xs font-semibold text-destructive">
+              {{ t("MyData.needLoginBanner.title", { count: needLoginSites.length }) }}
+            </p>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <a
+                v-for="site in needLoginSites"
+                :key="site.id"
+                :href="site.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-background px-2 py-0.5 text-xs font-medium text-foreground transition-colors hover:border-destructive hover:text-destructive"
+              >
+                <SiteFavicon :site-id="site.id" :size="14" />
+                <span>{{ site.name }}</span>
+                <ExternalLink class="size-3 text-muted-foreground" />
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="flex shrink-0 items-center gap-1.5 self-end sm:self-center">
+          <Button variant="outline" size="xs" @click="filterNeedLoginSites">
+            <Filter />
+            {{ t("MyData.needLoginBanner.filterOnly") }}
+          </Button>
+          <Button variant="destructive" size="xs" :disabled="runtimeStore.isUserInfoFlush" @click="flushNeedLoginSites">
+            <RefreshCw />
+            {{ t("MyData.needLoginBanner.refreshThese") }}
+          </Button>
+        </div>
+      </div>
+    </Card>
 
     <!-- 空状态引导 -->
     <Card v-if="!hasAddedSites" class="p-10 text-center">

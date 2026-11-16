@@ -165,6 +165,7 @@ export const useConfigStore = defineStore("config", {
     },
 
     userStatisticControl: {
+      showControlPanel: true,
       showChart: {
         totalSiteBase: true,
         totalSiteSeeding: true,

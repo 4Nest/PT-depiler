@@ -135,8 +135,14 @@
       "siteHealth": "站点健康度",
       "healthRatio": "{success} / {total}",
       "unreadSites": "{count} 站有未读消息",
+      "needLoginSites": "{count} 站需登录",
       "errorSites": "{count} 站异常",
       "allHealthy": "全部站点状态正常"
+    },
+    "needLoginBanner": {
+      "title": "有 {count} 个站点登录已失效，点击站点打开页面重新登录后可刷新数据",
+      "refreshThese": "刷新这些站点",
+      "filterOnly": "仅看失效站点"
     },
     "empty": {
       "title": "尚未添加任何站点",
@@ -1011,6 +1017,10 @@
       "searchTip": "输入种子关键字、IMDb编号进行搜索",
       "wiki": "帮助",
       "wrongPixelRatioNotice": "检测到您的页面展示可能受到缩放影响，建议您将当前页面缩放调整为100%，以保障您的浏览体验～",
+      "needLoginBanner": "检测到 {count} 个站点登录已失效（{sites}），请重新登录后刷新数据",
+      "needLoginMore": "{sites} 等 {count} 站",
+      "openNeedLoginSites": "打开站点登录",
+      "goToMyData": "前往处理",
       "themeSwitchTip": "切换亮色 / 暗色 / 跟随系统主题"
     },
     "init": "请耐心等待页面加载.....",

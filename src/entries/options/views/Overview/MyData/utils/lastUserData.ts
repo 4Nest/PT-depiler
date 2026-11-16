@@ -1,5 +1,5 @@
 import { ref, computed } from "vue";
-import { type ISiteUserConfig, type IUserInfo, TSiteID } from "@ptd/site";
+import { EResultParseStatus, type ISiteUserConfig, type IUserInfo, TSiteID } from "@ptd/site";
 import { isUserInfoQueueCancelledError, sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 
@@ -84,7 +84,13 @@ export function flushSiteLastUserInfo(sites: TSiteID[]) {
     runtimeStore.userInfo.flushPlan[site] = true;
 
     sendMessage("getSiteUserInfoResult", site)
-      .then((userInfo) => updatePerSiteData(site, userInfo))
+      .then(async (userInfo) => {
+        await updatePerSiteData(site, userInfo);
+        if (userInfo.status === EResultParseStatus.needLogin) {
+          const siteName = metadataStore.siteNameMap?.[site] || site;
+          runtimeStore.showSnackbar(`站点 [${siteName}] 登录已失效，请重新登录`, { color: "warning", timeout: 6000 });
+        }
+      })
       .catch((e) => {
         // 队列被用户主动取消（p-queue 10 的 clear() 会以 AbortError 结束被移除的排队任务），此时不报错
         if (isUserInfoQueueCancelledError(e)) {

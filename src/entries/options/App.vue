@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 import { useDevicePixelRatio, useMediaQuery } from "@vueuse/core";
 import { Toaster } from "vue-sonner";
-import { AlertTriangle, X } from "lucide-vue-next";
+import { AlertTriangle, ExternalLink, KeyRound, X } from "lucide-vue-next";
 
 import { useConfigStore } from "@/options/stores/config.ts";
+import { useMetadataStore } from "@/options/stores/metadata.ts";
 import Navigation from "./views/Layout/Navigation.vue";
 import Topbar from "./views/Layout/Topbar.vue";
 import ReleaseNoteDialog from "./views/Layout/ReleaseNoteDialog.vue";
 
 const { locale: currentVueI18nLocal, t } = useI18n({ useScope: "global" });
+const router = useRouter();
 const configStore = useConfigStore();
+const metadataStore = useMetadataStore();
 
 watch(
   () => configStore.lang,
@@ -46,6 +50,37 @@ function setIgnoreWrongPixelRatio() {
 
 const showReleaseNoteDialog = ref<boolean>(false);
 
+const needLoginSites = computed(() => metadataStore.getNeedLoginSites);
+const dismissedNeedLoginKey = ref<string>("");
+const currentNeedLoginKey = computed(() => needLoginSites.value.map((s) => s.id).join(","));
+const showNeedLoginBanner = computed(
+  () => needLoginSites.value.length > 0 && dismissedNeedLoginKey.value !== currentNeedLoginKey.value,
+);
+const needLoginSitesText = computed(() => {
+  const names = needLoginSites.value.slice(0, 3).map((s) => s.name);
+  const joined = names.join("、");
+  if (needLoginSites.value.length > 3) {
+    return t("layout.header.needLoginMore", { sites: joined, count: needLoginSites.value.length });
+  }
+  return joined;
+});
+
+function openNeedLoginSites() {
+  for (const site of needLoginSites.value.slice(0, 5)) {
+    if (site.url && site.url !== "#") {
+      window.open(site.url, "_blank", "noopener noreferrer");
+    }
+  }
+}
+
+function goToNeedLoginMyData() {
+  router.push({ name: "MyData", query: { filter: "needLogin" } });
+}
+
+function dismissNeedLoginBanner() {
+  dismissedNeedLoginKey.value = currentNeedLoginKey.value;
+}
+
 configStore.$onReady(() => {
   if (configStore.showReleaseNoteOnVersionChange && configStore.version !== __EXT_VERSION__) {
     showReleaseNoteDialog.value = true;
@@ -72,6 +107,48 @@ configStore.$onReady(() => {
         >
           <X class="size-3.5" />
         </button>
+      </div>
+
+      <!-- 站点登录失效全局提醒 -->
+      <div
+        v-if="showNeedLoginBanner"
+        class="flex flex-wrap items-center justify-between gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-foreground"
+      >
+        <div class="flex min-w-0 items-center gap-2">
+          <KeyRound class="size-3.5 shrink-0 text-destructive" />
+          <span class="font-medium text-destructive">
+            {{
+              t("layout.header.needLoginBanner", {
+                count: needLoginSites.length,
+                sites: needLoginSitesText,
+              })
+            }}
+          </span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded border border-destructive/30 bg-background/80 px-2 py-0.5 text-[11px] font-medium text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+            @click="openNeedLoginSites"
+          >
+            <ExternalLink class="size-3" />
+            {{ t("layout.header.openNeedLoginSites") }}
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded border border-border bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent"
+            @click="goToNeedLoginMyData"
+          >
+            {{ t("layout.header.goToMyData") }}
+          </button>
+          <button
+            type="button"
+            class="ml-0.5 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            @click="dismissNeedLoginBanner"
+          >
+            <X class="size-3.5" />
+          </button>
+        </div>
       </div>
 
       <Topbar />

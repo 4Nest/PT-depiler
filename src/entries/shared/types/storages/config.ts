@@ -151,6 +151,7 @@ export interface IConfigPiniaStorageSchema {
   };
 
   userStatisticControl: {
+    showControlPanel: boolean;
     showChart: Record<
       | "totalSiteBase"
       | "totalSiteSeeding"

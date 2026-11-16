@@ -135,8 +135,14 @@
       "siteHealth": "Site Health",
       "healthRatio": "{success} / {total}",
       "unreadSites": "{count} unread",
+      "needLoginSites": "{count} need login",
       "errorSites": "{count} error",
       "allHealthy": "All sites healthy"
+    },
+    "needLoginBanner": {
+      "title": "{count} site(s) require re-login. Click a site to open and log in, then refresh.",
+      "refreshThese": "Refresh These",
+      "filterOnly": "Filter"
     },
     "empty": {
       "title": "No sites added yet",
@@ -1014,6 +1020,10 @@
       "searchTip": "Input keyword, IMDb numbers to search",
       "wiki": "Wiki",
       "wrongPixelRatioNotice": "Your page display may be affected by zooming. It is recommended to zoom at 100% to ensure your browsing experience~",
+      "needLoginBanner": "{count} site(s) require re-login ({sites}). Please log in again and refresh.",
+      "needLoginMore": "{sites} and {count} total",
+      "openNeedLoginSites": "Open Sites",
+      "goToMyData": "View",
       "themeSwitchTip": "Switch Light / Dark / Auto Theme"
     },
     "init": "Please wait patiently for the page to load.....",
