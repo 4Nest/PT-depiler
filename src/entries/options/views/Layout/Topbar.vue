@@ -151,10 +151,10 @@ onUnmounted(() => {
 <template>
   <header
     id="ptd-topbar"
-    class="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/85 px-4 backdrop-blur-md md:px-6"
+    class="sticky top-0 z-30 flex h-15 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/85 px-4 backdrop-blur-md md:px-6"
   >
     <!-- 左侧：侧边栏开关 + 当前视图标题 -->
-    <div class="flex min-w-0 items-center gap-2.5">
+    <div class="flex min-w-0 items-center gap-2.5 md:flex-1">
       <Tooltip :content="t('layout.header.navBarTip')" side="bottom">
         <Button variant="ghost" size="icon-sm" class="-ml-1 text-muted-foreground" @click="toggleSidebar">
           <PanelLeft class="size-4" />
@@ -166,17 +166,17 @@ onUnmounted(() => {
       </h1>
     </div>
 
-    <!-- 中间/右侧：Command Bar 全局聚合搜索舱 + 主题切换 -->
-    <div class="flex flex-1 items-center justify-end gap-2.5 max-w-2xl">
+    <!-- 中间：Command Bar 全局聚合搜索舱 -->
+    <div class="flex min-w-0 flex-1 items-center justify-center md:flex-none md:w-full md:max-w-2xl lg:max-w-3xl">
       <div
-        class="flex h-9 w-full max-w-xl items-center rounded-lg border border-input bg-card p-0.5 shadow-2xs transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25"
+        class="flex h-10 w-full items-center rounded-xl border border-input bg-card p-1 shadow-2xs transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25"
       >
         <!-- 搜索方案选择 Popover -->
         <Popover v-model:open="planPopoverOpen">
           <PopoverTrigger as-child>
             <button
               type="button"
-              class="inline-flex h-7.5 max-w-[140px] shrink-0 items-center gap-1 rounded-md bg-muted/70 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+              class="inline-flex h-8 max-w-[160px] shrink-0 items-center gap-1.5 rounded-lg bg-muted/70 px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent"
             >
               <SiteFavicon v-if="searchPlanKey.startsWith('site:')" :site-id="searchPlanKey.slice(5)" :size="14" />
               <Layers v-else class="size-3.5 shrink-0 text-primary" />
@@ -281,7 +281,7 @@ onUnmounted(() => {
             type="text"
             :placeholder="t('layout.header.searchTip')"
             enterkeyhint="search"
-            class="h-full w-full bg-transparent px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground"
+            class="h-full w-full bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
             @keyup.enter="startSearchEntity"
           />
           <button
@@ -304,17 +304,19 @@ onUnmounted(() => {
         <Button
           variant="ghost"
           size="icon-sm"
-          class="size-7.5 shrink-0 rounded-md border border-primary/25 bg-primary/12 text-primary hover:bg-primary hover:text-primary-foreground"
+          class="size-8 shrink-0 rounded-lg border border-primary/25 bg-primary/12 text-primary hover:bg-primary hover:text-primary-foreground"
           :disabled="runtimeStore.search.isSearching"
           :title="t('common.search')"
           @click="startSearchEntity"
         >
-          <Loader2 v-if="runtimeStore.search.isSearching" class="size-3.5 animate-spin" />
-          <Search v-else class="size-3.5" />
+          <Loader2 v-if="runtimeStore.search.isSearching" class="size-4 animate-spin" />
+          <Search v-else class="size-4" />
         </Button>
       </div>
+    </div>
 
-      <!-- 主题切换 -->
+    <!-- 右侧：主题切换 -->
+    <div class="flex shrink-0 items-center justify-end md:flex-1">
       <Tooltip :content="currentThemeTooltip" side="bottom">
         <Button variant="outline" size="icon-sm" class="shrink-0" @click="cycleTheme">
           <Sun v-if="configStore.theme === 'light'" class="size-4" />
