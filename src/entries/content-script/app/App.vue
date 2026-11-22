@@ -79,30 +79,56 @@ const { x, y, style } = useDraggable(el, {
     }
   },
   onEnd: ({ x: endX, y: endY }) => {
-    configStore.updateContentScriptPosition(endX, endY);
     const { clientWidth, clientHeight } = document.documentElement;
-    rightX.value = clientWidth - endX;
-    bottomY.value = clientHeight - endY;
+    const clampedX = Math.min(Math.max(8, endX), Math.max(8, clientWidth - 54));
+    const clampedY = Math.min(Math.max(8, endY), Math.max(8, clientHeight - 54));
+    x.value = clampedX;
+    y.value = clampedY;
+    configStore.updateContentScriptPosition(clampedX, clampedY);
+    rightX.value = clientWidth - clampedX;
+    bottomY.value = clientHeight - clampedY;
   },
 });
 
 const openUpward = computed(() => y.value > windowHeight.value / 2);
 const alignRight = computed(() => x.value > windowWidth.value / 2);
 
-window.addEventListener("resize", () => {
+function resolveSafePosition(rawX: number, rawY: number) {
   const { clientWidth, clientHeight } = document.documentElement;
+  const isNarrow = clientWidth < 640;
+  const defaultRight = isNarrow ? 64 : 100;
+  const defaultBottom = isNarrow ? 88 : 100;
+  const nextX = rawX <= 0 || rawX > clientWidth - 52 ? Math.max(12, clientWidth - defaultRight) : Math.max(8, rawX);
+  const nextY = rawY <= 0 || rawY > clientHeight - 52 ? Math.max(12, clientHeight - defaultBottom) : Math.max(8, rawY);
+  return { nextX, nextY, clientWidth, clientHeight };
+}
 
-  x.value = clientWidth - rightX.value;
-  if (x.value > clientWidth - 50 || x.value < 0) {
-    x.value = clientWidth - 100;
-  }
-  rightX.value = clientWidth - x.value;
+function handleWindowResize() {
+  const { clientWidth, clientHeight } = document.documentElement;
+  const { nextX, nextY } = resolveSafePosition(clientWidth - rightX.value, clientHeight - bottomY.value);
+  x.value = nextX;
+  y.value = nextY;
+  rightX.value = clientWidth - nextX;
+  bottomY.value = clientHeight - nextY;
+}
 
-  y.value = clientHeight - bottomY.value;
-  if (y.value > clientHeight - 50 || y.value < 0) {
-    y.value = clientHeight - 100;
-  }
-  bottomY.value = clientHeight - y.value;
+function handleOutsidePointerDown(e: PointerEvent) {
+  if (!openSpeedDial.value || configStore.contentScript?.defaultOpenSpeedDial) return;
+  const root = el.value?.getRootNode();
+  const host = root instanceof ShadowRoot ? root.host : null;
+  if (host && (e.target === host || host.contains(e.target as Node))) return;
+  if (el.value?.contains(e.target as Node)) return;
+  openSpeedDial.value = false;
+}
+
+onMounted(() => {
+  window.addEventListener("resize", handleWindowResize);
+  document.addEventListener("pointerdown", handleOutsidePointerDown, { passive: true });
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", handleWindowResize);
+  document.removeEventListener("pointerdown", handleOutsidePointerDown);
 });
 
 const isSupportedPage = computed(() => pageType.value === "list" || pageType.value === "detail");
@@ -114,12 +140,12 @@ configStore.$onReady(() => {
   openSpeedDial.value = configStore.contentScript?.defaultOpenSpeedDial ?? false;
   void updatePageType(ptdData);
   const { x: storeX = -100, y: storeY = -100 } = configStore.contentScript?.position ?? {};
-  const { clientWidth, clientHeight } = document.documentElement;
+  const { nextX, nextY, clientWidth, clientHeight } = resolveSafePosition(storeX, storeY);
 
-  x.value = storeX <= 0 || storeX > clientWidth - 50 ? clientWidth - 100 : storeX;
-  y.value = storeY <= 0 || storeY > clientHeight - 50 ? clientHeight - 100 : storeY;
-  rightX.value = clientWidth - x.value;
-  bottomY.value = clientHeight - y.value;
+  x.value = nextX;
+  y.value = nextY;
+  rightX.value = clientWidth - nextX;
+  bottomY.value = clientHeight - nextY;
 });
 
 const remoteDownloadDialogData = shallowReactive<IRemoteDownloadDialogData>({
@@ -327,7 +353,7 @@ function openOptions() {
           v-show="openSpeedDial"
           :class="
             cn(
-              'absolute z-10 flex w-54 flex-col gap-1 rounded-xl border border-zinc-300/90 bg-popover p-1.5 text-popover-foreground backdrop-blur-xl dark:border-white/16 [box-shadow:0_16px_40px_-8px_rgba(15,23,42,0.26),0_4px_14px_-2px_rgba(15,23,42,0.12),0_0_0_1px_rgba(15,23,42,0.04)] dark:[box-shadow:0_18px_42px_-8px_rgba(0,0,0,0.65),0_4px_14px_-2px_rgba(0,0,0,0.4)]',
+              'absolute z-10 flex w-54 max-w-[calc(100vw-24px)] flex-col gap-1 rounded-xl border border-zinc-300/90 bg-popover p-1.5 text-popover-foreground backdrop-blur-xl dark:border-white/16 [box-shadow:0_16px_40px_-8px_rgba(15,23,42,0.26),0_4px_14px_-2px_rgba(15,23,42,0.12),0_0_0_1px_rgba(15,23,42,0.04)] dark:[box-shadow:0_18px_42px_-8px_rgba(0,0,0,0.65),0_4px_14px_-2px_rgba(0,0,0,0.4)]',
               openUpward ? 'bottom-full mb-3' : 'top-full mt-3',
               alignRight ? 'right-0' : 'left-0',
               openUpward && alignRight && 'origin-bottom-right',
@@ -352,7 +378,7 @@ function openOptions() {
         :title="t('contentScript.openPTD')"
         :class="
           cn(
-            'group relative flex size-11.5 items-center justify-center rounded-2xl border border-zinc-300/90 bg-card/98 text-foreground backdrop-blur-xl transition-all duration-150 hover:-translate-y-0.5 hover:scale-105 hover:border-primary/60 focus:outline-none dark:border-white/18 [box-shadow:0_10px_26px_-4px_rgba(15,23,42,0.24),0_3px_8px_-2px_rgba(15,23,42,0.12)] dark:[box-shadow:0_10px_28px_-4px_rgba(0,0,0,0.65),0_3px_8px_-2px_rgba(0,0,0,0.4)]',
+            'group relative flex size-11.5 touch-none items-center justify-center rounded-2xl border border-zinc-300/90 bg-card/98 text-foreground backdrop-blur-xl transition-all duration-150 hover:-translate-y-0.5 hover:scale-105 hover:border-primary/60 focus:outline-none dark:border-white/18 [box-shadow:0_10px_26px_-4px_rgba(15,23,42,0.24),0_3px_8px_-2px_rgba(15,23,42,0.12)] dark:[box-shadow:0_10px_28px_-4px_rgba(0,0,0,0.65),0_3px_8px_-2px_rgba(0,0,0,0.4)]',
             openSpeedDial && 'border-primary ring-3 ring-primary/25',
             isDragging && 'scale-110 border-primary bg-primary/10 ring-4 ring-primary/30',
           )
@@ -377,7 +403,7 @@ function openOptions() {
   </div>
 
   <Toaster
-    position="bottom-right"
+    :position="windowWidth < 640 ? 'top-center' : 'bottom-right'"
     :theme="effectiveTheme"
     rich-colors
     close-button

@@ -158,7 +158,7 @@ const collapsed = computed(() => !isMobile.value && !configStore.isNavBarOpen);
               :class="
                 cn(
                   'group relative flex w-full items-center rounded-lg text-[13px] font-medium transition-colors',
-                  collapsed ? 'h-9 justify-center px-0' : 'h-8.5 gap-2.5 px-2.5',
+                  collapsed ? 'h-9 justify-center px-0' : 'h-10 gap-2.5 px-2.5 md:h-8.5',
                   isItemActive(item.name, item.path)
                     ? 'bg-primary/12 text-primary font-semibold'
                     : 'text-muted-foreground hover:bg-sidebar-accent/70 hover:text-foreground',
@@ -200,7 +200,7 @@ const collapsed = computed(() => !isMobile.value && !configStore.isNavBarOpen);
     </nav>
 
     <!-- Sidebar Footer -->
-    <div class="shrink-0 border-t border-sidebar-border p-2.5">
+    <div class="shrink-0 border-t border-sidebar-border p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
       <div v-if="!collapsed" class="flex items-center justify-between gap-1 rounded-lg bg-muted/45 px-2.5 py-2">
         <div class="min-w-0 flex-1">
           <button

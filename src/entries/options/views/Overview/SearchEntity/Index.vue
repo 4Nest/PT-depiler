@@ -27,6 +27,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   DataTable,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -594,7 +595,7 @@ const hasActiveFilter = computed(() => Boolean((tableFilterRef.value ?? "").trim
         <!-- 列显隐控制 DropdownMenu -->
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <Button variant="outline" size="sm" class="h-8 gap-1.5 px-2.5 text-xs">
+            <Button variant="outline" size="sm" class="hidden h-8 gap-1.5 px-2.5 text-xs md:inline-flex">
               <Columns3 class="size-3.5" />
               <span class="hidden lg:inline">列</span>
               <span class="rounded bg-muted px-1 text-[10px] text-muted-foreground tabular-nums">
@@ -618,8 +619,8 @@ const hasActiveFilter = computed(() => Boolean((tableFilterRef.value ?? "").trim
         </DropdownMenu>
 
         <!-- 右侧二次过滤与高级筛选 -->
-        <div class="ml-auto flex flex-wrap items-center gap-2">
-          <div class="relative w-52 sm:w-64 md:w-72">
+        <div class="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+          <div class="relative min-w-0 flex-1 sm:w-64 sm:flex-none md:w-72">
             <Search
               class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
             />
@@ -813,6 +814,80 @@ const hasActiveFilter = computed(() => Boolean((tableFilterRef.value ?? "").trim
         <!-- 行内快捷操作 -->
         <template #cell-action="{ item }">
           <ActionTd :torrent-items="[item]" density="compact" />
+        </template>
+
+        <!-- 移动端紧凑种子结果卡片（无嵌套边框，标题完整可读，一键直推下载器） -->
+        <template #mobile-card="{ item, selected, canSelect, toggle }">
+          <div class="px-3.5 py-3">
+            <!-- 第一行：勾选 + 站点 + 分类/优惠系数 + 发布时间 -->
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex min-w-0 items-center gap-2">
+                <Checkbox :model-value="selected" :disabled="!canSelect" @update:model-value="toggle" />
+                <SiteFavicon :site-id="item.site" :size="16" class="shrink-0" />
+                <SiteName :site-id="item.site" tag="span" class="truncate text-xs font-semibold text-foreground" />
+                <Badge
+                  v-if="item.category"
+                  variant="secondary"
+                  class="max-w-[96px] shrink-0 truncate px-1.5 py-0 text-[10px] font-normal"
+                >
+                  {{ item.category }}
+                </Badge>
+                <Badge
+                  v-if="showPromoColumn && promoCellText(item) !== '-'"
+                  variant="outline"
+                  class="shrink-0 px-1.5 py-0 text-[10px]"
+                >
+                  {{ promoCellText(item) }}
+                </Badge>
+              </div>
+
+              <span v-if="item.time" class="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                {{
+                  configStore.searchEntifyControl.uploadAtFormatAsAlive
+                    ? formatTimeAgo(item.time)
+                    : formatDate(item.time, "yyyy-MM-dd")
+                }}
+              </span>
+            </div>
+
+            <!-- 第二行：完整主标题外链、彩色优惠与字幕微徽章、副标题 -->
+            <div class="mt-1.5 pl-6">
+              <TorrentTitleTd :item="item" />
+            </div>
+
+            <!-- 第三行：体积/做种/下载/完成数据（含可选进度条） + 右侧固定对齐推送操作组 -->
+            <div class="mt-2 flex items-center justify-between gap-2 pl-6">
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] tabular-nums">
+                  <span class="font-semibold text-foreground">
+                    {{ typeof item.size === "number" ? formatSize(item.size) : "-" }}
+                  </span>
+                  <span
+                    :class="
+                      typeof item.seeders === 'number' && item.seeders > 0
+                        ? 'font-semibold text-success'
+                        : 'text-muted-foreground'
+                    "
+                  >
+                    ↑{{ item.seeders ?? "-" }}
+                  </span>
+                  <span class="text-muted-foreground">↓{{ item.leechers ?? "-" }}</span>
+                  <span v-if="typeof item.completed === 'number'" class="text-muted-foreground">
+                    ✓{{ item.completed }}
+                  </span>
+                </div>
+                <TorrentProcessTd
+                  v-if="item.status && (item.status as ETorrentStatus) !== ETorrentStatus.unknown"
+                  :torrent="item"
+                  class="max-w-[168px]"
+                />
+              </div>
+
+              <div class="shrink-0">
+                <ActionTd :torrent-items="[item]" density="mobile" />
+              </div>
+            </div>
+          </div>
         </template>
 
         <!-- 空状态 -->

@@ -29,7 +29,7 @@ const emit = defineEmits<{
     :disabled="disabled || loading"
     :class="
       cn(
-        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-45',
+        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-45 max-[640px]:min-h-10 max-[640px]:py-2.5',
         emphasis === 'primary'
           ? 'bg-primary text-primary-foreground shadow-2xs hover:bg-primary/90'
           : 'text-popover-foreground hover:bg-accent hover:text-accent-foreground',

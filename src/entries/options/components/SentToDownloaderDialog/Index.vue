@@ -357,7 +357,9 @@ function dialogLeave() {
 <template>
   <Dialog v-model="showDialog" @after-open="dialogEnter" @after-close="dialogLeave">
     <DialogContent class="max-w-2xl" :prevent-outside-close="isSending" :hide-close="isSending">
-      <DialogHeader class="flex-row items-center justify-between gap-3">
+      <DialogHeader
+        class="flex-col items-stretch gap-2.5 min-[540px]:flex-row min-[540px]:items-center min-[540px]:justify-between"
+      >
         <div class="flex min-w-0 items-center gap-2.5">
           <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <CloudDownload class="size-4" />
@@ -367,8 +369,8 @@ function dialogLeave() {
           </DialogTitle>
         </div>
 
-        <Tabs v-if="!isSending" v-model="modeTab" class="shrink-0">
-          <TabsList class="h-8">
+        <Tabs v-if="!isSending" v-model="modeTab" class="shrink-0 max-[539px]:-mr-7">
+          <TabsList class="grid h-8 w-full grid-cols-2 min-[540px]:inline-flex min-[540px]:w-auto">
             <TabsTrigger value="quick" class="h-6 px-2.5 text-xs">
               <Zap class="size-3" />
               <span>{{ t("SentToDownloaderDialog.quickMode") }}</span>
@@ -381,7 +383,7 @@ function dialogLeave() {
         </Tabs>
       </DialogHeader>
 
-      <div class="flex-1 overflow-y-auto px-5 py-4">
+      <div class="flex-1 overflow-y-auto px-3.5 py-3 min-[641px]:px-5 min-[641px]:py-4">
         <!-- 发送中遮罩进度状态 -->
         <div
           v-if="isSending"
@@ -543,7 +545,7 @@ function dialogLeave() {
 
                 <!-- 预设路径双列紧凑直推矩阵 -->
                 <div v-if="getCleanFolders(downloader).length > 0" class="border-t border-border/60 p-2">
-                  <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                  <div class="grid grid-cols-1 gap-1.5 min-[540px]:grid-cols-2">
                     <button
                       v-for="path in getVisibleQuickPaths(downloader)"
                       :key="`${downloader.id}_${path || '__default__'}`"
@@ -551,7 +553,7 @@ function dialogLeave() {
                       :title="path || t('SentToDownloaderDialog.defaultFolder')"
                       :class="
                         cn(
-                          'group/path flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs transition-all hover:border-primary/50 hover:bg-primary/6 active:scale-[0.995]',
+                          'group/path flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left text-xs transition-all hover:border-primary/50 hover:bg-primary/6 active:scale-[0.995] min-[641px]:py-1.5',
                           isLastUsedTarget(downloader, path)
                             ? 'border-primary/40 bg-primary/4'
                             : 'border-border/80 bg-background/60',
@@ -636,7 +638,7 @@ function dialogLeave() {
               <Select v-model="selectedDownloaderId">
                 <SelectTrigger>
                   <SelectValue :placeholder="t('SentToDownloaderDialog.selectDownloader')">
-                    <span v-if="selectedDownloader" class="flex items-center gap-2">
+                    <span v-if="selectedDownloader" class="flex min-w-0 items-center gap-2">
                       <img
                         :src="getDownloaderIcon(selectedDownloader.type)"
                         :alt="selectedDownloader.type"
@@ -650,7 +652,9 @@ function dialogLeave() {
                       >
                         {{ t("SentToDownloaderDialog.defaultBadge") }}
                       </Badge>
-                      <span class="truncate text-xs text-muted-foreground">[{{ selectedDownloader.address }}]</span>
+                      <span class="hidden truncate text-xs text-muted-foreground min-[460px]:inline">
+                        [{{ selectedDownloader.address }}]
+                      </span>
                     </span>
                   </SelectValue>
                 </SelectTrigger>
@@ -660,13 +664,13 @@ function dialogLeave() {
                     :key="downloader.id"
                     :value="downloader.id"
                   >
-                    <div class="flex items-center gap-2">
+                    <div class="flex min-w-0 items-center gap-2">
                       <img
                         :src="getDownloaderIcon(downloader.type)"
                         :alt="downloader.type"
                         class="size-4 shrink-0 object-contain"
                       />
-                      <span class="font-medium">{{ downloader.name }}</span>
+                      <span class="truncate font-medium">{{ downloader.name }}</span>
                       <Badge
                         v-if="metadataStore.defaultDownloader?.id === downloader.id"
                         variant="default"
@@ -674,8 +678,10 @@ function dialogLeave() {
                       >
                         {{ t("SentToDownloaderDialog.defaultBadge") }}
                       </Badge>
-                      <span class="text-xs text-muted-foreground">[{{ downloader.address }}]</span>
-                      <Badge variant="secondary" class="ml-1 text-[10px]">{{ downloader.type }}</Badge>
+                      <span class="hidden truncate text-xs text-muted-foreground min-[460px]:inline">
+                        [{{ downloader.address }}]
+                      </span>
+                      <Badge variant="secondary" class="ml-1 shrink-0 text-[10px]">{{ downloader.type }}</Badge>
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -683,7 +689,7 @@ function dialogLeave() {
             </div>
 
             <!-- 保存路径与分类标签 -->
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-3.5 min-[641px]:grid-cols-2 min-[641px]:gap-4">
               <div class="flex flex-col gap-1.5">
                 <Label>{{ t("SentToDownloaderDialog.savePath") }}</Label>
                 <Input v-model="addTorrentOptions.savePath" :placeholder="t('SentToDownloaderDialog.savePathHint')" />
@@ -720,7 +726,7 @@ function dialogLeave() {
             </div>
 
             <!-- 开关选项行 -->
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-2.5 min-[641px]:grid-cols-2 min-[641px]:gap-3">
               <div
                 class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/25 px-3.5 py-2.5"
               >
@@ -772,13 +778,20 @@ function dialogLeave() {
       </div>
 
       <DialogFooter>
-        <Button variant="outline" size="sm" :disabled="isSending" @click="showDialog = false">
+        <Button
+          variant="outline"
+          size="sm"
+          class="max-[640px]:h-9 max-[640px]:flex-1"
+          :disabled="isSending"
+          @click="showDialog = false"
+        >
           {{ quickSendToClient ? t("common.dialog.close") : t("common.dialog.cancel") }}
         </Button>
         <Button
           v-if="!quickSendToClient"
           variant="default"
           size="sm"
+          class="max-[640px]:h-9 max-[640px]:flex-1"
           :disabled="!selectedDownloader || isSending"
           @click="sendToDownloader"
         >

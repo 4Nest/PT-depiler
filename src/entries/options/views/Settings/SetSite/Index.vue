@@ -322,7 +322,7 @@ function formatSiteDescription(desc: string | string[] | undefined): string {
           {{ t("SetSite.index.oneClickImport") }}
         </Button>
 
-        <Separator orientation="vertical" class="mx-0.5 h-5" />
+        <Separator orientation="vertical" class="mx-0.5 hidden h-5 sm:block" />
 
         <Button
           variant="outline"
@@ -346,13 +346,13 @@ function formatSiteDescription(desc: string | string[] | undefined): string {
         </Button>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         <Button variant="ghost" size="sm" @click="showRebuildMapDialog = true">
           <Wrench class="size-4" />
           {{ t("SetSite.index.reBuildMap") }}
         </Button>
 
-        <div class="flex items-center gap-1.5">
+        <div class="flex min-w-0 flex-1 items-center gap-1.5 sm:flex-none">
           <Popover @update:open="(open) => open && buildFilterDictFn(tableWaitFilterRef)">
             <PopoverTrigger as-child>
               <Button variant="outline" size="sm" class="relative gap-1.5 px-2.5">
@@ -435,7 +435,7 @@ function formatSiteDescription(desc: string | string[] | undefined): string {
             </PopoverContent>
           </Popover>
 
-          <div class="relative w-56 sm:w-64">
+          <div class="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
             <Search
               class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
             />
@@ -642,6 +642,129 @@ function formatSiteDescription(desc: string | string[] | undefined): string {
               <Trash2 class="size-3.5 text-destructive" />
             </Button>
           </Tooltip>
+        </div>
+      </template>
+
+      <!-- 移动端站点配置卡片 -->
+      <template #mobile-card="{ item, selected, canSelect, toggle }">
+        <div class="px-3.5 py-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex min-w-0 items-center gap-2">
+              <Checkbox :model-value="selected" :disabled="!canSelect" @update:model-value="toggle" />
+              <SiteFavicon :site-id="item.id" :size="20" class="shrink-0" />
+              <Lock v-if="item.metadata.type === 'private'" class="size-3.5 shrink-0 text-primary" />
+              <Globe v-else class="size-3.5 shrink-0 text-muted-foreground" />
+              <span class="truncate text-sm font-semibold text-foreground">
+                {{ item.userConfig?.merge?.name ?? item.metadata?.name }}
+              </span>
+              <Badge v-if="item.metadata.isDead" variant="destructive" class="shrink-0 px-1.5 py-0 text-[10px]">
+                {{ t("SetSite.common.isOffline") }}
+              </Badge>
+            </div>
+
+            <div class="inline-flex shrink-0 items-center gap-0.5">
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                class="size-7"
+                :disabled="Boolean(item.metadata.isDead)"
+                @click="editSite(item.id)"
+              >
+                <Pencil class="size-3.5 text-info" />
+              </Button>
+              <Popover>
+                <PopoverTrigger as-child>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    class="size-7"
+                    :disabled="Boolean(item.metadata.isDead || !item.metadata.searchEntries)"
+                  >
+                    <Search class="size-3.5 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" class="w-64 p-3">
+                  <EditSearchEntryList :item="item" />
+                </PopoverContent>
+              </Popover>
+              <Button
+                v-on-long-press="sortIndexLongPressBinding(item.id, 'up')"
+                variant="ghost"
+                size="icon-xs"
+                class="size-7"
+                :disabled="!canMoveSiteSortIndex(item.id, 'up')"
+              >
+                <ArrowUp class="size-3.5 text-warning" />
+              </Button>
+              <Button
+                v-on-long-press="sortIndexLongPressBinding(item.id, 'down')"
+                variant="ghost"
+                size="icon-xs"
+                class="size-7"
+                :disabled="!canMoveSiteSortIndex(item.id, 'down')"
+              >
+                <ArrowDown class="size-3.5 text-warning" />
+              </Button>
+              <Button variant="ghost" size="icon-xs" class="size-7" @click="deleteSite([item.id])">
+                <Trash2 class="size-3.5 text-destructive" />
+              </Button>
+            </div>
+          </div>
+
+          <div class="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6">
+            <a
+              :href="item.userConfig?.url ?? item.metadata?.urls?.[0]"
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              class="inline-flex max-w-full items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <span class="truncate font-mono">{{ item.userConfig?.url ?? item.metadata?.urls?.[0] }}</span>
+              <ExternalLink class="size-3 shrink-0" />
+            </a>
+            <Badge
+              v-for="group in item.userConfig.groups ?? []"
+              :key="group"
+              variant="secondary"
+              class="px-1.5 py-0 text-[10px] font-normal"
+            >
+              {{ group }}
+            </Badge>
+          </div>
+
+          <div class="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 pl-6 text-xs">
+            <label class="flex items-center justify-between gap-2 text-muted-foreground">
+              <span class="truncate">{{ t("SetSite.common.allowSearch") }}</span>
+              <Switch
+                :model-value="Boolean(item.userConfig.allowSearch)"
+                :disabled="Boolean(item.metadata.isDead || item.userConfig.isOffline || !item.metadata.hasSearch)"
+                @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'allowSearch', v)"
+              />
+            </label>
+            <label class="flex items-center justify-between gap-2 text-muted-foreground">
+              <span class="truncate">{{ t("SetSite.common.allowQueryUserInfo") }}</span>
+              <Switch
+                :model-value="Boolean(item.userConfig.allowQueryUserInfo)"
+                :disabled="Boolean(item.metadata.isDead || item.userConfig.isOffline || !item.metadata.hasUserInfo)"
+                @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'allowQueryUserInfo', v)"
+              />
+            </label>
+            <label class="flex items-center justify-between gap-2 text-muted-foreground">
+              <span class="truncate">{{ t("SetSite.common.allowContentScript") }}</span>
+              <Switch
+                :model-value="Boolean(item.userConfig.allowContentScript)"
+                :disabled="Boolean(item.metadata.isDead || item.userConfig.isOffline)"
+                @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'allowContentScript', v)"
+              />
+            </label>
+            <label class="flex items-center justify-between gap-2 text-muted-foreground">
+              <span class="truncate">{{ t("SetSite.common.isOffline") }}</span>
+              <Switch
+                :model-value="Boolean(item.userConfig.isOffline)"
+                :disabled="Boolean(item.metadata.isDead)"
+                @update:model-value="(v) => metadataStore.simplePatch('sites', item.id, 'isOffline', v)"
+              />
+            </label>
+          </div>
         </div>
       </template>
     </DataTable>

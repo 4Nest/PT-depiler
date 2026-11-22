@@ -14,7 +14,7 @@ import SentToDownloaderDialog from "@/options/components/SentToDownloaderDialog/
 
 const { torrentItems, density = "default" } = defineProps<{
   torrentItems: ITorrent[];
-  density?: "compact" | "default";
+  density?: "compact" | "mobile" | "default";
 }>();
 
 const { t } = useI18n();
@@ -76,21 +76,25 @@ function sendToDownloader(defaultDownload = false) {
       cn(
         density === 'compact'
           ? 'inline-flex items-center'
-          : 'inline-flex items-center divide-x divide-border overflow-hidden rounded-md border border-border bg-background shadow-2xs',
+          : density === 'mobile'
+            ? 'inline-flex items-center gap-0.5 rounded-lg border border-border/80 bg-muted/30 p-0.5'
+            : 'inline-flex items-center divide-x divide-border overflow-hidden rounded-md border border-border bg-background shadow-2xs',
       )
     "
   >
     <!-- 推送到默认下载器 -->
     <Tooltip v-if="metadataStore.defaultDownloader?.id" :content="t('SearchEntity.ActionTd.sendToDefault')">
       <Button
-        :variant="density === 'compact' ? 'ghost' : 'ghost'"
-        :size="density === 'compact' ? 'icon-xs' : 'sm'"
+        variant="ghost"
+        :size="density === 'default' ? 'sm' : 'icon-xs'"
         :disabled="torrentItems.length === 0"
         :class="
           cn(
             density === 'compact'
               ? 'size-6.5 text-primary hover:bg-primary/10 hover:text-primary'
-              : 'h-8 rounded-none px-2.5 text-primary hover:bg-primary/10 hover:text-primary',
+              : density === 'mobile'
+                ? 'size-7.5 rounded-md text-primary hover:bg-primary/12 hover:text-primary'
+                : 'h-8 rounded-none px-2.5 text-primary hover:bg-primary/10 hover:text-primary',
           )
         "
         @click="() => sendToDownloader(true)"
@@ -103,13 +107,15 @@ function sendToDownloader(defaultDownload = false) {
     <Tooltip :content="t('SearchEntity.ActionTd.sendToDownloader')">
       <Button
         variant="ghost"
-        :size="density === 'compact' ? 'icon-xs' : 'sm'"
+        :size="density === 'default' ? 'sm' : 'icon-xs'"
         :disabled="torrentItems.length === 0"
         :class="
           cn(
             density === 'compact'
               ? 'size-6.5 text-muted-foreground hover:text-foreground'
-              : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
+              : density === 'mobile'
+                ? 'size-7.5 rounded-md text-foreground hover:bg-accent'
+                : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
           )
         "
         @click="() => sendToDownloader(false)"
@@ -122,13 +128,15 @@ function sendToDownloader(defaultDownload = false) {
     <Tooltip :content="t('SearchEntity.ActionTd.copyLink')">
       <Button
         variant="ghost"
-        :size="density === 'compact' ? 'icon-xs' : 'sm'"
+        :size="density === 'default' ? 'sm' : 'icon-xs'"
         :disabled="torrentItems.length === 0 || copyTorrentDownloadLinkBtnStatus"
         :class="
           cn(
             density === 'compact'
               ? 'size-6.5 text-muted-foreground hover:text-foreground'
-              : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
+              : density === 'mobile'
+                ? 'size-7.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground'
+                : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
           )
         "
         @click="() => copyTorrentDownloadLink()"
@@ -142,13 +150,15 @@ function sendToDownloader(defaultDownload = false) {
     <Tooltip :content="t('SearchEntity.ActionTd.localDownload')">
       <Button
         variant="ghost"
-        :size="density === 'compact' ? 'icon-xs' : 'sm'"
+        :size="density === 'default' ? 'sm' : 'icon-xs'"
         :disabled="torrentItems.length === 0 || localDlTorrentDownloadLinkBtnStatus"
         :class="
           cn(
             density === 'compact'
               ? 'size-6.5 text-muted-foreground hover:text-foreground'
-              : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
+              : density === 'mobile'
+                ? 'size-7.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground'
+                : 'h-8 rounded-none px-2.5 text-muted-foreground hover:text-foreground',
           )
         "
         @click="() => localDlTorrentDownloadLink()"

@@ -85,7 +85,7 @@ const router = useRouter();
 const configStore = useConfigStore();
 const chartContainerRef = useTemplateRef<HTMLDivElement>("chartContainer");
 const { width: containerWidth } = useElementSize(chartContainerRef);
-const perChartHeight = 380;
+const perChartHeight = computed(() => (containerWidth.value > 0 && containerWidth.value < 540 ? 280 : 380));
 
 const allowEditName = ref<boolean>(false);
 const showControlPanel = computed<boolean>({
@@ -163,6 +163,7 @@ const totalSiteBaseInfoChartOptions = computed(() => {
     },
     tooltip: {
       trigger: "axis",
+      confine: true,
       formatter: createTotalInfoTooltipFormatter(["size", "size", "number", "number"]),
     },
     legend: {
@@ -213,6 +214,7 @@ const totalSiteSeedingInfoChartOptions = computed(() => {
     },
     tooltip: {
       trigger: "axis",
+      confine: true,
       formatter: createTotalInfoTooltipFormatter(["size", "int"]),
     },
     legend: {
@@ -296,6 +298,7 @@ const createPerSiteChartOptionsFn = (
       },
       tooltip: {
         trigger: "axis",
+        confine: true,
         axisPointer: {
           type: "shadow",
         },
@@ -449,7 +452,7 @@ function exportStatisticImg() {
   const targetWidth = Math.max(...chartsCanvas.map((c) => c.clientWidth), containerWidth.value || 700);
   const mainCanvas = document.createElement("canvas");
   mainCanvas.width = targetWidth;
-  mainCanvas.height = (perChartHeight + 16) * chartsCanvas.length + 24;
+  mainCanvas.height = (perChartHeight.value + 16) * chartsCanvas.length + 24;
 
   const ctx = mainCanvas.getContext("2d") as CanvasRenderingContext2D;
   ctx.fillStyle = configStore.uiTheme === "dark" ? "#0b1120" : "#ffffff";
@@ -458,7 +461,7 @@ function exportStatisticImg() {
   let yIndex = 8;
   for (const chartCanvas of chartsCanvas) {
     const drawW = chartCanvas.clientWidth || targetWidth;
-    const drawH = chartCanvas.clientHeight || perChartHeight;
+    const drawH = chartCanvas.clientHeight || perChartHeight.value;
     const offsetX = Math.max(0, (targetWidth - drawW) / 2);
     ctx.drawImage(chartCanvas, offsetX, yIndex, drawW, drawH);
     yIndex += drawH + 16;

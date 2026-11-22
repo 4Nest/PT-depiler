@@ -99,6 +99,9 @@ const MP_THEME_AND_LINK_PATCH_CSS = `
     border-color: #94a3b8;
     font-weight: 700;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.07);
+    max-width: min(100%, calc(100vw - 48px));
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .mp-tag-year {
     background: #ffffff;

@@ -112,7 +112,7 @@ function onKeydown(e: KeyboardEvent) {
           v-model="inputValue"
           :disabled="props.disabled"
           :placeholder="modelValue.length === 0 ? props.placeholder : ''"
-          class="min-w-[80px] flex-1 bg-transparent px-1 py-0.5 text-sm outline-none placeholder:text-muted-foreground"
+          class="min-w-[80px] flex-1 bg-transparent px-1 py-0.5 text-base outline-none placeholder:text-muted-foreground min-[641px]:text-sm"
           @focus="
             () => {
               if (props.suggestions.length > 0) isOpen = true;
@@ -149,7 +149,7 @@ function onKeydown(e: KeyboardEvent) {
           v-for="item in filteredSuggestions"
           :key="item"
           type="button"
-          class="flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-xs hover:bg-accent"
+          class="flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-xs hover:bg-accent max-[640px]:py-2"
           @mousedown.prevent="toggleSuggestion(item)"
         >
           <span class="truncate">{{ item }}</span>

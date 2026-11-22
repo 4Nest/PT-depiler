@@ -188,6 +188,7 @@ const lastUpdateErrorStatuses = [
 ].map((item) => item.toString());
 
 onMounted(async () => {
+  await Promise.all([configStore.$onReady(), metadataStore.$onReady()]);
   await initTableData();
   if (route.query.filter === "needLogin") {
     filterNeedLoginSites();
@@ -461,7 +462,7 @@ async function applyBatchGroups() {
         </p>
       </div>
 
-      <div v-if="hasAddedSites" class="flex flex-wrap items-center gap-2">
+      <div v-if="hasAddedSites" class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         <Button
           v-if="runtimeStore.isUserInfoFlush"
           variant="destructive"
@@ -476,7 +477,7 @@ async function applyBatchGroups() {
           {{ t("MyData.index.flushSelectSite") }}
         </Button>
 
-        <div class="inline-flex items-center rounded-md border border-border bg-card p-0.5 shadow-2xs">
+        <div class="inline-flex flex-wrap items-center rounded-md border border-border bg-card p-0.5 shadow-2xs">
           <Button variant="ghost" size="xs" @click="viewStatistic">
             <BarChart3 />
             {{ t("MyData.index.viewStatistic") }}
@@ -497,20 +498,24 @@ async function applyBatchGroups() {
       </div>
     </div>
 
-    <!-- 4 栏 Bento KPI 汇总卡 -->
-    <div v-if="hasAddedSites" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Card class="p-4">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-xs font-medium text-muted-foreground">{{ t("MyData.kpi.totalUploaded") }}</span>
-          <span class="inline-flex size-8 items-center justify-center rounded-lg bg-success/12 text-success">
-            <ArrowUpDown class="size-4" />
+    <!-- 4 栏 Bento KPI 汇总卡（手机窄屏紧凑 2x2 矩阵，一屏直达下方站点列表） -->
+    <div v-if="hasAddedSites" class="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
+      <Card class="p-3 sm:p-4">
+        <div class="flex items-center justify-between gap-1.5 sm:gap-2">
+          <span class="truncate text-[11px] font-medium text-muted-foreground sm:text-xs">{{
+            t("MyData.kpi.totalUploaded")
+          }}</span>
+          <span
+            class="inline-flex size-6.5 shrink-0 items-center justify-center rounded-lg bg-success/12 text-success sm:size-8"
+          >
+            <ArrowUpDown class="size-3.5 sm:size-4" />
           </span>
         </div>
         <div :class="['transition-[filter] duration-150', isPrivacyBlurred && 'ptd-privacy-blur']">
-          <div class="mt-2 text-2xl font-bold tracking-tight tabular-nums text-foreground">
+          <div class="mt-1.5 text-lg font-bold tracking-tight text-foreground tabular-nums sm:mt-2 sm:text-2xl">
             {{ formatSize(kpiSummary.totalUploaded) }}
           </div>
-          <div class="mt-1 text-xs text-muted-foreground tabular-nums">
+          <div class="mt-0.5 truncate text-[11px] text-muted-foreground tabular-nums sm:mt-1 sm:text-xs">
             {{
               t("MyData.kpi.downloadAndRatio", {
                 downloaded: formatSize(kpiSummary.totalDownloaded),
@@ -521,58 +526,68 @@ async function applyBatchGroups() {
         </div>
       </Card>
 
-      <Card class="p-4">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-xs font-medium text-muted-foreground">{{ t("MyData.kpi.totalSeedingSize") }}</span>
-          <span class="inline-flex size-8 items-center justify-center rounded-lg bg-primary/12 text-primary">
-            <HardDrive class="size-4" />
+      <Card class="p-3 sm:p-4">
+        <div class="flex items-center justify-between gap-1.5 sm:gap-2">
+          <span class="truncate text-[11px] font-medium text-muted-foreground sm:text-xs">{{
+            t("MyData.kpi.totalSeedingSize")
+          }}</span>
+          <span
+            class="inline-flex size-6.5 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary sm:size-8"
+          >
+            <HardDrive class="size-3.5 sm:size-4" />
           </span>
         </div>
         <div :class="['transition-[filter] duration-150', isPrivacyBlurred && 'ptd-privacy-blur']">
-          <div class="mt-2 text-2xl font-bold tracking-tight tabular-nums text-foreground">
+          <div class="mt-1.5 text-lg font-bold tracking-tight text-foreground tabular-nums sm:mt-2 sm:text-2xl">
             {{ formatSize(kpiSummary.totalSeedingSize) }}
           </div>
-          <div class="mt-1 text-xs text-muted-foreground tabular-nums">
+          <div class="mt-0.5 truncate text-[11px] text-muted-foreground tabular-nums sm:mt-1 sm:text-xs">
             {{ t("MyData.kpi.totalSeedingCount", { count: kpiSummary.totalSeedingCount }) }}
           </div>
         </div>
       </Card>
 
-      <Card class="p-4">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-xs font-medium text-muted-foreground">{{ t("MyData.kpi.totalBonusPerHour") }}</span>
-          <span class="inline-flex size-8 items-center justify-center rounded-lg bg-warning/14 text-warning">
-            <Zap class="size-4" />
+      <Card class="p-3 sm:p-4">
+        <div class="flex items-center justify-between gap-1.5 sm:gap-2">
+          <span class="truncate text-[11px] font-medium text-muted-foreground sm:text-xs">{{
+            t("MyData.kpi.totalBonusPerHour")
+          }}</span>
+          <span
+            class="inline-flex size-6.5 shrink-0 items-center justify-center rounded-lg bg-warning/14 text-warning sm:size-8"
+          >
+            <Zap class="size-3.5 sm:size-4" />
           </span>
         </div>
         <div :class="['transition-[filter] duration-150', isPrivacyBlurred && 'ptd-privacy-blur']">
-          <div class="mt-2 text-2xl font-bold tracking-tight tabular-nums text-foreground">
+          <div class="mt-1.5 text-lg font-bold tracking-tight text-foreground tabular-nums sm:mt-2 sm:text-2xl">
             +{{ kpiSummary.totalBonusPerHour.toFixed(2) }} / h
           </div>
-          <div class="mt-1 text-xs text-muted-foreground tabular-nums">
+          <div class="mt-0.5 truncate text-[11px] text-muted-foreground tabular-nums sm:mt-1 sm:text-xs">
             {{ t("MyData.kpi.sitesWithBonus", { count: kpiSummary.sitesWithBonusCount }) }}
           </div>
         </div>
       </Card>
 
-      <Card class="p-4">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-xs font-medium text-muted-foreground">{{ t("MyData.kpi.siteHealth") }}</span>
+      <Card class="p-3 sm:p-4">
+        <div class="flex items-center justify-between gap-1.5 sm:gap-2">
+          <span class="truncate text-[11px] font-medium text-muted-foreground sm:text-xs">{{
+            t("MyData.kpi.siteHealth")
+          }}</span>
           <span
             :class="[
-              'inline-flex size-8 items-center justify-center rounded-lg',
+              'inline-flex size-6.5 shrink-0 items-center justify-center rounded-lg sm:size-8',
               kpiSummary.errorSiteCount > 0 ? 'bg-destructive/12 text-destructive' : 'bg-info/12 text-info',
             ]"
           >
-            <AlertCircle v-if="kpiSummary.errorSiteCount > 0" class="size-4" />
-            <CheckCircle2 v-else class="size-4" />
+            <AlertCircle v-if="kpiSummary.errorSiteCount > 0" class="size-3.5 sm:size-4" />
+            <CheckCircle2 v-else class="size-3.5 sm:size-4" />
           </span>
         </div>
         <div :class="['transition-[filter] duration-150', isPrivacyBlurred && 'ptd-privacy-blur']">
-          <div class="mt-2 text-2xl font-bold tracking-tight tabular-nums text-foreground">
+          <div class="mt-1.5 text-lg font-bold tracking-tight text-foreground tabular-nums sm:mt-2 sm:text-2xl">
             {{ t("MyData.kpi.healthRatio", { success: kpiSummary.successSiteCount, total: tableData.length }) }}
           </div>
-          <div class="mt-1 flex flex-wrap items-center gap-1.5">
+          <div class="mt-0.5 flex flex-wrap items-center gap-1 sm:mt-1 sm:gap-1.5">
             <button
               v-if="kpiSummary.unreadMessageSiteCount > 0"
               type="button"
@@ -676,24 +691,25 @@ async function applyBatchGroups() {
 
     <!-- 主数据表格 -->
     <Card v-else>
-      <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-border px-4 py-3">
-        <!-- 左侧：搜索、快捷筛选、分组快编 -->
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="relative w-56 sm:w-64">
-            <Search
-              class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input v-model="tableWaitFilterRef" :placeholder="t('common.search')" class="h-8 pl-8 pr-7 text-xs" />
-            <button
-              v-if="tableWaitFilterRef"
-              type="button"
-              class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-              @click="clearSearchFilter"
-            >
-              <X class="size-3.5" />
-            </button>
-          </div>
+      <div class="flex flex-wrap items-center gap-2 border-b border-border px-3.5 py-3 sm:px-4">
+        <!-- 搜索框（手机窄屏通栏第一行，桌面端固定宽度） -->
+        <div class="relative w-full sm:w-64">
+          <Search
+            class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input v-model="tableWaitFilterRef" :placeholder="t('common.search')" class="h-8 pl-8 pr-7 text-xs" />
+          <button
+            v-if="tableWaitFilterRef"
+            type="button"
+            class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            @click="clearSearchFilter"
+          >
+            <X class="size-3.5" />
+          </button>
+        </div>
 
+        <!-- 快捷筛选与分组快编 -->
+        <div class="flex flex-wrap items-center gap-2">
           <!-- 快捷筛选 Popover -->
           <Popover>
             <PopoverTrigger as-child>
@@ -815,7 +831,7 @@ async function applyBatchGroups() {
         </div>
 
         <!-- 右侧：显示偏好 Popover + 列显隐 DropdownMenu -->
-        <div class="flex items-center gap-2">
+        <div class="ml-auto flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -900,7 +916,7 @@ async function applyBatchGroups() {
 
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" class="hidden md:inline-flex">
                 <Columns3 />
                 <Badge variant="secondary" class="px-1.5 py-0 text-[10px] tabular-nums">
                   {{ visibleColumns.length }}
@@ -1265,6 +1281,173 @@ async function applyBatchGroups() {
                 <RefreshCw :class="['size-3.5', runtimeStore.userInfo.flushPlan[item.site] ? 'animate-spin' : '']" />
               </Button>
             </Tooltip>
+          </div>
+        </template>
+
+        <!-- 移动端紧凑卡片列表项（遵守零嵌套边框卡片原则，采用 divide-y 分割 + 4 列等宽数字矩阵） -->
+        <template #mobile-card="{ item, selected, canSelect, toggle }">
+          <div class="px-3.5 py-3">
+            <!-- 第一行：勾选 + 站点图标/名称/未读消息 + 更新状态与快捷刷新/历史 -->
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex min-w-0 items-center gap-2">
+                <Checkbox :model-value="selected" :disabled="!canSelect" @update:model-value="toggle" />
+                <div
+                  :class="[
+                    'flex min-w-0 items-center gap-2 transition-[filter] duration-150',
+                    isPrivacyBlurred && 'ptd-privacy-blur',
+                  ]"
+                >
+                  <SiteFavicon :site-id="item.site" :size="20" class="shrink-0" />
+                  <a
+                    :href="getSiteUrlSync(item.site)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
+                  >
+                    <SiteName :site-id="item.site" tag="span" />
+                  </a>
+                  <Badge
+                    v-if="configStore.myDataTableControl.showUnreadMessage && (item.messageCount ?? 0) > 0"
+                    variant="destructive"
+                    class="h-4 min-w-4 shrink-0 justify-center rounded-full px-1 py-0 text-[10px] tabular-nums"
+                  >
+                    {{ (item.messageCount ?? 0) > 99 ? "99+" : item.messageCount }}
+                  </Badge>
+                </div>
+              </div>
+
+              <div class="flex shrink-0 items-center gap-1">
+                <div :class="['mr-0.5 transition-[filter] duration-150', isPrivacyBlurred && 'ptd-privacy-blur']">
+                  <span
+                    v-if="item.status === EResultParseStatus.success"
+                    class="text-[11px] text-muted-foreground tabular-nums"
+                  >
+                    {{
+                      item.updateAt
+                        ? configStore.myDataTableControl.updateAtFormatAsAlive
+                          ? formatTimeAgo(item.updateAt)
+                          : formatDate(item.updateAt, "MM-dd HH:mm")
+                        : "-"
+                    }}
+                  </span>
+                  <ResultParseStatus v-else :status="item.status" />
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  class="size-7 text-muted-foreground hover:text-foreground"
+                  :title="t('MyData.table.action.viewHistoryData')"
+                  @click="() => viewHistoryData(item.site)"
+                >
+                  <History class="size-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  class="size-7 text-primary hover:bg-primary/10 hover:text-primary"
+                  :disabled="runtimeStore.userInfo.flushPlan[item.site]"
+                  :title="t('MyData.table.action.flushData')"
+                  @click="() => flushSiteLastUserInfo([item.site])"
+                >
+                  <RefreshCw :class="['size-3.5', runtimeStore.userInfo.flushPlan[item.site] ? 'animate-spin' : '']" />
+                </Button>
+              </div>
+            </div>
+
+            <!-- 第二行：等级徽章 / 用户名 / 升级进度 + H&R 预警 -->
+            <div
+              v-if="
+                item.levelName ||
+                (configStore.myDataTableControl.showUserName && item.name) ||
+                (configStore.myDataTableControl.showHnR &&
+                  ((item.hnrPreWarning ?? 0) > 0 || (item.hnrUnsatisfied ?? 0) > 0))
+              "
+              :class="[
+                'mt-1.5 flex flex-wrap items-center justify-between gap-2 pl-6 transition-[filter] duration-150',
+                isPrivacyBlurred && 'ptd-privacy-blur',
+              ]"
+            >
+              <div class="flex min-w-0 items-center gap-1.5">
+                <UserLevelRequirementsTd v-if="item.levelName" :user-info="item" :limit-level-name-td-width="false" />
+                <span
+                  v-if="configStore.myDataTableControl.showUserName && item.name"
+                  class="truncate text-xs text-muted-foreground"
+                >
+                  <template v-if="item.levelName">· </template>{{ item.name }}
+                </span>
+              </div>
+
+              <div
+                v-if="
+                  configStore.myDataTableControl.showHnR &&
+                  ((item.hnrPreWarning ?? 0) > 0 || (item.hnrUnsatisfied ?? 0) > 0)
+                "
+                class="inline-flex items-center gap-1 tabular-nums"
+              >
+                <Badge v-if="(item.hnrPreWarning ?? 0) > 0" variant="warning" class="px-1.5 py-0 text-[10px]">
+                  <AlertTriangle class="size-2.5" />
+                  {{ item.hnrPreWarning }}
+                </Badge>
+                <Badge v-if="(item.hnrUnsatisfied ?? 0) > 0" variant="destructive" class="px-1.5 py-0 text-[10px]">
+                  <AlertCircle class="size-2.5" />
+                  {{ item.hnrUnsatisfied }}
+                </Badge>
+              </div>
+            </div>
+
+            <!-- 第三行：4 列核心指标矩阵（按数值宽度比例分配列宽，确保百万级魔力与分享率完整无截断） -->
+            <div
+              :class="[
+                'mt-2.5 grid grid-cols-[1.02fr_0.82fr_0.92fr_1.24fr] gap-1.5 pl-6 text-[11.5px] tabular-nums transition-[filter] duration-150',
+                isPrivacyBlurred && 'ptd-privacy-blur',
+              ]"
+            >
+              <div class="min-w-0">
+                <div class="text-[10px] text-muted-foreground">{{ t("MyData.table.userData") }}</div>
+                <div class="mt-0.5 truncate font-semibold text-success">
+                  {{ typeof item.uploaded !== "undefined" ? formatSize(item.uploaded) : "-" }}
+                </div>
+                <div class="truncate text-[11px] text-muted-foreground">
+                  ↓ {{ typeof item.downloaded !== "undefined" ? formatSize(item.downloaded) : "-" }}
+                </div>
+              </div>
+
+              <div class="min-w-0">
+                <div class="text-[10px] text-muted-foreground">{{ t("levelRequirement.ratio") }}</div>
+                <div
+                  :class="[
+                    'mt-0.5 truncate font-semibold',
+                    typeof item.ratio === 'number' && item.ratio >= 0 && item.ratio < 1
+                      ? 'text-destructive'
+                      : 'text-foreground',
+                  ]"
+                >
+                  {{ formatRatio(item) }}
+                </div>
+                <div v-if="typeof item.uploads !== 'undefined'" class="truncate text-[11px] text-muted-foreground">
+                  {{ t("levelRequirement.uploads") }}: {{ item.uploads }}
+                </div>
+              </div>
+
+              <div class="min-w-0">
+                <div class="text-[10px] text-muted-foreground">{{ t("levelRequirement.seeding") }}</div>
+                <div class="mt-0.5 truncate font-semibold text-foreground">
+                  {{ typeof item.seedingSize !== "undefined" ? formatSize(item.seedingSize) : "-" }}
+                </div>
+                <div class="truncate text-[11px] text-muted-foreground"># {{ item.seeding ?? "-" }}</div>
+              </div>
+
+              <div class="min-w-0 text-right">
+                <div class="text-[10px] text-muted-foreground">{{ t("levelRequirement.bonus") }}</div>
+                <div class="mt-0.5 truncate font-semibold text-foreground">
+                  <BonusFormatSpan :num="item.bonus" />
+                </div>
+                <div v-if="typeof item.bonusPerHour !== 'undefined'" class="truncate text-[11px] text-muted-foreground">
+                  +<BonusFormatSpan :num="item.bonusPerHour" />/h
+                </div>
+              </div>
+            </div>
           </div>
         </template>
       </DataTable>

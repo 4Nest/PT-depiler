@@ -8,7 +8,10 @@ const props = defineProps<{ class?: HTMLAttributes["class"] }>();
 <template>
   <div
     :class="
-      cn('flex flex-wrap items-center justify-end gap-2 border-t border-border bg-muted/25 px-5 py-3', props.class)
+      cn(
+        'flex flex-wrap items-center justify-end gap-2 border-t border-border bg-muted/25 px-4 py-2.5 sm:px-5 sm:py-3',
+        props.class,
+      )
     "
   >
     <slot />

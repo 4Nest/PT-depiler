@@ -256,7 +256,7 @@ async function confirmDeleteDownloader(downloaderId: TDownloaderKey) {
           {{ t("SetDownloader.index.editDefaultDownloaderBtn") }}
         </Button>
 
-        <Separator orientation="vertical" class="mx-0.5 h-5" />
+        <Separator orientation="vertical" class="mx-0.5 hidden h-5 sm:block" />
 
         <Button
           variant="destructive"
@@ -269,7 +269,7 @@ async function confirmDeleteDownloader(downloaderId: TDownloaderKey) {
         </Button>
       </div>
 
-      <div class="flex items-center gap-1.5">
+      <div class="flex w-full items-center gap-1.5 sm:w-auto">
         <Popover @update:open="(open) => open && buildFilterDictFn(tableWaitFilterRef)">
           <PopoverTrigger as-child>
             <Button variant="outline" size="sm" class="relative gap-1.5 px-2.5">
@@ -350,7 +350,7 @@ async function confirmDeleteDownloader(downloaderId: TDownloaderKey) {
           </PopoverContent>
         </Popover>
 
-        <div class="relative w-56 sm:w-64">
+        <div class="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
           <Search
             class="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
           />
@@ -512,6 +512,118 @@ async function confirmDeleteDownloader(downloaderId: TDownloaderKey) {
               <Trash2 class="size-3.5 text-destructive" />
             </Button>
           </Tooltip>
+        </div>
+      </template>
+
+      <!-- 移动端下载器配置卡片 -->
+      <template #mobile-card="{ item, selected, canSelect, toggle }">
+        <div class="px-3.5 py-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex min-w-0 items-center gap-2">
+              <Checkbox :model-value="selected" :disabled="!canSelect" @update:model-value="toggle" />
+              <img
+                :src="getDownloaderIcon(item.type)"
+                :alt="item.type"
+                class="size-6 shrink-0 rounded object-contain"
+              />
+              <span
+                :class="
+                  cn(
+                    'truncate text-sm font-semibold',
+                    item.id === metadataStore.defaultDownloader?.id ? 'text-primary' : 'text-foreground',
+                  )
+                "
+              >
+                {{ item.name }}
+              </span>
+              <Badge
+                v-if="item.id === metadataStore.defaultDownloader?.id"
+                variant="default"
+                class="shrink-0 px-1.5 py-0 text-[10px]"
+              >
+                {{ t("SetDownloader.index.defaultBadge") }}
+              </Badge>
+            </div>
+
+            <div class="inline-flex shrink-0 items-center gap-0.5">
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                class="size-7"
+                :disabled="!item.enabled || testingDownloaderId === item.id"
+                @click="testDownloaderConnection(item.id)"
+              >
+                <Loader2 v-if="testingDownloaderId === item.id" class="size-3.5 animate-spin text-primary" />
+                <Radio v-else class="size-3.5 text-success" />
+              </Button>
+              <Button variant="ghost" size="icon-xs" class="size-7" @click="editDownloader(item.id)">
+                <Pencil class="size-3.5 text-info" />
+              </Button>
+              <Button variant="ghost" size="icon-xs" class="size-7" @click="editDownloaderPathAndTag(item.id)">
+                <FolderCog class="size-3.5 text-warning" />
+              </Button>
+              <Button
+                v-if="configStore.download.allowDownloaderFilterForSite"
+                variant="ghost"
+                size="icon-xs"
+                class="size-7"
+                :disabled="!item.enabled"
+                @click="editDownloaderSiteFilter(item.id)"
+              >
+                <Filter class="size-3.5 text-primary" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                class="size-7"
+                :disabled="item.id === metadataStore.defaultDownloader?.id"
+                @click="deleteDownloader([item.id])"
+              >
+                <Trash2
+                  :class="[
+                    'size-3.5',
+                    item.id === metadataStore.defaultDownloader?.id ? 'text-destructive/40' : 'text-destructive',
+                  ]"
+                />
+              </Button>
+            </div>
+          </div>
+
+          <div class="mt-1.5 flex flex-wrap items-center gap-2 pl-6 text-xs">
+            <a
+              :href="item.address"
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              class="inline-flex max-w-full items-center gap-1 font-medium text-primary hover:underline"
+            >
+              <span class="truncate font-mono">{{ item.address }}</span>
+              <ExternalLink class="size-3 shrink-0" />
+            </a>
+            <span v-if="item.username" class="text-muted-foreground">· {{ item.username }}</span>
+          </div>
+
+          <div class="mt-2.5 grid grid-cols-2 gap-3 pl-6 text-xs">
+            <label class="flex items-center justify-between gap-2 text-muted-foreground">
+              <span class="truncate">{{ t("common.enable") }}</span>
+              <Switch
+                :model-value="Boolean(item.enabled)"
+                :disabled="item.id === metadataStore.defaultDownloader?.id"
+                @update:model-value="(v) => metadataStore.simplePatch('downloaders', item.id, 'enabled', v)"
+              />
+            </label>
+            <label class="flex items-center justify-between gap-2 text-muted-foreground">
+              <span class="truncate">{{ t("SetDownloader.common.autoStart") }}</span>
+              <Switch
+                :model-value="Boolean(item.feature?.DefaultAutoStart)"
+                :disabled="
+                  !item.enabled || downloaderMetadata?.[item.type]?.feature?.DefaultAutoStart?.allowed === false
+                "
+                @update:model-value="
+                  (v) => metadataStore.simplePatch('downloaders', item.id, 'feature.DefaultAutoStart', v)
+                "
+              />
+            </label>
+          </div>
         </div>
       </template>
     </DataTable>

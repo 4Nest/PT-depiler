@@ -36,11 +36,18 @@ watch(
 );
 
 const isDesktop = useMediaQuery("(min-width: 1024px)");
-watch(isDesktop, (desktop) => {
-  if (configStore.autoToggleNavBarOnDisplayChange) {
-    configStore.isNavBarOpen = desktop;
-  }
-});
+const isMobile = useMediaQuery("(max-width: 767px)");
+const isCoarsePointer = useMediaQuery("(pointer: coarse)");
+
+watch(
+  isDesktop,
+  (desktop) => {
+    if (configStore.autoToggleNavBarOnDisplayChange) {
+      configStore.isNavBarOpen = desktop;
+    }
+  },
+  { immediate: true },
+);
 
 const { pixelRatio } = useDevicePixelRatio();
 function setIgnoreWrongPixelRatio() {
@@ -82,6 +89,9 @@ function dismissNeedLoginBanner() {
 }
 
 configStore.$onReady(() => {
+  if (isMobile.value) {
+    configStore.isNavBarOpen = false;
+  }
   if (configStore.showReleaseNoteOnVersionChange && configStore.version !== __EXT_VERSION__) {
     showReleaseNoteDialog.value = true;
   }
@@ -93,9 +103,11 @@ configStore.$onReady(() => {
     <Navigation @open-release-note="showReleaseNoteDialog = true" />
 
     <div class="flex min-w-0 flex-1 flex-col">
-      <!-- 浏览器非标准缩放比温和提醒 -->
+      <!-- 浏览器非标准缩放比温和提醒（仅桌面端精细指针设备提示，排除手机高分屏 DPR） -->
       <div
-        v-if="(pixelRatio > 1.1 || pixelRatio < 0.8) && !configStore.ignoreWrongPixelRatio"
+        v-if="
+          !isMobile && !isCoarsePointer && (pixelRatio > 1.1 || pixelRatio < 0.8) && !configStore.ignoreWrongPixelRatio
+        "
         class="flex items-center justify-center gap-2 border-b border-warning/25 bg-warning/10 px-4 py-1.5 text-xs text-foreground"
       >
         <AlertTriangle class="size-3.5 shrink-0 text-warning" />
@@ -153,7 +165,7 @@ configStore.$onReady(() => {
 
       <Topbar />
 
-      <main id="ptd-main" class="flex-1 px-3 py-4 md:px-4 md:py-4">
+      <main id="ptd-main" class="flex-1 px-2.5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-4">
         <div class="w-full">
           <router-view v-slot="{ Component }">
             <component :is="Component" />
@@ -165,7 +177,7 @@ configStore.$onReady(() => {
     <ReleaseNoteDialog v-model="showReleaseNoteDialog" />
 
     <Toaster
-      position="bottom-right"
+      :position="isMobile ? 'top-center' : 'bottom-right'"
       :theme="configStore.uiTheme"
       rich-colors
       close-button

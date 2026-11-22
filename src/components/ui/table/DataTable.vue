@@ -1,5 +1,6 @@
 <script setup lang="ts" generic="T extends Record<string, any>">
-import { computed, ref, watch, type HTMLAttributes } from "vue";
+import { computed, ref, useSlots, watch, type HTMLAttributes } from "vue";
+import { useMediaQuery } from "@vueuse/core";
 import { SelectValue } from "reka-ui";
 import {
   ArrowDown,
@@ -274,11 +275,130 @@ const pageSizeString = computed({
     currentPage.value = 1;
   },
 });
+
+const slots = useSlots();
+const isMobile = useMediaQuery("(max-width: 767px)");
+const showMobileCards = computed(() => isMobile.value && Boolean(slots["mobile-card"]));
+
+const sortableColumns = computed(() => props.columns.filter((c) => c.sortable !== false && Boolean(c.title)));
+
+const activeMobileSortKey = computed({
+  get: () => sortBy.value[0]?.key ?? "__none__",
+  set: (key: string) => {
+    if (!key || key === "__none__") {
+      sortBy.value = [];
+      return;
+    }
+    const prevOrder = sortBy.value[0]?.order ?? "desc";
+    sortBy.value = [{ key, order: prevOrder }];
+  },
+});
+
+const activeMobileSortOrder = computed(() => sortBy.value[0]?.order ?? "desc");
+
+function toggleMobileSortOrder() {
+  if (!sortBy.value.length) return;
+  const first = sortBy.value[0];
+  sortBy.value = [{ key: first.key, order: first.order === "desc" ? "asc" : "desc" }];
+}
 </script>
 
 <template>
   <div :class="cn('flex flex-col', props.class)">
-    <div class="relative w-full overflow-x-auto">
+    <!-- 移动端紧凑卡片列表模式（当视口 < 768px 且父组件提供了 #mobile-card 插槽时启用） -->
+    <div v-if="showMobileCards" class="relative w-full">
+      <div v-if="props.loading" class="absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden bg-primary/15">
+        <div class="h-full w-1/3 animate-pulse bg-primary" />
+      </div>
+
+      <!-- 移动端轻量全选与排序控制条 -->
+      <div
+        v-if="pagedItems.length > 0 && (props.selectable || sortableColumns.length > 0)"
+        class="flex items-center justify-between gap-2 border-b border-border bg-muted/35 px-3 py-2 text-xs"
+      >
+        <div class="flex items-center gap-2">
+          <label
+            v-if="props.selectable"
+            class="inline-flex cursor-pointer items-center gap-2 text-muted-foreground select-none"
+          >
+            <Checkbox
+              :model-value="headerCheckState"
+              :disabled="selectableFilteredIds.length === 0"
+              @update:model-value="toggleAll"
+            />
+            <span v-if="selected.length > 0" class="font-medium text-primary tabular-nums">
+              已选 {{ selected.length }}
+            </span>
+            <span v-else>全选</span>
+          </label>
+        </div>
+
+        <div v-if="sortableColumns.length > 0" class="flex items-center gap-1">
+          <Select v-model="activeMobileSortKey">
+            <SelectTrigger class="h-7 w-auto min-w-[104px] max-w-[160px] gap-1 px-2 text-xs">
+              <ArrowUpDown v-if="activeMobileSortKey === '__none__'" class="size-3 shrink-0 text-muted-foreground" />
+              <SelectValue placeholder="默认排序" />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="__none__">默认排序</SelectItem>
+              <SelectItem v-for="col in sortableColumns" :key="col.key" :value="col.key">
+                {{ col.title }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            v-if="activeMobileSortKey !== '__none__'"
+            variant="outline"
+            size="icon-xs"
+            class="size-7 shrink-0"
+            :title="activeMobileSortOrder === 'asc' ? '升序' : '降序'"
+            @click="toggleMobileSortOrder"
+          >
+            <ArrowUp v-if="activeMobileSortOrder === 'asc'" class="size-3.5 text-primary" />
+            <ArrowDown v-else class="size-3.5 text-primary" />
+          </Button>
+        </div>
+      </div>
+
+      <div v-if="pagedItems.length === 0" class="px-4 py-8 text-center">
+        <slot name="empty">
+          <div class="flex flex-col items-center justify-center gap-1.5 py-6 text-muted-foreground">
+            <Inbox class="size-6 opacity-40" />
+            <span class="text-xs">{{ props.emptyText || "暂无数据" }}</span>
+          </div>
+        </slot>
+      </div>
+
+      <div v-else class="divide-y divide-border/70">
+        <div
+          v-for="(row, rowIdx) in pagedItems"
+          :key="getRowId(row)"
+          :data-selected="selectedSet.has(getRowId(row)) ? 'true' : undefined"
+          :style="props.rowStyle ? props.rowStyle(row, rowIdx) : undefined"
+          :class="
+            cn(
+              'transition-colors data-[selected=true]:bg-primary/[0.06]',
+              props.rowClass ? props.rowClass(row, rowIdx) : undefined,
+            )
+          "
+        >
+          <slot
+            name="mobile-card"
+            :item="row"
+            :index="rowIdx"
+            :selected="selectedSet.has(getRowId(row))"
+            :can-select="canSelectRow(row)"
+            :toggle="
+              (v?: boolean | 'indeterminate') => toggleRow(row, v !== undefined ? v : !selectedSet.has(getRowId(row)))
+            "
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- 桌面端标准表格模式（或未提供 #mobile-card 的紧凑表） -->
+    <div v-else class="relative w-full overflow-x-auto">
       <div v-if="props.loading" class="absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden bg-primary/15">
         <div class="h-full w-1/3 animate-pulse bg-primary" />
       </div>
@@ -408,20 +528,26 @@ const pageSizeString = computed({
 
     <div
       v-if="!props.hidePagination"
-      class="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-xs text-muted-foreground"
+      class="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2 text-xs text-muted-foreground sm:gap-3 sm:px-4 sm:py-2.5"
     >
-      <div class="flex items-center gap-3">
+      <div
+        v-if="$slots['footer-prepend'] || (!showMobileCards && props.selectable && selected.length > 0)"
+        class="flex items-center gap-3"
+      >
         <slot name="footer-prepend" />
-        <span v-if="props.selectable && selected.length > 0" class="font-medium text-foreground tabular-nums">
+        <span
+          v-if="!showMobileCards && props.selectable && selected.length > 0"
+          class="font-medium text-foreground tabular-nums"
+        >
           已选 {{ selected.length }} 项
         </span>
       </div>
 
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2">
+      <div class="ml-auto flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end sm:gap-4">
+        <div class="flex items-center gap-1.5 sm:gap-2">
           <span class="hidden sm:inline">每页</span>
           <Select v-model="pageSizeString">
-            <SelectTrigger class="h-7 w-[82px] px-2.5 text-xs">
+            <SelectTrigger class="h-7 w-[72px] px-2 text-xs sm:w-[82px] sm:px-2.5">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -435,18 +561,37 @@ const pageSizeString = computed({
         <span class="tabular-nums">{{ rangeLabel }}</span>
 
         <div class="flex items-center gap-1">
-          <Button variant="outline" size="icon-xs" :disabled="currentPage <= 1" @click="currentPage = 1">
+          <Button
+            variant="outline"
+            size="icon-xs"
+            class="size-7 sm:size-6"
+            :disabled="currentPage <= 1"
+            @click="currentPage = 1"
+          >
             <ChevronsLeft />
           </Button>
-          <Button variant="outline" size="icon-xs" :disabled="currentPage <= 1" @click="currentPage--">
+          <Button
+            variant="outline"
+            size="icon-xs"
+            class="size-7 sm:size-6"
+            :disabled="currentPage <= 1"
+            @click="currentPage--"
+          >
             <ChevronLeft />
           </Button>
-          <Button variant="outline" size="icon-xs" :disabled="currentPage >= totalPages" @click="currentPage++">
+          <Button
+            variant="outline"
+            size="icon-xs"
+            class="size-7 sm:size-6"
+            :disabled="currentPage >= totalPages"
+            @click="currentPage++"
+          >
             <ChevronRight />
           </Button>
           <Button
             variant="outline"
             size="icon-xs"
+            class="size-7 sm:size-6"
             :disabled="currentPage >= totalPages"
             @click="currentPage = totalPages"
           >

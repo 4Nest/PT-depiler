@@ -48,7 +48,7 @@ function handleInteractOutside(e: any) {
       :avoid-collisions="true"
       :class="
         cn(
-          'z-[60] max-h-[min(82vh,var(--reka-popover-content-available-height,82vh))] w-72 rounded-xl border border-border bg-popover p-3.5 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+          'z-[60] max-h-[min(82dvh,var(--reka-popover-content-available-height,82dvh))] w-72 max-w-[calc(100vw-24px)] rounded-xl border border-border bg-popover p-3.5 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
           props.class,
         )
       "

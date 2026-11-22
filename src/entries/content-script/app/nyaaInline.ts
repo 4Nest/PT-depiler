@@ -112,7 +112,8 @@ export function mountNyaaInlineButtons(
         btn.dataset.ptdNyaaPush = "row";
         btn.title = labelText;
         btn.setAttribute("aria-label", labelText);
-        btn.style.marginLeft = "4px";
+        btn.style.cssText =
+          "display:inline-flex;align-items:center;justify-content:center;min-width:22px;min-height:22px;margin-left:4px;vertical-align:middle;touch-action:manipulation;";
         btn.innerHTML = PUSH_ICON_SVG;
         btn.addEventListener("click", (e) => {
           e.preventDefault();
