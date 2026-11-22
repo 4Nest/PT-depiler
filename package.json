@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.4",
   "type": "module",
-  "homepage": "https://github.com/4Nest/PT-depiler",
+  "homepage": "https://github.com/4Nest/PT-depiler-Lite",
   "packageManager": "pnpm@12.10.1",
   "author": {
     "name": "Pt-Plugins",

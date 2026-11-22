@@ -94,7 +94,7 @@ export default defineConfig({
         name: "__MSG_extName__",
         description: "__MSG_extDesc__",
         default_locale: "en",
-        homepage_url: "https://github.com/4Nest/PT-depiler",
+        homepage_url: "https://github.com/4Nest/PT-depiler-Lite",
         icons: {
           "16": "icons/logo/16.png",
           "19": "icons/logo/19.png",

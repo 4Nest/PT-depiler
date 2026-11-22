@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/4Nest/PT-depiler/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/4Nest/PT-depiler?style=flat-square&logo=github" /></a>
-  <a href="https://github.com/4Nest/PT-depiler/actions"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/4Nest/PT-depiler/action_build.yml?branch=master&style=flat-square&logo=githubactions" /></a>
+  <a href="https://github.com/4Nest/PT-depiler-Lite/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/4Nest/PT-depiler-Lite?style=flat-square&logo=github" /></a>
+  <a href="https://github.com/4Nest/PT-depiler-Lite/actions"><img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/4Nest/PT-depiler-Lite/action_build.yml?branch=master&style=flat-square&logo=githubactions" /></a>
   <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" /></a>
   <img alt="Platform" src="https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox%20%7C%20Android-10b981?style=flat-square" />
 </p>
@@ -33,7 +33,7 @@
 
 ## 安装指南
 
-前往 [Releases 页面](https://github.com/4Nest/PT-depiler/releases) 下载最新构建包：
+前往 [Releases 页面](https://github.com/4Nest/PT-depiler-Lite/releases) 下载最新构建包：
 
 ### 1. 桌面端（Chrome / Edge / Brave / Firefox）
 
@@ -50,8 +50,8 @@
 环境要求：Node.js `>= 23.7.0`、pnpm `>= 12.0.0`。
 
 ```bash
-git clone https://github.com/4Nest/PT-depiler.git
-cd PT-depiler
+git clone https://github.com/4Nest/PT-depiler-Lite.git
+cd PT-depiler-Lite
 pnpm install
 
 # 类型检查与站点定义静态校验
