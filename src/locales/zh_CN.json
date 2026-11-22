@@ -998,6 +998,7 @@
     "parseResultEmpty": "未能解析出结果",
     "pushTo": "推送到...",
     "pushToDefault": "推送到默认下载器",
+    "pushToDownloader": "推送到下载器",
     "quickSearch": "快捷搜索"
   },
   "downloaderLabel": {

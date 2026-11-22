@@ -2,7 +2,7 @@
 import { computed, ref, type HTMLAttributes } from "vue";
 import { PopoverAnchor, PopoverRoot } from "reka-ui";
 import { Check, Plus, X } from "lucide-vue-next";
-import { cn } from "~/lib/utils";
+import { cn, getActualEventTarget } from "~/lib/utils";
 import PopoverContent from "../popover/PopoverContent.vue";
 
 const modelValue = defineModel<string[]>({ default: () => [] });
@@ -23,6 +23,7 @@ const props = withDefaults(
   },
 );
 
+const anchorRef = ref<HTMLElement | null>(null);
 const inputValue = ref("");
 const isOpen = ref(false);
 
@@ -46,6 +47,17 @@ function toggleSuggestion(val: string) {
     modelValue.value = modelValue.value.filter((x) => x !== val);
   } else {
     modelValue.value = [...modelValue.value, val];
+    if (inputValue.value.trim()) {
+      inputValue.value = "";
+    }
+  }
+}
+
+function handlePopoverInteractOutside(e: any) {
+  const actualTarget =
+    getActualEventTarget(e?.detail?.originalEvent) ?? (e?.target instanceof Element ? e.target : null);
+  if (actualTarget && anchorRef.value?.contains(actualTarget)) {
+    e.preventDefault();
   }
 }
 
@@ -67,6 +79,7 @@ function onKeydown(e: KeyboardEvent) {
   <PopoverRoot v-model:open="isOpen">
     <PopoverAnchor as-child>
       <div
+        ref="anchorRef"
         :class="
           cn(
             'flex min-h-8.5 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm shadow-2xs transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/35',
@@ -118,8 +131,9 @@ function onKeydown(e: KeyboardEvent) {
     <PopoverContent
       v-if="filteredSuggestions.length > 0 || (props.allowCustom && inputValue.trim())"
       align="start"
-      class="w-[var(--reka-popover-trigger-width)] min-w-[12rem] p-1"
+      class="w-[var(--reka-popover-trigger-width)] min-w-48 p-1"
       @open-auto-focus.prevent
+      @interact-outside="handlePopoverInteractOutside"
     >
       <div class="max-h-52 overflow-y-auto">
         <button

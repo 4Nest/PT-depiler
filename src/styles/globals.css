@@ -46,6 +46,36 @@
 }
 
 /*
+ * Shadow DOM 宿主页面（如 Nyaa 等 Bootstrap 3 站点）常设置 html { font-size: 10px }，
+ * 会将所有基于 rem 的 Tailwind v4 尺寸令牌压缩至 62.5%。在 :host 上显式锁定标准 16px 基准对应的 px 值。
+ */
+:host {
+  --spacing: 4px;
+  --radius: 8px;
+  --radius-xs: 2px;
+  --radius-2xl: 16px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --container-2xs: 288px;
+  --container-xs: 320px;
+  --container-sm: 384px;
+  --container-md: 448px;
+  --container-lg: 512px;
+  --container-xl: 576px;
+  --container-2xl: 672px;
+  --container-3xl: 768px;
+  --container-4xl: 896px;
+  --container-5xl: 1024px;
+  --container-6xl: 1152px;
+  --container-7xl: 1280px;
+}
+
+/*
  * 现代温润深岩灰暗色阶梯（告别死黑底与刺眼高反差，对标 Linear / GitHub Dimmed）
  * 层次递进：sidebar (0.172) -> background (0.196) -> card (0.226) -> popover (0.248) -> muted (0.272)
  */

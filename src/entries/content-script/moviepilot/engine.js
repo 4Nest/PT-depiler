@@ -2214,11 +2214,16 @@ function isU2Site() {
   return window.location.hostname.toLowerCase() === "u2.dmhy.org";
 }
 
+function isNyaaHost(h = window.location.hostname.toLowerCase()) {
+  return /(^|\.)nyaa\.(?:si|land|mom|media|iss\.(?:one|ink))$/.test(h);
+}
+
 function isAnimeSiteHost() {
   const h = window.location.hostname.toLowerCase();
   if (h === "u2.dmhy.org") return false;
-  return /(^|\.)nyaa\.si$|(^|\.)dmhy\.org$|(^|\.)mikanani\.me$|(^|\.)bangumi\.moe$|(^|\.)acgnx\.se$|(^|\.)anibt\.net$/.test(
-    h,
+  return (
+    isNyaaHost(h) ||
+    /(^|\.)dmhy\.org$|(^|\.)mikanani\.me$|(^|\.)bangumi\.moe$|(^|\.)acgnx\.se$|(^|\.)anibt\.net$/.test(h)
   );
 }
 
@@ -2228,7 +2233,7 @@ function shouldProcessCurrentPage() {
   if (isMTeamHost()) return isMTeamDetailPage();
   if (isSunnyPTSite()) return isSunnyPTDetailPage();
   if (isU2Site()) return /^\/details[^/]*\.php$/i.test(p);
-  if (/(^|\.)nyaa\.si$/.test(h)) return /^\/view\/\d+/.test(p);
+  if (isNyaaHost(h)) return /^\/view\/\d+/.test(p);
   if (/(^|\.)dmhy\.org$/.test(h)) return /^\/topics\/view\//.test(p);
   if (/(^|\.)mikanani\.me$/.test(h)) return /^\/Home\/Episode\//i.test(p);
   if (/(^|\.)bangumi\.moe$/.test(h)) return /^\/torrent\//.test(p);
@@ -5061,7 +5066,7 @@ function extractAnimeSiteInfo() {
   let torrent_size = 0;
   let mountTarget = null;
 
-  if (/(^|\.)nyaa\.si$/.test(h)) {
+  if (isNyaaHost(h)) {
     const heading = document.querySelector(".panel-heading h3.panel-title");
     torrent_name = cleanRawHeadingText(heading?.textContent || "");
     const dlAnchor = document.querySelector(

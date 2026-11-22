@@ -2,6 +2,23 @@ import { onMessage } from "@/messages.ts";
 import { extStorage } from "@/storage.ts";
 import { stringifyQuery } from "@ptd/utils/url.ts";
 import { getHostFromUrl } from "@ptd/site/utils/html.ts"; // 同 contextMenus：不能用 @ptd/site 主入口，会导致 sw 无法加载
+import { siteMetadataIndex } from "@ptd/site/metadataIndex";
+
+let cachedPublicHostMap: Record<string, string> | null = null;
+
+function getPublicSiteHostMap(): Record<string, string> {
+  if (cachedPublicHostMap) return cachedPublicHostMap;
+  const map: Record<string, string> = {};
+  for (const [siteId, entry] of Object.entries(siteMetadataIndex)) {
+    if (entry.type !== "public" || entry.isDead || entry.hasUserInputSettingMeta) continue;
+    for (const u of [...(entry.urls ?? []), ...(entry.legacyUrls ?? [])]) {
+      const host = getHostFromUrl(u);
+      if (host) map[host] = siteId;
+    }
+  }
+  cachedPublicHostMap = map;
+  return map;
+}
 
 export function openOptionsPage(url?: string | { path: string; query?: Record<string, any> }) {
   if (url && typeof url !== "string") {
@@ -39,7 +56,8 @@ onMessage("setExtStorage", async ({ data: { key, value } }) => {
  */
 onMessage("matchSitePage", async ({ data: url }) => {
   const metadataStore = (await extStorage.getItem("metadata"))! ?? {};
-  const siteId = metadataStore?.siteHostMap?.[getHostFromUrl(url)];
+  const host = getHostFromUrl(url);
+  const siteId = metadataStore?.siteHostMap?.[host] ?? getPublicSiteHostMap()[host];
   if (!siteId) {
     return null;
   }

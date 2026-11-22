@@ -22,7 +22,7 @@ function isMoviePilotCandidateLocation(loc: Location, matchedPtdSite: boolean): 
   if (host === "bangumi.moe" && path.startsWith("/torrent/")) return true;
   if (/(^|\.)acgnx\.se$/.test(host) && path.startsWith("/show-")) return true;
   if (/(^|\.)dmhy\.org$/.test(host) && host !== "u2.dmhy.org" && path.startsWith("/topics/view/")) return true;
-  if (/(^|\.)nyaa\.si$/.test(host) && path.startsWith("/view/")) return true;
+  if (/(^|\.)nyaa\.(?:si|land|mom|media|iss\.(?:one|ink))$/.test(host) && path.startsWith("/view/")) return true;
   if (host === "mikanani.me" && /^\/Home\/Episode\//i.test(path)) return true;
   if (/(^|\.)m-team\.(cc|io)$/.test(host)) return true;
   if (host === "sunnypt.top" || /(^|\.)sunnypt\.top$/.test(host)) return true;
@@ -42,7 +42,7 @@ function shouldRunMoviePilotOnLocation(): boolean {
 async function ensureMpModule(): Promise<typeof MpInjectModule> {
   if (!mpModulePromise) {
     // 静态 import 会将 235KB 引擎打入所有网页执行的 IIFE 引导脚本，此处必须通过运行时扩展 URL 按需加载独立 ESM 入口
-    const mpUrl = chrome.runtime.getURL("assets/mp-inject.js");
+    const mpUrl = `${chrome.runtime.getURL("assets/mp-inject.js")}?v=${__BUILD_TIME__}`;
     mpModulePromise = import(/* @vite-ignore */ mpUrl) as Promise<typeof MpInjectModule>;
   }
   return mpModulePromise;
@@ -60,7 +60,7 @@ async function syncMoviePilotState(mpConfig?: IMoviePilotConfig) {
 
 async function loadApp(props: IPtdData) {
   // 静态 import 会将完整 Vue + 站点定义打入 IIFE 引导脚本，必须通过运行时扩展 URL 按需加载
-  const appUrl = chrome.runtime.getURL("assets/cs-app.js");
+  const appUrl = `${chrome.runtime.getURL("assets/cs-app.js")}?v=${__BUILD_TIME__}`;
   console.debug("[PTD] loading app from", appUrl);
   const { mountApp } = (await import(/* @vite-ignore */ appUrl)) as typeof CsAppModule;
   console.debug("[PTD] app module loaded");

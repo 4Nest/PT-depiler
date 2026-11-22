@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue";
+import { ref, type ComponentPublicInstance, type HTMLAttributes } from "vue";
 import { PopoverContent as RekaPopoverContent, PopoverPortal } from "reka-ui";
-import { cn, usePortalTarget } from "~/lib/utils";
+import { cn, isInteractInsideCurrentOrUpperLayer, usePortalTarget } from "~/lib/utils";
 
 defineOptions({ inheritAttrs: false });
 
@@ -20,11 +20,26 @@ const props = withDefaults(
 );
 
 const portalTarget = usePortalTarget();
+const contentRef = ref<ComponentPublicInstance | HTMLElement | null>(null);
+
+function getPopoverElement(): HTMLElement | null {
+  const raw = contentRef.value;
+  if (!raw) return null;
+  if (raw instanceof HTMLElement) return raw;
+  return (raw.$el as HTMLElement | null) ?? null;
+}
+
+function handleInteractOutside(e: any) {
+  if (isInteractInsideCurrentOrUpperLayer(getPopoverElement(), e)) {
+    e.preventDefault();
+  }
+}
 </script>
 
 <template>
   <PopoverPortal :to="portalTarget">
     <RekaPopoverContent
+      ref="contentRef"
       v-bind="$attrs"
       :align="props.align"
       :side="props.side"
@@ -37,6 +52,7 @@ const portalTarget = usePortalTarget();
           props.class,
         )
       "
+      @interact-outside="handleInteractOutside"
     >
       <slot />
     </RekaPopoverContent>

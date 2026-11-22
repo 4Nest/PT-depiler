@@ -20,11 +20,12 @@ export const siteMetadata: ISiteMetadata = {
   urls: [
     "uggcf://alnn.fv/",
     "uggcf://fhxrorv.alnn.fv/",
-    // 官方镜像（Jackett 的 links 中另有 nyaa.iss.ink / nyaa.land，实测搜索接口 502/403，故不收录）
+    // 官方镜像（Jackett 的 links 中另有 nyaa.iss.ink / nyaa.land，实测搜索接口 502/403，故放入 legacyUrls 仅用于页面域名识别）
     "uggcf://alnn.zbz/",
     "uggcf://alnn.zrqvn/",
     "uggcf://fhxrorv.alnn.zbz/",
   ],
+  legacyUrls: ["uggcf://alnn.ynaq/", "uggcf://fhxrorv.alnn.ynaq/", "uggcf://alnn.vff.bar/", "uggcf://alnn.vff.vax/"],
 
   category: [
     {
@@ -162,8 +163,8 @@ export const siteMetadata: ISiteMetadata = {
 
   list: [
     {
-      // 不要写死 https://nyaa.si/，镜像域（nyaa.mom / nyaa.iss.ink 等）同样要能识别为列表页
-      urlPattern: ["nyaa\\.[a-z.]+/?(\\?.*)?$"],
+      // 不要写死 https://nyaa.si/，镜像域及 /user/<name> 发布组列表页同样要能识别为列表页
+      urlPattern: ["nyaa\\.[a-z.]+/(?:user/[^/?#]+/?)?(?:\\?.*)?$"],
     },
   ],
 
@@ -205,9 +206,12 @@ export const siteMetadata: ISiteMetadata = {
 export default class Nyaa extends BittorrentSite {
   public override async getTorrentDownloadLink(torrent: ITorrent): Promise<string> {
     const downloadLink = await super.getTorrentDownloadLink(torrent);
-    if (downloadLink && !downloadLink.includes("/download/")) {
-      const mockRequestConfig = torrent.url?.startsWith("http") ? { url: torrent.url } : { baseURL: this.url };
-      return this.fixLink(`/download/${torrent.id}.torrent`, mockRequestConfig);
+    const mockRequestConfig = torrent.url?.startsWith("http") ? { url: torrent.url } : { baseURL: this.url };
+    if (downloadLink) {
+      if (!downloadLink.includes("/download/") && !downloadLink.startsWith("magnet:")) {
+        return this.fixLink(`/download/${torrent.id}.torrent`, mockRequestConfig);
+      }
+      return this.fixLink(downloadLink, mockRequestConfig);
     }
 
     return downloadLink;

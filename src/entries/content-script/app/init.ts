@@ -4,7 +4,7 @@ import { createApp } from "vue";
 
 import App from "./App.vue";
 import { updatePageType, type IPtdData } from "./utils.ts";
-import { PORTAL_TARGET_KEY } from "~/lib/utils";
+import { PORTAL_TARGET_KEY, registerShadowEventTracker } from "~/lib/utils";
 import { piniaInstance as pinia } from "@/options/plugins/pinia.ts";
 import { i18nInstance as i18n } from "@/options/plugins/i18n.ts";
 
@@ -12,6 +12,7 @@ export function mountApp(document: Document, data: IPtdData = {}) {
   const contentRoot = document.createElement("div");
   contentRoot.id = "ptd-content-script-host";
   const shadowRoot = contentRoot.attachShadow({ mode: "closed" });
+  registerShadowEventTracker(shadowRoot);
 
   // 1. 内联 Shadow DOM 隔离基座样式
   const baseStyleElement = document.createElement("style");
@@ -23,7 +24,7 @@ export function mountApp(document: Document, data: IPtdData = {}) {
   const buildStyleElement = document.createElement("link");
   buildStyleElement.id = "ptd-content-script-style-build";
   buildStyleElement.rel = "stylesheet";
-  buildStyleElement.href = chrome.runtime.getURL("pt-depiler.css");
+  buildStyleElement.href = `${chrome.runtime.getURL("pt-depiler.css")}?v=${__BUILD_TIME__}`;
   shadowRoot.appendChild(buildStyleElement);
 
   // 3. 在 Shadow Root 内建立根容器 + 应用挂载点 + 专属浮层 Portal 容器

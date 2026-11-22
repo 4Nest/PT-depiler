@@ -1001,6 +1001,7 @@
     "parseResultEmpty": "Failed to parse results",
     "pushTo": "Push to...",
     "pushToDefault": "Push to Default Downloader",
+    "pushToDownloader": "Push to Downloader",
     "quickSearch": "Quick Search"
   },
   "downloaderLabel": {

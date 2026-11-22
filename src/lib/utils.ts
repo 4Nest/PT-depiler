@@ -32,3 +32,60 @@ export function usePortalTarget(): HTMLElement | string {
   }
   return injected || "body";
 }
+
+const shadowActualTargetMap = new WeakMap<Event, EventTarget>();
+
+/**
+ * 在 closed Shadow DOM 根节点捕获阶段记录原始事件目标。
+ * 事件跨出 Shadow 边界冒泡到宿主页 document 后，event.target 会被浏览器 retarget 为宿主元素，
+ * 导致 Reka UI DismissableLayer 无法识别点击发生在 Portal 子浮层（如 Popover / TagsInput）内部而误关 Dialog。
+ */
+export function registerShadowEventTracker(root: ShadowRoot) {
+  const captureTarget = (e: Event) => {
+    if (e.target) {
+      shadowActualTargetMap.set(e, e.target);
+    }
+  };
+  root.addEventListener("pointerdown", captureTarget, true);
+  root.addEventListener("focusin", captureTarget, true);
+  root.addEventListener("click", captureTarget, true);
+}
+
+export function getActualEventTarget(event?: Event | null): Element | null {
+  if (!event) return null;
+  const raw = shadowActualTargetMap.get(event) ?? event.composedPath?.()?.[0] ?? event.target;
+  return raw instanceof Element ? raw : null;
+}
+
+/**
+ * 判断 Reka UI 的 interactOutside 事件是否实际发生在当前层或更上层的浮层内
+ * （如 Shadow DOM 中 Dialog 内打开的 Popover / TagsInput / DropdownMenu）。
+ */
+export function isInteractInsideCurrentOrUpperLayer(
+  layerRootEl: HTMLElement | null | undefined,
+  customEvent: { detail?: { originalEvent?: Event }; target?: EventTarget | null },
+): boolean {
+  if (!layerRootEl) return false;
+  const originalEvent = customEvent?.detail?.originalEvent;
+  const actualTarget =
+    getActualEventTarget(originalEvent) ?? (customEvent?.target instanceof Element ? customEvent.target : null);
+  if (!actualTarget) return false;
+
+  if (layerRootEl.contains(actualTarget)) return true;
+
+  const targetLayer = actualTarget.closest("[data-dismissable-layer]");
+  if (!targetLayer) return false;
+
+  const mainLayer =
+    layerRootEl.dataset?.dismissableLayer === "" ? layerRootEl : layerRootEl.querySelector("[data-dismissable-layer]");
+  if (!mainLayer) return false;
+  if (mainLayer === targetLayer) return true;
+
+  const rootNode = layerRootEl.getRootNode() as Document | ShadowRoot;
+  if (!("querySelectorAll" in rootNode)) return false;
+
+  const layers = Array.from(rootNode.querySelectorAll("[data-dismissable-layer]"));
+  const mainIndex = layers.indexOf(mainLayer);
+  const targetIndex = layers.indexOf(targetLayer);
+  return mainIndex !== -1 && targetIndex !== -1 && mainIndex <= targetIndex;
+}

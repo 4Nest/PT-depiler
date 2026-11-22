@@ -89,7 +89,11 @@ const addTorrentOptions = ref<Required<Omit<CAddTorrentOptions, "localDownloadOp
 const modeTab = computed<"quick" | "custom">({
   get: () => (quickSendToClient.value ? "quick" : "custom"),
   set: (val) => {
-    quickSendToClient.value = val === "quick";
+    const toQuick = val === "quick";
+    quickSendToClient.value = toQuick;
+    if (!toQuick && !selectedDownloader.value) {
+      applyDefaultOrLastDownloader();
+    }
   },
 });
 
@@ -99,6 +103,14 @@ const selectedDownloaderId = computed<string>({
     const found = sortedEnabledDownloadersBySite.value.find((d) => d.id === id) ?? null;
     selectedDownloader.value = found;
     restoreAddTorrentOptions(found ?? undefined);
+    if (found && metadataStore.defaultDownloader?.id === found.id) {
+      if (metadataStore.defaultDownloader.folder) {
+        addTorrentOptions.value.savePath = metadataStore.defaultDownloader.folder;
+      }
+      if (metadataStore.defaultDownloader.tags) {
+        addTorrentOptions.value.label = metadataStore.defaultDownloader.tags;
+      }
+    }
   },
 });
 
@@ -126,9 +138,16 @@ const enabledDownloadersBySite = computed(() => {
   const intersection = sets.reduce((acc, s) => new Set([...acc].filter((x) => s.has(x))));
   return metadataStore.getEnabledDownloaders.filter((d) => intersection.has(d.id));
 });
-const sortedEnabledDownloadersBySite = computed(() =>
-  [...enabledDownloadersBySite.value].sort((a, b) => (b.sortIndex ?? 0) - (a.sortIndex ?? 0)),
-);
+const sortedEnabledDownloadersBySite = computed(() => {
+  const defaultId = metadataStore.defaultDownloader?.id;
+  return [...enabledDownloadersBySite.value].sort((a, b) => {
+    const sortDiff = (b.sortIndex ?? 0) - (a.sortIndex ?? 0);
+    if (sortDiff !== 0) return sortDiff;
+    if (a.id === defaultId) return -1;
+    if (b.id === defaultId) return 1;
+    return 0;
+  });
+});
 
 const getDownloaderIcon = (x: string) => chrome.runtime.getURL(getDownloaderIconRaw(x));
 
@@ -272,6 +291,36 @@ function quickSendToDownloader(downloader: IDownloaderMetadata, path: string = "
   return sendToDownloader();
 }
 
+function applyDefaultOrLastDownloader() {
+  const available = sortedEnabledDownloadersBySite.value;
+  const lastId = configStore.download.saveLastDownloader ? metadataStore.lastDownloader?.id : undefined;
+  const matchedLast = lastId ? (available.find((d) => d.id === lastId) ?? null) : null;
+
+  const defaultId = metadataStore.defaultDownloader?.id;
+  const matchedDefault = defaultId ? (available.find((d) => d.id === defaultId) ?? null) : null;
+
+  const target = matchedLast ?? matchedDefault ?? available[0] ?? null;
+  selectedDownloader.value = target;
+
+  if (target) {
+    restoreAddTorrentOptions(target);
+    if (!matchedLast && matchedDefault && target.id === matchedDefault.id) {
+      if (metadataStore.defaultDownloader.folder) {
+        addTorrentOptions.value.savePath = metadataStore.defaultDownloader.folder;
+      }
+      if (metadataStore.defaultDownloader.tags) {
+        addTorrentOptions.value.label = metadataStore.defaultDownloader.tags;
+      }
+    }
+  }
+
+  if (matchedLast && metadataStore.lastDownloader?.options) {
+    addTorrentOptions.value = cloneDeep(
+      toMerged(toRaw(addTorrentOptions.value), toRaw(metadataStore.lastDownloader.options)),
+    ) as Required<Omit<CAddTorrentOptions, "localDownloadOption">>;
+  }
+}
+
 function dialogEnter() {
   expandedDownloaderFolders.value = {};
   // 如果是默认下载发送，则直接设置为快速发送到客户端模式
@@ -288,27 +337,13 @@ function dialogEnter() {
     // 直接调用发送函数
     sendToDownloader();
   } else {
+    selectedDownloader.value = null;
     restoreAddTorrentOptions(); // 先重置所有选项，然后如果需要则从store中获取历史情况
     quickSendToClient.value = configStore.download.useQuickSendToClient;
 
-    // 如果不是快速发送到客户端模式，则尝试设置默认下载器
+    // 如果不是快速发送到客户端模式，则优先设置上次下载器（若开启记忆）或默认下载器
     if (!quickSendToClient.value) {
-      const lastDownloaderId = metadataStore.lastDownloader?.id;
-      const matchedLast = lastDownloaderId
-        ? (sortedEnabledDownloadersBySite.value.find((d) => d.id === lastDownloaderId) ?? null)
-        : null;
-      selectedDownloader.value = matchedLast ?? sortedEnabledDownloadersBySite.value[0] ?? null;
-
-      if (selectedDownloader.value) {
-        restoreAddTorrentOptions(selectedDownloader.value);
-      }
-
-      // 将上一次的下载器选项通过 toMerged 合并到当前选项中
-      if (matchedLast && metadataStore.lastDownloader?.options) {
-        addTorrentOptions.value = cloneDeep(
-          toMerged(toRaw(addTorrentOptions.value), toRaw(metadataStore.lastDownloader.options)),
-        ) as Required<Omit<CAddTorrentOptions, "localDownloadOption">>;
-      }
+      applyDefaultOrLastDownloader();
     }
   }
 }
@@ -608,6 +643,13 @@ function dialogLeave() {
                         class="size-4 shrink-0 object-contain"
                       />
                       <span class="truncate font-medium">{{ selectedDownloader.name }}</span>
+                      <Badge
+                        v-if="metadataStore.defaultDownloader?.id === selectedDownloader.id"
+                        variant="default"
+                        class="h-4 shrink-0 px-1.5 text-[10px]"
+                      >
+                        {{ t("SentToDownloaderDialog.defaultBadge") }}
+                      </Badge>
                       <span class="truncate text-xs text-muted-foreground">[{{ selectedDownloader.address }}]</span>
                     </span>
                   </SelectValue>
@@ -625,6 +667,13 @@ function dialogLeave() {
                         class="size-4 shrink-0 object-contain"
                       />
                       <span class="font-medium">{{ downloader.name }}</span>
+                      <Badge
+                        v-if="metadataStore.defaultDownloader?.id === downloader.id"
+                        variant="default"
+                        class="h-4 shrink-0 px-1.5 text-[10px]"
+                      >
+                        {{ t("SentToDownloaderDialog.defaultBadge") }}
+                      </Badge>
                       <span class="text-xs text-muted-foreground">[{{ downloader.address }}]</span>
                       <Badge variant="secondary" class="ml-1 text-[10px]">{{ downloader.type }}</Badge>
                     </div>

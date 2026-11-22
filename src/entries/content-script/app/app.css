@@ -30,6 +30,42 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/**
+ * 锁定 Shadow DOM 内部 Tailwind v4 尺寸与字号令牌为标准 16px 基准对应的固定 px 值：
+ * CSS 的 rem 始终取宿主页 <html> 的 font-size（如 Nyaa 等 Bootstrap 3 站点设置 html { font-size: 10px }），
+ * 会导致所有基于 rem 的弹窗宽度、间距、字号缩水至 62.5%。使用非 @layer 规则覆盖为精确 px，彻底隔离宿主根字号影响。
+ */
+:host,
+#ptd-content-script-root {
+  --spacing: 4px;
+  --radius: 8px;
+  --radius-xs: 2px;
+  --radius-2xl: 16px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --container-2xs: 288px;
+  --container-xs: 320px;
+  --container-sm: 384px;
+  --container-md: 448px;
+  --container-lg: 512px;
+  --container-xl: 576px;
+  --container-2xl: 672px;
+  --container-3xl: 768px;
+  --container-4xl: 896px;
+  --container-5xl: 1024px;
+  --container-6xl: 1152px;
+  --container-7xl: 1280px;
+}
+
+.rounded {
+  border-radius: 4px;
+}
+
 #ptd-content-script-root,
 #ptd-content-script-app,
 #ptd-content-script-portal {

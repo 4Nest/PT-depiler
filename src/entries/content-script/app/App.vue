@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { computed, inject, provide, ref, shallowReactive, useTemplateRef, watch, withModifiers } from "vue";
+import {
+  computed,
+  inject,
+  onMounted,
+  onUnmounted,
+  provide,
+  ref,
+  shallowReactive,
+  useTemplateRef,
+  watch,
+  withModifiers,
+} from "vue";
 import { useI18n } from "vue-i18n";
 import { useDraggable, useWindowSize } from "@vueuse/core";
 import { Toaster } from "vue-sonner";
@@ -12,6 +23,7 @@ import { cn, providePortalTarget } from "~/lib/utils";
 import { BrandLogo, Separator } from "~/components/ui";
 
 import type { IRemoteDownloadDialogData } from "./types.ts";
+import { mountNyaaInlineButtons } from "./nyaaInline.ts";
 import { currentView, type IPtdData, pageType, updatePageType } from "./utils.ts";
 
 import SpeedDialBtn from "./components/SpeedDialBtn.vue";
@@ -125,6 +137,19 @@ watch(
   },
 );
 
+let cleanupNyaaInline: (() => void) | null = null;
+if (ptdData.siteId === "nyaa") {
+  onMounted(() => {
+    cleanupNyaaInline = mountNyaaInlineButtons(document, remoteDownloadDialogData, () =>
+      t("contentScript.pushToDownloader"),
+    );
+  });
+  onUnmounted(() => {
+    cleanupNyaaInline?.();
+    cleanupNyaaInline = null;
+  });
+}
+
 const CUSTOM_DRAG_MIME = "text/json+ptd";
 const isDragging = ref<boolean>(false);
 
@@ -174,7 +199,7 @@ function extractLinksManually(dataTransfer: DataTransfer): string[] {
       return uriList
         .split("\r\n")
         .map((line) => line.trim())
-        .filter((uri) => !uri.startsWith("#") && uri.startsWith("http"));
+        .filter((uri) => !uri.startsWith("#") && (uri.startsWith("http") || uri.startsWith("magnet:")));
     }
   }
   if (dataTransfer.types.includes("text/html")) {
