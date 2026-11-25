@@ -25,7 +25,6 @@ import {
 
 import { cn } from "~/lib/utils";
 import {
-  Accordion,
   Alert,
   Badge,
   Button,
@@ -156,14 +155,6 @@ const noDownloaderMessage = computed(() =>
     ? t("SentToDownloaderDialog.noDownloaderForSite")
     : t("SentToDownloaderDialog.noDownloader"),
 );
-
-const advancedAccordionItems = computed(() => [
-  {
-    value: "advanced",
-    title: t("common.advancedSettings"),
-    badge: selectedDownloaderMetadata.value?.advanceAddTorrentOptions?.length ?? 0,
-  },
-]);
 
 function getCleanFolders(downloader: IDownloaderMetadata): string[] {
   return uniq((downloader.suggestFolders ?? []).map((f) => f.trim()).filter(Boolean));
@@ -751,28 +742,33 @@ function dialogLeave() {
               </div>
             </div>
 
-            <!-- 高级选项 -->
-            <Accordion
+            <!-- 高级选项（直接平铺展示，无需折叠展开） -->
+            <div
               v-if="(selectedDownloaderMetadata?.advanceAddTorrentOptions ?? []).length > 0"
-              :items="advancedAccordionItems"
-              type="single"
+              class="flex flex-col gap-2"
             >
-              <template #advanced>
-                <div class="flex flex-col gap-2.5 pt-1">
-                  <div
-                    v-for="opt in selectedDownloaderMetadata.advanceAddTorrentOptions"
-                    :key="opt.key"
-                    class="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-muted/20 px-3 py-2"
-                  >
-                    <div class="min-w-0">
-                      <div class="text-xs font-medium text-foreground">{{ opt.name }}</div>
-                      <div v-if="opt.description" class="text-[11px] text-muted-foreground">{{ opt.description }}</div>
+              <div class="flex items-center gap-2">
+                <Label>{{ t("common.advancedSettings") }}</Label>
+                <Badge variant="secondary" class="h-4.5 px-1.5 text-[10px] tabular-nums">
+                  {{ selectedDownloaderMetadata.advanceAddTorrentOptions.length }}
+                </Badge>
+              </div>
+              <div class="grid grid-cols-1 gap-2.5 min-[641px]:grid-cols-2 min-[641px]:gap-3">
+                <div
+                  v-for="opt in selectedDownloaderMetadata.advanceAddTorrentOptions"
+                  :key="opt.key"
+                  class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/25 px-3.5 py-2.5"
+                >
+                  <div class="min-w-0">
+                    <div class="text-xs font-medium text-foreground">{{ opt.name }}</div>
+                    <div v-if="opt.description" class="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                      {{ opt.description }}
                     </div>
-                    <Switch v-model="addTorrentOptions.advanceAddTorrentOptions![opt.key]" />
                   </div>
+                  <Switch v-model="addTorrentOptions.advanceAddTorrentOptions![opt.key]" />
                 </div>
-              </template>
-            </Accordion>
+              </div>
+            </div>
           </div>
         </template>
       </div>

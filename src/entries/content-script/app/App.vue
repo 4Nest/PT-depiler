@@ -61,24 +61,57 @@ const { width: windowWidth, height: windowHeight } = useWindowSize();
 const rightX = ref<number>(0);
 const bottomY = ref<number>(0);
 const openSpeedDial = ref<boolean>(false);
+const pinnedOpen = ref<boolean>(false);
 
-let startPos = { x: 0, y: 0 };
+let startPointer = { x: 0, y: 0 };
+let startElementPos = { x: 0, y: 0 };
 let movedDuringDrag = false;
+let isPointerDown = false;
+let hoverOpenTimer: ReturnType<typeof setTimeout> | null = null;
+let hoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
+let hoverOpenedAt = 0;
+
+function clearHoverTimers() {
+  if (hoverOpenTimer) {
+    clearTimeout(hoverOpenTimer);
+    hoverOpenTimer = null;
+  }
+  if (hoverCloseTimer) {
+    clearTimeout(hoverCloseTimer);
+    hoverCloseTimer = null;
+  }
+}
 
 const { x, y, style } = useDraggable(el, {
   handle: triggerBtn,
-  preventDefault: true,
+  preventDefault: false,
   initialValue: { x: -100, y: -100 },
-  onStart: (pos) => {
-    startPos = { x: pos.x, y: pos.y };
+  onStart: (_pos, e) => {
+    // 统一使用视口 clientX/clientY 计算真实位移，避免与 useDraggable 内部偏移坐标系混用导致点击误判为拖拽
+    isPointerDown = true;
+    startPointer = { x: e.clientX, y: e.clientY };
+    startElementPos = { x: x.value, y: y.value };
     movedDuringDrag = false;
+    clearHoverTimers();
   },
-  onMove: (pos) => {
-    if (Math.hypot(pos.x - startPos.x, pos.y - startPos.y) > 4) {
-      movedDuringDrag = true;
+  onMove: (_pos, e) => {
+    if (!movedDuringDrag) {
+      if (Math.hypot(e.clientX - startPointer.x, e.clientY - startPointer.y) > 6) {
+        movedDuringDrag = true;
+      } else {
+        // 6px 防手抖死区内钉住位置，保证点击手感稳固
+        x.value = startElementPos.x;
+        y.value = startElementPos.y;
+      }
     }
   },
   onEnd: ({ x: endX, y: endY }) => {
+    isPointerDown = false;
+    if (!movedDuringDrag) {
+      x.value = startElementPos.x;
+      y.value = startElementPos.y;
+      return;
+    }
     const { clientWidth, clientHeight } = document.documentElement;
     const clampedX = Math.min(Math.max(8, endX), Math.max(8, clientWidth - 54));
     const clampedY = Math.min(Math.max(8, endY), Math.max(8, clientHeight - 54));
@@ -89,6 +122,39 @@ const { x, y, style } = useDraggable(el, {
     bottomY.value = clientHeight - clampedY;
   },
 });
+
+function handleWrapperPointerEnter(e: PointerEvent) {
+  // 仅桌面鼠标支持悬停自动展开，避免触屏合成事件干扰
+  if (e.pointerType !== "mouse" || isPointerDown || movedDuringDrag) return;
+  if (hoverCloseTimer) {
+    clearTimeout(hoverCloseTimer);
+    hoverCloseTimer = null;
+  }
+  if (openSpeedDial.value) return;
+  hoverOpenTimer = setTimeout(() => {
+    hoverOpenTimer = null;
+    if (!isPointerDown && !openSpeedDial.value) {
+      openSpeedDial.value = true;
+      hoverOpenedAt = Date.now();
+      void updatePageType(ptdData);
+    }
+  }, 90);
+}
+
+function handleWrapperPointerLeave(e: PointerEvent) {
+  if (e.pointerType !== "mouse") return;
+  if (hoverOpenTimer) {
+    clearTimeout(hoverOpenTimer);
+    hoverOpenTimer = null;
+  }
+  if (!openSpeedDial.value || pinnedOpen.value || configStore.contentScript?.defaultOpenSpeedDial) return;
+  hoverCloseTimer = setTimeout(() => {
+    hoverCloseTimer = null;
+    if (!pinnedOpen.value && !configStore.contentScript?.defaultOpenSpeedDial) {
+      openSpeedDial.value = false;
+    }
+  }, 240);
+}
 
 const openUpward = computed(() => y.value > windowHeight.value / 2);
 const alignRight = computed(() => x.value > windowWidth.value / 2);
@@ -118,6 +184,8 @@ function handleOutsidePointerDown(e: PointerEvent) {
   const host = root instanceof ShadowRoot ? root.host : null;
   if (host && (e.target === host || host.contains(e.target as Node))) return;
   if (el.value?.contains(e.target as Node)) return;
+  clearHoverTimers();
+  pinnedOpen.value = false;
   openSpeedDial.value = false;
 }
 
@@ -127,6 +195,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  clearHoverTimers();
   window.removeEventListener("resize", handleWindowResize);
   document.removeEventListener("pointerdown", handleOutsidePointerDown);
 });
@@ -158,6 +227,8 @@ watch(
   () => remoteDownloadDialogData.show,
   (show) => {
     if (show && !configStore.contentScript?.defaultOpenSpeedDial) {
+      clearHoverTimers();
+      pinnedOpen.value = false;
       openSpeedDial.value = false;
     }
   },
@@ -315,8 +386,16 @@ function toggleSpeedDial() {
     movedDuringDrag = false;
     return;
   }
-  openSpeedDial.value = !openSpeedDial.value;
-  if (openSpeedDial.value) {
+  clearHoverTimers();
+  // 若刚刚因鼠标悬停展开（< 400ms），此时用户的下意识点击视为「锁定展开」而非立刻关掉
+  if (openSpeedDial.value && !pinnedOpen.value && Date.now() - hoverOpenedAt < 400) {
+    pinnedOpen.value = true;
+    return;
+  }
+  const next = !openSpeedDial.value;
+  openSpeedDial.value = next;
+  pinnedOpen.value = next;
+  if (next) {
     void updatePageType(ptdData);
   }
 }
@@ -338,6 +417,8 @@ function openOptions() {
         configStore.contentScript.fadeEnterStyle && !openSpeedDial && 'opacity-75 hover:opacity-100',
       )
     "
+    @pointerenter="handleWrapperPointerEnter"
+    @pointerleave="handleWrapperPointerLeave"
   >
     <div class="relative inline-flex items-center justify-center">
       <!-- 视口自适应纵向快捷菜单卡片 -->
@@ -363,6 +444,8 @@ function openOptions() {
             )
           "
         >
+          <!-- 透明悬停桥接热区：避免鼠标在悬浮球与菜单间隙移动时意外触发收起 -->
+          <span aria-hidden="true" :class="cn('absolute inset-x-0 h-3.5', openUpward ? 'top-full' : 'bottom-full')" />
           <component :is="currentView" :key="pageType" />
 
           <Separator class="my-1" />
