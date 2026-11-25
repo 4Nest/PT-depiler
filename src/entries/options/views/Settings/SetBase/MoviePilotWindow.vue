@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { CheckCircle2, Clapperboard, Eye, EyeOff, Loader2, RefreshCw, Trash2, XCircle } from "lucide-vue-next";
+import {
+  CheckCircle2,
+  Clapperboard,
+  Eye,
+  EyeOff,
+  HelpCircle,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  XCircle,
+} from "lucide-vue-next";
 
 import { sendMessage } from "@/messages.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
@@ -9,11 +19,6 @@ import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import {
   Badge,
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Input,
   Label,
   Select,
@@ -21,8 +26,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Separator,
   Switch,
+  Tooltip,
 } from "~/components/ui";
 
 const { t } = useI18n();
@@ -254,175 +259,184 @@ defineExpose({ beforeSave });
 </script>
 
 <template>
-  <div class="space-y-5">
-    <!-- 独立总开关卡片 -->
-    <Card :class="configStore.moviePilot.enabled ? 'border-primary/40 bg-primary/[0.02]' : ''">
-      <CardHeader class="flex-row items-center justify-between gap-4 space-y-0">
-        <div class="flex min-w-0 items-start gap-3">
-          <div class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Clapperboard class="size-4.5" />
-          </div>
-          <div class="min-w-0 space-y-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <CardTitle class="text-base">{{ t("SetBase.moviepilot.enableTitle") }}</CardTitle>
-              <Badge :variant="configStore.moviePilot.enabled ? 'default' : 'secondary'" class="text-[10px]">
-                {{
-                  configStore.moviePilot.enabled ? t("SetBase.moviepilot.statusOn") : t("SetBase.moviepilot.statusOff")
-                }}
-              </Badge>
-            </div>
-            <CardDescription class="text-xs leading-relaxed">
-              {{ t("SetBase.moviepilot.enableDesc") }}
-            </CardDescription>
-          </div>
+  <div class="space-y-6">
+    <!-- 独立总开关行 -->
+    <div
+      :class="[
+        'flex items-center justify-between gap-4 rounded-xl border px-4 py-3 shadow-2xs transition-colors',
+        configStore.moviePilot.enabled ? 'border-primary/40 bg-primary/[0.03]' : 'border-border/80 bg-card',
+      ]"
+    >
+      <div class="flex min-w-0 items-center gap-3">
+        <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Clapperboard class="size-4" />
         </div>
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <span class="text-sm font-semibold text-foreground">{{ t("SetBase.moviepilot.enableTitle") }}</span>
+          <Badge :variant="configStore.moviePilot.enabled ? 'default' : 'secondary'" class="h-4.5 px-1.5 text-[10px]">
+            {{ configStore.moviePilot.enabled ? t("SetBase.moviepilot.statusOn") : t("SetBase.moviepilot.statusOff") }}
+          </Badge>
+          <Tooltip :content="t('SetBase.moviepilot.enableDesc')" side="top">
+            <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+          </Tooltip>
+        </div>
+      </div>
 
-        <Switch :model-value="Boolean(configStore.moviePilot.enabled)" @update:model-value="handleToggleEnabled" />
-      </CardHeader>
-    </Card>
+      <Switch :model-value="Boolean(configStore.moviePilot.enabled)" @update:model-value="handleToggleEnabled" />
+    </div>
 
     <!-- 服务器连接与默认推送设置 -->
-    <Card>
-      <CardHeader>
-        <CardTitle>{{ t("SetBase.moviepilot.serverCardTitle") }}</CardTitle>
-        <CardDescription class="text-xs">
-          {{ t("SetBase.moviepilot.serverCardDesc") }}
-        </CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-4">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div class="space-y-1.5">
-            <Label>{{ t("SetBase.moviepilot.serverUrl") }}</Label>
-            <Input
-              v-model="configStore.moviePilot.url"
-              placeholder="http://192.168.1.100:3000"
-              @keydown.enter.prevent="testAndSaveConnection"
-            />
-          </div>
-
-          <div class="space-y-1.5">
-            <Label>{{ t("SetBase.moviepilot.apiKey") }}</Label>
-            <div class="relative flex items-center">
+    <section class="space-y-2">
+      <div class="flex items-center gap-1.5 px-1">
+        <h2 class="text-xs font-medium text-muted-foreground">{{ t("SetBase.moviepilot.serverCardTitle") }}</h2>
+        <Tooltip :content="t('SetBase.moviepilot.serverCardDesc')" side="top">
+          <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+        </Tooltip>
+      </div>
+      <div class="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/80 bg-card shadow-2xs">
+        <div class="space-y-4 p-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="space-y-1.5">
+              <Label class="text-xs font-medium text-muted-foreground">{{ t("SetBase.moviepilot.serverUrl") }}</Label>
               <Input
-                v-model="configStore.moviePilot.apiKey"
-                :type="showApiKey ? 'text' : 'password'"
-                class="pr-9"
-                placeholder="MoviePilot API_TOKEN"
+                v-model="configStore.moviePilot.url"
+                placeholder="http://192.168.1.100:3000"
                 @keydown.enter.prevent="testAndSaveConnection"
               />
-              <button
-                type="button"
-                class="absolute right-2.5 inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                @click="showApiKey = !showApiKey"
-              >
-                <EyeOff v-if="showApiKey" class="size-3.5" />
-                <Eye v-else class="size-3.5" />
-              </button>
             </div>
-            <p class="text-[11px] text-muted-foreground">{{ t("SetBase.moviepilot.apiKeyHint") }}</p>
-          </div>
-        </div>
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div class="space-y-1.5">
-            <Label>{{ t("SetBase.moviepilot.themeMode") }}</Label>
-            <Select
-              :model-value="configStore.moviePilot.themeMode"
-              @update:model-value="
-                (v) => {
-                  configStore.moviePilot.themeMode = v as 'auto' | 'light' | 'dark';
-                  handleAutoSaveSwitch();
-                }
-              "
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">{{ t("SetBase.moviepilot.themeAuto") }}</SelectItem>
-                <SelectItem value="light">{{ t("SetBase.moviepilot.themeLight") }}</SelectItem>
-                <SelectItem value="dark">{{ t("SetBase.moviepilot.themeDark") }}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="space-y-1.5">
-            <Label>{{ t("SetBase.moviepilot.defaultDownloader") }}</Label>
-            <Select
-              :model-value="configStore.moviePilot.defaultDownloader || '__mp_default__'"
-              @update:model-value="
-                (v) => {
-                  configStore.moviePilot.defaultDownloader = v === '__mp_default__' ? '' : String(v);
-                  handleAutoSaveSwitch();
-                }
-              "
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__mp_default__">{{ t("SetBase.moviepilot.letMpDecide") }}</SelectItem>
-                <SelectItem
-                  v-if="
-                    configStore.moviePilot.defaultDownloader &&
-                    !remoteClients.includes(configStore.moviePilot.defaultDownloader)
-                  "
-                  :value="configStore.moviePilot.defaultDownloader"
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-1.5">
+                <Label class="text-xs font-medium text-muted-foreground">{{ t("SetBase.moviepilot.apiKey") }}</Label>
+                <Tooltip :content="t('SetBase.moviepilot.apiKeyHint')" side="top">
+                  <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+                </Tooltip>
+              </div>
+              <div class="relative flex items-center">
+                <Input
+                  v-model="configStore.moviePilot.apiKey"
+                  :type="showApiKey ? 'text' : 'password'"
+                  class="pr-9"
+                  placeholder="MoviePilot API_TOKEN"
+                  @keydown.enter.prevent="testAndSaveConnection"
+                />
+                <button
+                  type="button"
+                  class="absolute right-2.5 inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                  @click="showApiKey = !showApiKey"
                 >
-                  {{ configStore.moviePilot.defaultDownloader }}
-                </SelectItem>
-                <SelectItem v-for="c in remoteClients" :key="c" :value="c">{{ c }}</SelectItem>
-              </SelectContent>
-            </Select>
+                  <EyeOff v-if="showApiKey" class="size-3.5" />
+                  <Eye v-else class="size-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div class="space-y-1.5">
-            <Label>{{ t("SetBase.moviepilot.defaultSavePath") }}</Label>
-            <Select
-              :model-value="configStore.moviePilot.defaultSavePath || '__mp_default__'"
-              @update:model-value="
-                (v) => {
-                  configStore.moviePilot.defaultSavePath = v === '__mp_default__' ? '' : String(v);
-                  handleAutoSaveSwitch();
-                }
-              "
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__mp_default__">{{ t("SetBase.moviepilot.autoRulePath") }}</SelectItem>
-                <SelectItem
-                  v-if="
-                    configStore.moviePilot.defaultSavePath &&
-                    !remotePaths.includes(configStore.moviePilot.defaultSavePath)
-                  "
-                  :value="configStore.moviePilot.defaultSavePath"
-                >
-                  {{ configStore.moviePilot.defaultSavePath }}
-                </SelectItem>
-                <SelectItem v-for="p in remotePaths" :key="p" :value="p">{{ p }}</SelectItem>
-              </SelectContent>
-            </Select>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="space-y-1.5">
+              <Label class="text-xs font-medium text-muted-foreground">{{ t("SetBase.moviepilot.themeMode") }}</Label>
+              <Select
+                :model-value="configStore.moviePilot.themeMode"
+                @update:model-value="
+                  (v) => {
+                    configStore.moviePilot.themeMode = v as 'auto' | 'light' | 'dark';
+                    handleAutoSaveSwitch();
+                  }
+                "
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">{{ t("SetBase.moviepilot.themeAuto") }}</SelectItem>
+                  <SelectItem value="light">{{ t("SetBase.moviepilot.themeLight") }}</SelectItem>
+                  <SelectItem value="dark">{{ t("SetBase.moviepilot.themeDark") }}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div class="space-y-1.5">
+              <Label class="text-xs font-medium text-muted-foreground">{{
+                t("SetBase.moviepilot.defaultDownloader")
+              }}</Label>
+              <Select
+                :model-value="configStore.moviePilot.defaultDownloader || '__mp_default__'"
+                @update:model-value="
+                  (v) => {
+                    configStore.moviePilot.defaultDownloader = v === '__mp_default__' ? '' : String(v);
+                    handleAutoSaveSwitch();
+                  }
+                "
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__mp_default__">{{ t("SetBase.moviepilot.letMpDecide") }}</SelectItem>
+                  <SelectItem
+                    v-if="
+                      configStore.moviePilot.defaultDownloader &&
+                      !remoteClients.includes(configStore.moviePilot.defaultDownloader)
+                    "
+                    :value="configStore.moviePilot.defaultDownloader"
+                  >
+                    {{ configStore.moviePilot.defaultDownloader }}
+                  </SelectItem>
+                  <SelectItem v-for="c in remoteClients" :key="c" :value="c">{{ c }}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div class="space-y-1.5">
+              <Label class="text-xs font-medium text-muted-foreground">{{
+                t("SetBase.moviepilot.defaultSavePath")
+              }}</Label>
+              <Select
+                :model-value="configStore.moviePilot.defaultSavePath || '__mp_default__'"
+                @update:model-value="
+                  (v) => {
+                    configStore.moviePilot.defaultSavePath = v === '__mp_default__' ? '' : String(v);
+                    handleAutoSaveSwitch();
+                  }
+                "
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__mp_default__">{{ t("SetBase.moviepilot.autoRulePath") }}</SelectItem>
+                  <SelectItem
+                    v-if="
+                      configStore.moviePilot.defaultSavePath &&
+                      !remotePaths.includes(configStore.moviePilot.defaultSavePath)
+                    "
+                    :value="configStore.moviePilot.defaultSavePath"
+                  >
+                    {{ configStore.moviePilot.defaultSavePath }}
+                  </SelectItem>
+                  <SelectItem v-for="p in remotePaths" :key="p" :value="p">{{ p }}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <!-- 验证结果反馈条 -->
+          <div
+            v-if="testResult"
+            :class="[
+              'flex items-start gap-2 rounded-lg border px-3.5 py-2.5 text-xs leading-relaxed',
+              testResult.type === 'success'
+                ? 'border-success/35 bg-success/10 text-success'
+                : 'border-destructive/35 bg-destructive/10 text-destructive',
+            ]"
+          >
+            <CheckCircle2 v-if="testResult.type === 'success'" class="mt-0.5 size-4 shrink-0" />
+            <XCircle v-else class="mt-0.5 size-4 shrink-0" />
+            <span class="whitespace-pre-line">{{ testResult.text }}</span>
           </div>
         </div>
 
-        <!-- 验证结果反馈条 -->
-        <div
-          v-if="testResult"
-          :class="[
-            'flex items-start gap-2 rounded-lg border px-3.5 py-2.5 text-xs leading-relaxed',
-            testResult.type === 'success'
-              ? 'border-success/35 bg-success/10 text-success'
-              : 'border-destructive/35 bg-destructive/10 text-destructive',
-          ]"
-        >
-          <CheckCircle2 v-if="testResult.type === 'success'" class="mt-0.5 size-4 shrink-0" />
-          <XCircle v-else class="mt-0.5 size-4 shrink-0" />
-          <span class="whitespace-pre-line">{{ testResult.text }}</span>
-        </div>
-
-        <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
+        <div class="flex flex-wrap items-center justify-end gap-2 bg-muted/20 px-4 py-2.5">
           <Button variant="outline" size="sm" :disabled="isTesting" @click="clearConnectionConfig">
             <Trash2 class="size-3.5" />
             <span>{{ t("SetBase.moviepilot.clearBtn") }}</span>
@@ -433,19 +447,19 @@ defineExpose({ beforeSave });
             <span>{{ t("SetBase.moviepilot.verifyAndSaveBtn") }}</span>
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
 
     <!-- 详情页内联识别行为偏好 -->
-    <Card>
-      <CardHeader>
-        <CardTitle>{{ t("SetBase.moviepilot.behaviorCardTitle") }}</CardTitle>
-      </CardHeader>
-      <CardContent class="space-y-3.5">
-        <div class="flex items-center justify-between gap-4">
-          <div class="space-y-0.5">
-            <div class="text-sm font-medium text-foreground">{{ t("SetBase.moviepilot.showSpecs") }}</div>
-            <div class="text-xs text-muted-foreground">{{ t("SetBase.moviepilot.showSpecsDesc") }}</div>
+    <section class="space-y-2">
+      <h2 class="px-1 text-xs font-medium text-muted-foreground">{{ t("SetBase.moviepilot.behaviorCardTitle") }}</h2>
+      <div class="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/80 bg-card shadow-2xs">
+        <div class="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/25">
+          <div class="flex min-w-0 items-center gap-1.5">
+            <span class="text-sm font-medium text-foreground">{{ t("SetBase.moviepilot.showSpecs") }}</span>
+            <Tooltip :content="t('SetBase.moviepilot.showSpecsDesc')" side="top">
+              <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+            </Tooltip>
           </div>
           <Switch
             :model-value="configStore.moviePilot.showSpecs"
@@ -453,12 +467,12 @@ defineExpose({ beforeSave });
           />
         </div>
 
-        <Separator />
-
-        <div class="flex items-center justify-between gap-4">
-          <div class="space-y-0.5">
-            <div class="text-sm font-medium text-foreground">{{ t("SetBase.moviepilot.subAutoFillSpecs") }}</div>
-            <div class="text-xs text-muted-foreground">{{ t("SetBase.moviepilot.subAutoFillSpecsDesc") }}</div>
+        <div class="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/25">
+          <div class="flex min-w-0 items-center gap-1.5">
+            <span class="text-sm font-medium text-foreground">{{ t("SetBase.moviepilot.subAutoFillSpecs") }}</span>
+            <Tooltip :content="t('SetBase.moviepilot.subAutoFillSpecsDesc')" side="top">
+              <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+            </Tooltip>
           </div>
           <Switch
             :model-value="configStore.moviePilot.subAutoFillSpecs"
@@ -466,19 +480,19 @@ defineExpose({ beforeSave });
           />
         </div>
 
-        <Separator />
-
-        <div class="flex items-center justify-between gap-4">
-          <div class="space-y-0.5">
-            <div class="text-sm font-medium text-foreground">{{ t("SetBase.moviepilot.debugLog") }}</div>
-            <div class="text-xs text-muted-foreground">{{ t("SetBase.moviepilot.debugLogDesc") }}</div>
+        <div class="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/25">
+          <div class="flex min-w-0 items-center gap-1.5">
+            <span class="text-sm font-medium text-foreground">{{ t("SetBase.moviepilot.debugLog") }}</span>
+            <Tooltip :content="t('SetBase.moviepilot.debugLogDesc')" side="top">
+              <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+            </Tooltip>
           </div>
           <Switch
             :model-value="configStore.moviePilot.debug"
             @update:model-value="(v) => handleToggleBoolField('debug', v)"
           />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   </div>
 </template>

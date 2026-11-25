@@ -89,9 +89,9 @@ async function save() {
 
       <div
         v-if="showSaveButton"
-        class="sticky bottom-4 z-20 flex items-center justify-end gap-3 rounded-xl border border-border bg-card/95 px-4 py-3 shadow-md backdrop-blur-md"
+        class="sticky bottom-4 z-20 flex items-center justify-end gap-3 rounded-xl border border-border/80 bg-card/95 px-4 py-2.5 shadow-md backdrop-blur-md"
       >
-        <Button @click="save">
+        <Button size="sm" @click="save">
           <CheckCircle2 class="size-4" />
           {{ t("common.save") }}
         </Button>

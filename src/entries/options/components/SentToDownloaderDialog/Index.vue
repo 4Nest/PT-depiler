@@ -9,6 +9,7 @@ import {
   ChevronUp,
   CloudDownload,
   Folder,
+  HelpCircle,
   Loader2,
   Send,
   SlidersHorizontal,
@@ -45,6 +46,7 @@ import {
   TabsList,
   TabsTrigger,
   TagsInput,
+  Tooltip,
 } from "~/components/ui";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
@@ -431,7 +433,7 @@ function dialogLeave() {
                   <Badge variant="outline" class="h-4.5 shrink-0 px-1.5 text-[10px] font-normal text-muted-foreground">
                     {{ downloader.type }}
                   </Badge>
-                  <span class="hidden truncate text-xs text-muted-foreground sm:inline tabular-nums">
+                  <span class="hidden truncate text-xs text-muted-foreground min-[641px]:inline tabular-nums">
                     {{ downloader.address }}
                   </span>
                 </div>
@@ -482,7 +484,7 @@ function dialogLeave() {
                     >
                       {{ downloader.type }}
                     </Badge>
-                    <span class="hidden truncate text-xs text-muted-foreground sm:inline tabular-nums">
+                    <span class="hidden truncate text-xs text-muted-foreground min-[641px]:inline tabular-nums">
                       {{ downloader.address }}
                     </span>
                   </div>
@@ -625,7 +627,9 @@ function dialogLeave() {
           <div class="flex flex-col gap-4">
             <!-- 下载器选择 -->
             <div class="flex flex-col gap-1.5">
-              <Label>{{ t("SentToDownloaderDialog.selectDownloader") }}</Label>
+              <Label class="text-xs font-medium text-muted-foreground">{{
+                t("SentToDownloaderDialog.selectDownloader")
+              }}</Label>
               <Select v-model="selectedDownloaderId">
                 <SelectTrigger>
                   <SelectValue :placeholder="t('SentToDownloaderDialog.selectDownloader')">
@@ -643,7 +647,7 @@ function dialogLeave() {
                       >
                         {{ t("SentToDownloaderDialog.defaultBadge") }}
                       </Badge>
-                      <span class="hidden truncate text-xs text-muted-foreground min-[460px]:inline">
+                      <span class="hidden truncate text-xs text-muted-foreground min-[460px]:inline tabular-nums">
                         [{{ selectedDownloader.address }}]
                       </span>
                     </span>
@@ -669,7 +673,7 @@ function dialogLeave() {
                       >
                         {{ t("SentToDownloaderDialog.defaultBadge") }}
                       </Badge>
-                      <span class="hidden truncate text-xs text-muted-foreground min-[460px]:inline">
+                      <span class="hidden truncate text-xs text-muted-foreground min-[460px]:inline tabular-nums">
                         [{{ downloader.address }}]
                       </span>
                       <Badge variant="secondary" class="ml-1 shrink-0 text-[10px]">{{ downloader.type }}</Badge>
@@ -682,7 +686,9 @@ function dialogLeave() {
             <!-- 保存路径与分类标签 -->
             <div class="grid grid-cols-1 gap-3.5 min-[641px]:grid-cols-2 min-[641px]:gap-4">
               <div class="flex flex-col gap-1.5">
-                <Label>{{ t("SentToDownloaderDialog.savePath") }}</Label>
+                <Label class="text-xs font-medium text-muted-foreground">{{
+                  t("SentToDownloaderDialog.savePath")
+                }}</Label>
                 <Input v-model="addTorrentOptions.savePath" :placeholder="t('SentToDownloaderDialog.savePathHint')" />
                 <div v-if="suggestFolders.length > 0" class="flex flex-wrap gap-1 pt-0.5">
                   <button
@@ -707,7 +713,7 @@ function dialogLeave() {
               </div>
 
               <div class="flex flex-col gap-1.5">
-                <Label>{{ t("SentToDownloaderDialog.label") }}</Label>
+                <Label class="text-xs font-medium text-muted-foreground">{{ t("SentToDownloaderDialog.label") }}</Label>
                 <TagsInput
                   v-model="labelTags"
                   :suggestions="suggestTags"
@@ -716,14 +722,18 @@ function dialogLeave() {
               </div>
             </div>
 
-            <!-- 开关选项行 -->
-            <div class="grid grid-cols-1 gap-2.5 min-[641px]:grid-cols-2 min-[641px]:gap-3">
-              <div
-                class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/25 px-3.5 py-2.5"
-              >
-                <div class="min-w-0">
-                  <div class="text-sm font-medium text-foreground">{{ t("SentToDownloaderDialog.localRelay") }}</div>
-                  <div class="text-[11px] text-muted-foreground">{{ t("SentToDownloaderDialog.localRelayDesc") }}</div>
+            <!-- 基础开关组（Grouped Inset 单容器 + 1px 细分割线） -->
+            <div
+              class="grid grid-cols-1 divide-y divide-border/60 overflow-hidden rounded-xl border border-border/80 bg-card min-[641px]:grid-cols-2 min-[641px]:divide-x min-[641px]:divide-y-0"
+            >
+              <div class="flex items-center justify-between gap-3 px-3.5 py-2.5 transition-colors hover:bg-muted/25">
+                <div class="flex min-w-0 items-center gap-1.5">
+                  <span class="truncate text-sm font-medium text-foreground">
+                    {{ t("SentToDownloaderDialog.localRelay") }}
+                  </span>
+                  <Tooltip :content="t('SentToDownloaderDialog.localRelayDesc')" side="top">
+                    <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+                  </Tooltip>
                 </div>
                 <Switch
                   v-model="addTorrentOptions.localDownload"
@@ -731,39 +741,45 @@ function dialogLeave() {
                 />
               </div>
 
-              <div
-                class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/25 px-3.5 py-2.5"
-              >
-                <div class="min-w-0">
-                  <div class="text-sm font-medium text-foreground">{{ t("SentToDownloaderDialog.pauseOnAdd") }}</div>
-                  <div class="text-[11px] text-muted-foreground">{{ t("SentToDownloaderDialog.pauseOnAddDesc") }}</div>
+              <div class="flex items-center justify-between gap-3 px-3.5 py-2.5 transition-colors hover:bg-muted/25">
+                <div class="flex min-w-0 items-center gap-1.5">
+                  <span class="truncate text-sm font-medium text-foreground">
+                    {{ t("SentToDownloaderDialog.pauseOnAdd") }}
+                  </span>
+                  <Tooltip :content="t('SentToDownloaderDialog.pauseOnAddDesc')" side="top">
+                    <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+                  </Tooltip>
                 </div>
                 <Switch v-model="addTorrentOptions.addAtPaused" />
               </div>
             </div>
 
-            <!-- 高级选项（直接平铺展示，无需折叠展开） -->
+            <!-- 高级选项（外置极简标题 + Grouped Inset 1px 精密网格） -->
             <div
               v-if="(selectedDownloaderMetadata?.advanceAddTorrentOptions ?? []).length > 0"
-              class="flex flex-col gap-2"
+              class="flex flex-col gap-1.5"
             >
-              <div class="flex items-center gap-2">
-                <Label>{{ t("common.advancedSettings") }}</Label>
-                <Badge variant="secondary" class="h-4.5 px-1.5 text-[10px] tabular-nums">
+              <div class="flex items-center gap-1.5 px-0.5">
+                <span class="text-xs font-medium text-muted-foreground">{{ t("common.advancedSettings") }}</span>
+                <span
+                  class="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-medium text-muted-foreground tabular-nums"
+                >
                   {{ selectedDownloaderMetadata.advanceAddTorrentOptions.length }}
-                </Badge>
+                </span>
               </div>
-              <div class="grid grid-cols-1 gap-2.5 min-[641px]:grid-cols-2 min-[641px]:gap-3">
+              <div
+                class="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border/80 bg-border/60 min-[641px]:grid-cols-2"
+              >
                 <div
                   v-for="opt in selectedDownloaderMetadata.advanceAddTorrentOptions"
                   :key="opt.key"
-                  class="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/25 px-3.5 py-2.5"
+                  class="flex items-center justify-between gap-3 bg-card px-3.5 py-2.5 transition-colors hover:bg-muted/25 last:odd:min-[641px]:col-span-2"
                 >
-                  <div class="min-w-0">
-                    <div class="text-xs font-medium text-foreground">{{ opt.name }}</div>
-                    <div v-if="opt.description" class="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                      {{ opt.description }}
-                    </div>
+                  <div class="flex min-w-0 items-center gap-1.5">
+                    <span class="truncate text-sm font-medium text-foreground">{{ opt.name }}</span>
+                    <Tooltip v-if="opt.description" :content="opt.description" side="top">
+                      <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+                    </Tooltip>
                   </div>
                   <Switch v-model="addTorrentOptions.advanceAddTorrentOptions![opt.key]" />
                 </div>

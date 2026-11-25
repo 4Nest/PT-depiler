@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { strFromU8, unzipSync } from "fflate";
 import { nanoid } from "nanoid";
-import { ref, shallowRef, useTemplateRef, watch } from "vue";
+import { computed, ref, shallowRef, useTemplateRef, watch } from "vue";
 import { useThrottledRefHistory } from "@vueuse/core";
 import { useI18n } from "vue-i18n";
-import { Eye, EyeOff, FileArchive, KeyRound, Undo2, Upload } from "lucide-vue-next";
+import { Eye, EyeOff, FileArchive, HelpCircle, KeyRound, Undo2, Upload } from "lucide-vue-next";
 
 import { useConfigStore } from "@/options/stores/config.ts";
 import type { IPtppDumpUserInfo } from "@/shared/types.ts";
 import { REPO_NAME } from "~/helper.ts";
-import { Alert, Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Tooltip } from "~/components/ui";
+import { Badge, Button, Input, Label, Tooltip } from "~/components/ui";
 
 import RestorePtppUserDataDialog from "./RestorePtppUserDataDialog.vue";
 
@@ -66,22 +66,33 @@ async function loadPTPPBackupFile() {
 function randomEncryptionKey() {
   encryptionKey.value = nanoid();
 }
+
+const ptppImportTooltip = computed(() =>
+  [
+    t("ptppSettings.importConfigInfoLine1", { repoName: REPO_NAME }),
+    `1. ${t("ptppSettings.importStep1", { repoName: REPO_NAME })}`,
+    `2. ${t("ptppSettings.importStep2", { repoName: REPO_NAME })}`,
+    `3. ${t("ptppSettings.importStep3").replace(/<[^>]+>/g, "")}`,
+    `4. ${t("ptppSettings.importStep4")}`,
+  ].join("\n"),
+);
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="space-y-6">
     <!-- 备份加密密钥 -->
-    <Card>
-      <CardHeader>
-        <CardTitle>{{ t("ptppSettings.basicConfig") }}</CardTitle>
-      </CardHeader>
-      <CardContent class="space-y-3">
-        <Alert variant="info">
-          {{ t("ptppSettings.saveKeyNotice") }}
-        </Alert>
-
-        <div class="space-y-1.5">
-          <Label for="backup-encryption-key">{{ t("ptppSettings.encryptionKeyLabel") }}</Label>
+    <section class="space-y-2">
+      <h2 class="px-1 text-xs font-medium text-muted-foreground">{{ t("ptppSettings.basicConfig") }}</h2>
+      <div class="overflow-hidden rounded-xl border border-border/80 bg-card p-4 shadow-2xs">
+        <div class="space-y-2">
+          <div class="flex items-center gap-1.5">
+            <Label for="backup-encryption-key" class="text-sm font-medium text-foreground">
+              {{ t("ptppSettings.encryptionKeyLabel") }}
+            </Label>
+            <Tooltip :content="t('ptppSettings.saveKeyNotice')" side="top">
+              <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+            </Tooltip>
+          </div>
           <div class="flex items-center gap-2">
             <div class="relative flex-1">
               <Input
@@ -127,28 +138,18 @@ function randomEncryptionKey() {
             </Tooltip>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
 
     <!-- PT-Plugin-Plus 数据迁移导入 -->
-    <Card>
-      <CardHeader>
-        <CardTitle>{{ t("ptppSettings.importConfigTitle") }}</CardTitle>
-      </CardHeader>
-      <CardContent class="space-y-3">
-        <Alert variant="warning">
-          <div class="mb-1.5 font-semibold text-foreground">
-            {{ t("ptppSettings.importConfigInfoLine1", { repoName: REPO_NAME }) }}<br />
-            {{ t("ptppSettings.importConfigInfoPrep") }}
-          </div>
-          <div class="space-y-0.5 leading-relaxed">
-            <div>1. {{ t("ptppSettings.importStep1", { repoName: REPO_NAME }) }}</div>
-            <div>2. {{ t("ptppSettings.importStep2", { repoName: REPO_NAME }) }}</div>
-            <div>3. <span class="font-semibold" v-html="t('ptppSettings.importStep3')" /></div>
-            <div>4. {{ t("ptppSettings.importStep4") }}</div>
-          </div>
-        </Alert>
-
+    <section class="space-y-2">
+      <div class="flex items-center gap-1.5 px-1">
+        <h2 class="text-xs font-medium text-muted-foreground">{{ t("ptppSettings.importConfigTitle") }}</h2>
+        <Tooltip :content="ptppImportTooltip" side="top">
+          <HelpCircle class="size-3.5 shrink-0 text-muted-foreground/75" />
+        </Tooltip>
+      </div>
+      <div class="overflow-hidden rounded-xl border border-border/80 bg-card shadow-2xs">
         <input
           ref="ptppFileInput"
           type="file"
@@ -158,25 +159,27 @@ function randomEncryptionKey() {
         />
         <button
           type="button"
-          class="flex w-full items-center justify-between gap-3 rounded-lg border border-dashed border-input bg-muted/25 px-4 py-4 text-left transition-colors hover:border-primary/50 hover:bg-muted/45"
+          class="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/30"
           @click="() => fileInputRef?.click()"
         >
-          <div class="flex items-center gap-3">
-            <div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div class="flex min-w-0 items-center gap-3">
+            <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <FileArchive class="size-4" />
             </div>
-            <div>
-              <div class="text-sm font-medium text-foreground">{{ t("ptppSettings.selectBackupFile") }}</div>
-              <div class="text-xs text-muted-foreground">PT-Plugin-Plus-Backup-*.zip / userdatas.json</div>
+            <div class="min-w-0">
+              <div class="truncate text-sm font-medium text-foreground">{{ t("ptppSettings.selectBackupFile") }}</div>
+              <div class="truncate text-xs text-muted-foreground">PT-Plugin-Plus-Backup-*.zip / userdatas.json</div>
             </div>
           </div>
-          <Button type="button" variant="secondary" size="sm">
+          <span
+            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border bg-secondary/70 px-3 text-xs font-medium text-secondary-foreground"
+          >
             <Upload class="size-3.5" />
             {{ t("common.import") }}
-          </Button>
+          </span>
         </button>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   </div>
 
   <RestorePtppUserDataDialog v-model="showRestorePtppUserDataDialog" :ptpp-user-data="parsedPtppUserData!" />

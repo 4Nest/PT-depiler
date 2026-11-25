@@ -129,16 +129,11 @@ async function confirmDeleteBackupServer(id: TBackupServerKey) {
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <Card>
         <CardContent class="flex items-center justify-between gap-4 p-4">
-          <div class="flex min-w-0 items-start gap-3">
-            <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Download class="size-5" />
+          <div class="flex min-w-0 items-center gap-3">
+            <div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Download class="size-4.5" />
             </div>
-            <div class="min-w-0 space-y-0.5">
-              <h3 class="text-sm font-semibold text-foreground">{{ t("SetBackup.localExport") }}</h3>
-              <p class="text-xs text-muted-foreground">
-                {{ t("SetBackup.LocalExportConfirmDialog.title") }}
-              </p>
-            </div>
+            <h3 class="truncate text-sm font-semibold text-foreground">{{ t("SetBackup.localExport") }}</h3>
           </div>
           <Button
             size="sm"
@@ -156,16 +151,11 @@ async function confirmDeleteBackupServer(id: TBackupServerKey) {
 
       <Card>
         <CardContent class="flex items-center justify-between gap-4 p-4">
-          <div class="flex min-w-0 items-start gap-3">
-            <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info">
-              <ArchiveRestore class="size-5" />
+          <div class="flex min-w-0 items-center gap-3">
+            <div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info">
+              <ArchiveRestore class="size-4.5" />
             </div>
-            <div class="min-w-0 space-y-0.5">
-              <h3 class="text-sm font-semibold text-foreground">{{ t("SetBackup.localImport") }}</h3>
-              <p class="text-xs text-muted-foreground">
-                {{ t("SetBackup.RestoreDialog.title") }}
-              </p>
-            </div>
+            <h3 class="truncate text-sm font-semibold text-foreground">{{ t("SetBackup.localImport") }}</h3>
           </div>
           <Button size="sm" variant="secondary" class="shrink-0" @click="showRestoreDialog = true">
             <Upload class="size-4" />
